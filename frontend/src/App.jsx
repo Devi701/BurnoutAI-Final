@@ -1,0 +1,50 @@
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { UserProvider } from './context/UserContext';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import EmployeeHome from './pages/EmployeeHome';
+import EmployerHome from './pages/EmployerHome';
+import CheckinPage from './pages/CheckinPage';
+import WeeklyReportPage from './pages/WeeklyReportPage';
+import HistoryPage from './pages/HistoryPage';
+import SmallTest from './pages/SmallTest'; // Assuming SmallTest component exists
+import FullTest from './pages/FullTest';
+import SignupEmployee from './pages/SignupEmployee';
+import SignupEmployer from './pages/SignupEmployer';
+import OnboardingPage from './pages/OnboardingPage';
+import NotFound from './pages/NotFound';
+import './App.css';
+
+function AppContent() {
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/signup/employee" element={<SignupEmployee />} />
+      <Route path="/signup/employer" element={<SignupEmployer />} />
+      <Route path="/employee" element={<EmployeeHome />} />
+      <Route path="/employer" element={<EmployerHome />} />
+      <Route path="/checkin" element={<CheckinPage />} />
+      <Route path="/history" element={<HistoryPage />} />
+      <Route path="/small-test" element={<SmallTest />} />
+      <Route path="/full-test" element={<FullTest />} />
+      <Route path="/reports/weekly" element={<WeeklyReportPage />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <UserProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </UserProvider>
+    </AuthProvider>
+  );
+}

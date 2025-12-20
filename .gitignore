@@ -1,0 +1,15 @@
+# Dependencies
+node_modules
+
+# Environment variables
+.env
+
+# Build outputs
+dist
+build
+
+# Database (if local)
+*.sqlite
+
+# System files
+.DS_Store
