@@ -1,0 +1,31 @@
+{
+  "name": "burnout-backend",
+  "version": "1.0.0",
+  "description": "Backend for Burnout MVP",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "seed": "node seed_db.js",
+    "create-tables": "node create_tables.js"
+  },
+  "dependencies": {
+    "argon2": "^0.40.1",
+    "cors": "^2.8.5",
+    "csv-parse": "^5.5.5",
+    "csv-stringify": "^6.4.6",
+    "date-fns": "^3.6.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "nodemailer": "^6.9.13",
+    "pg": "^8.11.5",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.3",
+    "sqlite3": "^5.1.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

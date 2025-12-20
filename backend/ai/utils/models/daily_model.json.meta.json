@@ -1,0 +1,8 @@
+{
+  "features": [
+    "stress",
+    "sleep",
+    "workload",
+    "coffee"
+  ]
+}
