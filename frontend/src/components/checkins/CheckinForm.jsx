@@ -54,7 +54,7 @@ export default function CheckinForm() {
   if (result) {
     return (
       <div className="card">
-        <h2>Today's Risk Assessment</h2>
+        <h2>Today's Wellness Snapshot</h2>
         <div className="result-score">{Math.round(result.score)}</div>
         <div className="result-tips">
           <h3>Personalized Tips:</h3>

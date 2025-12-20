@@ -83,7 +83,7 @@ export default function WeeklyReportPage() {
           tension: 0.3,
         },
         {
-          label: `Projected Trend`,
+          label: `Estimated Trend`,
           data: paddedProjection,
           borderColor: color,
           borderDash: [5, 5],
@@ -154,7 +154,7 @@ export default function WeeklyReportPage() {
             <h4>Team Stress</h4>
             <Line options={options} data={getChartData('Stress', 'stress', 'rgb(239, 68, 68)')} />
             <p className="small" style={{marginTop: '1rem', color: '#64748b'}}>
-              Dotted line indicates projected stress levels for the next 3 days.
+              Dotted line indicates estimated stress trends for the next 3 days based on current data.
             </p>
           </div>
           <div className="card">

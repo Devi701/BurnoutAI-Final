@@ -55,7 +55,7 @@ export default function EmployeeHome() {
               
               {/* 1. Burnout Risk Stats */}
               <div className="card">
-                <h3>Your Burnout Risk</h3>
+                <h3>Burnout Risk Indicator</h3>
                 <div style={{ display: 'flex', gap: '3rem', marginTop: '1rem' }}>
                   <div>
                     <div className="small" style={{ color: '#64748b', marginBottom: '0.5rem' }}>Today</div>
@@ -80,18 +80,18 @@ export default function EmployeeHome() {
               {/* 2. Top Driving Factor */}
               {history && history.topBurnoutFactor ? (
                 <div className="card" style={{ borderLeft: '5px solid #ef4444', backgroundColor: '#fef2f2' }}>
-                  <h3 style={{ color: '#b91c1c', marginTop: 0 }}>⚠️ Main Driving Factor</h3>
+                  <h3 style={{ color: '#b91c1c', marginTop: 0 }}>⚠️ Strongest Contributing Signal</h3>
                   <div style={{ fontSize: '1.8rem', fontWeight: 'bold', margin: '0.5rem 0', color: '#7f1d1d' }}>
                     {history.topBurnoutFactor.topFactor}
                   </div>
                   <p style={{ color: '#7f1d1d', margin: 0 }}>
-                    This is the primary factor affecting your well-being right now.
+                    In your recent check-ins, this factor appears as the most influential signal linked to elevated burnout risk. This insight strengthens as more data is collected.
                   </p>
                 </div>
               ) : (
                 <div className="card">
-                  <h3>Main Driving Factor</h3>
-                  <p style={{ color: '#64748b' }}>Not enough data yet. Submit more check-ins to see insights.</p>
+                  <h3>Contributing Signals</h3>
+                  <p style={{ color: '#64748b' }}>Not enough data yet. Submit more check-ins to see data-driven insights.</p>
                 </div>
               )}
 

@@ -86,7 +86,7 @@ export default function HistoryPage() {
           tension: 0.3,
         },
         {
-          label: `Projected ${label}`,
+          label: `Estimated ${label}`,
           data: paddedProjection,
           borderColor: color,
           borderDash: [5, 5], // Dotted line
@@ -118,11 +118,11 @@ export default function HistoryPage() {
         
         {/* Burnout Risk Chart */}
         <div className="card" style={{ marginBottom: '2rem' }}>
-          <h3>Burnout Risk Trend</h3>
-          <Line options={options} data={getChartData('Burnout Risk', 'risk', 'rgb(239, 68, 68)')} />
+          <h3>Burnout Risk Indicators</h3>
+          <Line options={options} data={getChartData('Risk Indicator', 'risk', 'rgb(239, 68, 68)')} />
           {lastRiskProj !== null && (
             <p style={{ marginTop: '1rem', fontStyle: 'italic', color: '#64748b' }}>
-              ⚠️ If current trends continue, your burnout risk is estimated to reach <strong>{lastRiskProj}</strong> by the end of this period.
+              ⚠️ Based on current data trends, the model projects a potential risk score of <strong>{lastRiskProj}</strong> by the end of this period. This is an estimate, not a diagnosis.
             </p>
           )}
         </div>

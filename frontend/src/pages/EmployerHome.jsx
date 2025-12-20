@@ -115,12 +115,12 @@ export default function EmployerHome() {
 
             {report.drivers && report.drivers.teamTopFactor && (
                <div className="card" style={{ borderLeft: '5px solid #f59e0b', marginTop: '1rem', backgroundColor: '#fffbeb' }}>
-                  <h4 style={{color: '#d97706', marginTop: 0}}>🔥 Top Team Burnout Factor</h4>
+                  <h4 style={{color: '#d97706', marginTop: 0}}>🔥 Primary Team Signal</h4>
                   <div style={{fontSize: '2rem', fontWeight: 'bold', margin: '0.5rem 0', color: '#92400e'}}>
                     {report.drivers.teamTopFactor.factor}
                   </div>
                   <p style={{marginBottom: 0, color: '#92400e'}}>
-                    This is the biggest contributor to burnout across your team right now.
+                    Based on aggregated check-ins, this factor appears to be the most significant contributor to team stress levels currently.
                   </p>
                </div>
             )}

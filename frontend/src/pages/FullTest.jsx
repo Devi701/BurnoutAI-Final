@@ -91,7 +91,7 @@ function FullTest() {
   if (result) {
     return (
       <div className="quiz-container">
-        <h2>Your Full Assessment Score</h2>
+        <h2>Your Assessment Result</h2>
         <div className="result-score">{Math.round(result.score)}</div>
         <div className="result-tips">
           <h3>Here are some tips that might help:</h3>
