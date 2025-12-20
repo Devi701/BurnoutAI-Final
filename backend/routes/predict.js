@@ -13,7 +13,7 @@ router.post('/', async (req, res, next) => {
   try {
     // Expect a body like: { type: 'small'|'full', features: { ... } }
     const { type = 'small', userId, features } = req.body;
-    const result = predictAndAdvise(type, req.body);
+    const result = predictAndAdvise(type, features || req.body);
 
     // If a userId is provided, save the result for reporting
     if (userId) {
