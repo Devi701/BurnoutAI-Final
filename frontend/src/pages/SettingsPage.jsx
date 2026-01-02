@@ -216,6 +216,25 @@ export default function SettingsPage() {
     <>
       <Navbar />
       <div className="container" style={{ marginTop: '2rem', maxWidth: '700px' }}>
+        {user.role === 'employer' && (
+          <button 
+            onClick={() => navigate('/employer')} 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: '#64748b', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              marginBottom: '1rem', 
+              padding: 0,
+              fontSize: '1rem'
+            }}
+          >
+            ← Back to Dashboard
+          </button>
+        )}
         <h1 style={{ marginBottom: '2rem' }}>Settings</h1>
         
         {message && <div style={{ padding: '1rem', backgroundColor: '#dcfce7', color: '#166534', borderRadius: '4px', marginBottom: '1rem' }}>{message}</div>}

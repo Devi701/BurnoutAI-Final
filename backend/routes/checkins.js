@@ -37,7 +37,9 @@ router.post('/', async (req, res) => {
     
     // Check if user is the designated test user for unlimited check-ins
     const user = await db.User.findByPk(userId);
-    const isTestUser = user && user.email === 'testuser@gmail.com';
+    const isTestUser = user && user.email.toLowerCase() === 'testuser@gmail.com';
+    
+    let customDate = new Date();
 
     if (!isTestUser) {
       // Production: Limit to one per day, overwrite if exists
@@ -57,6 +59,17 @@ router.post('/', async (req, res) => {
         await existingCheckin.update({ stress, sleep, workload, coffee, companyCode, note });
         return res.status(200).json(existingCheckin);
       }
+    } else {
+      // Test User: Increment date to simulate history (Next Day)
+      const lastCheckin = await db.Checkin.findOne({
+        where: { userId },
+        order: [['createdAt', 'DESC']]
+      });
+      if (lastCheckin) {
+        const nextDay = new Date(lastCheckin.createdAt);
+        nextDay.setDate(nextDay.getDate() + 1);
+        customDate = nextDay;
+      }
     }
 
     const newCheckin = await db.Checkin.create({
@@ -66,7 +79,9 @@ router.post('/', async (req, res) => {
       workload,
       coffee,
       companyCode,
-      note
+      note,
+      createdAt: customDate,
+      updatedAt: customDate
     });
 
     // --- Gamification Trigger ---

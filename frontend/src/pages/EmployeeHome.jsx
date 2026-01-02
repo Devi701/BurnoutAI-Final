@@ -166,6 +166,7 @@ export default function EmployeeHome() {
     ? new Date(history.dates[history.dates.length - 1]).toLocaleDateString() 
     : null;
   const hasCheckedInToday = todayStr === lastCheckinDate;
+  const isTestUser = user?.email?.toLowerCase() === 'testuser@gmail.com';
 
   // Severity Logic
   const getSeverity = (score) => {
@@ -334,7 +335,7 @@ export default function EmployeeHome() {
                 <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Daily Check-in</h3>
                 <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '1.1rem' }}>Log your stress, sleep, and workload to keep your risk score accurate.</p>
                 
-                {hasCheckedInToday ? (
+                {hasCheckedInToday && !isTestUser ? (
                   <button disabled style={{ width: '100%', padding: '1rem', background: '#e2e8f0', border: 'none', borderRadius: '4px', color: '#64748b', fontWeight: 'bold', cursor: 'not-allowed' }}>
                     Check-in Complete for Today
                   </button>
