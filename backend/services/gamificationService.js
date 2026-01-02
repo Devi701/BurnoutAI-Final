@@ -50,7 +50,7 @@ const UserChallenge = db.sequelize.define('UserChallenge', {
 });
 
 // Sync models (safe mode)
-// db.sequelize.sync({ alter: true }); 
+db.sequelize.sync({ alter: true }).catch(err => console.error('Gamification Sync Error:', err));
 
 // --- 2. Game Rules Engine ---
 

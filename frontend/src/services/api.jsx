@@ -6,7 +6,16 @@ async function request(path, opts = {}) {
     headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
-  const json = await res.json().catch(() => ({}));
+  
+  // Try to parse JSON, but fallback to text if it fails (e.g. 404/500 HTML pages)
+  let json;
+  try {
+    json = await res.json();
+  } catch (e) {
+    // If JSON fails, use the status text (e.g. "Not Found", "Internal Server Error")
+    throw new Error(`Server Error: ${res.status} ${res.statusText}`);
+  }
+
   if (!res.ok) throw new Error(json.error || json.message || 'API error');
   return json;
 }
