@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { predict } from '../services/api';
 import { useUser } from '../context/UserContext';
 import './SmallTest.css'; // Re-using styles
+import { analytics } from '../services/analytics';
 
 const questions = [
   { id: 'emo1', text: 'I feel emotionally drained from my work.' },
@@ -46,6 +48,10 @@ function SmallTest() {
       const payload = { type: 'small', features: answers, userId: user?.id };
       const prediction = await predict(payload);
       setResult(prediction);
+
+      analytics.capture('quick_assessment_submitted', {
+        score: prediction.score
+      });
     } catch (err) {
       setError(err.message || 'An error occurred while getting your score.');
     } finally {
@@ -66,9 +72,14 @@ function SmallTest() {
             ))}
           </ul>
         </div>
-        <button onClick={() => { setResult(null); setAnswers({}); }} className="quiz-button">
-          Take Again
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <button onClick={() => { setResult(null); setAnswers({}); }} className="quiz-button" style={{ flex: 1 }}>
+            Take Again
+          </button>
+          <Link to="/employee" style={{ flex: 1, textDecoration: 'none' }}>
+            <button style={{ width: '100%', padding: '12px', background: '#e2e8f0', border: 'none', borderRadius: '4px', color: '#334155', fontWeight: 'bold', cursor: 'pointer' }}>Back to Home</button>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -102,6 +113,11 @@ function SmallTest() {
         <button type="submit" className="quiz-button" disabled={isLoading}>
           {isLoading ? 'Getting Score...' : 'Get My Score'}
         </button>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          <Link to="/employee" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.9rem' }}>
+            &larr; Back to Dashboard
+          </Link>
+        </div>
       </form>
     </div>
   );

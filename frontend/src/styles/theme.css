@@ -1,0 +1,94 @@
+:root {
+  /* Color Palette - Calm & Focused */
+  --primary: #6366f1;       /* Indigo: Focus, Trust */
+  --primary-hover: #4f46e5;
+  --secondary: #10b981;     /* Emerald: Wellness, Growth */
+  --accent: #f43f5e;        /* Rose: Alerts, Energy */
+  --background: #f8fafc;    /* Slate 50: Reduced Eye Strain */
+  --surface: #ffffff;       /* White: Cleanliness */
+  --text-main: #1e293b;     /* Slate 800: High Contrast */
+  --text-muted: #64748b;    /* Slate 500: Soft Info */
+  
+  /* Physics */
+  --ease-spring: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-main);
+}
+
+/* --- Micro-Interactions --- */
+
+/* 1. Hover Lift: Adds depth and tactility to cards */
+.hover-lift {
+  transition: transform 0.3s var(--ease-spring), box-shadow 0.3s var(--ease-spring);
+  will-change: transform, box-shadow;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* 2. Button Press: Tactile feedback on click */
+.btn-animate {
+  transition: transform 0.1s var(--ease-smooth), background-color 0.2s;
+}
+.btn-animate:active {
+  transform: scale(0.97);
+}
+
+/* 3. Smooth Fade In: Context-aware entrance */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s var(--ease-smooth) forwards;
+  opacity: 0; /* Start hidden to prevent flash */
+}
+
+/* Stagger delays for lists/grids */
+.stagger-1 { animation-delay: 100ms; }
+.stagger-2 { animation-delay: 200ms; }
+.stagger-3 { animation-delay: 300ms; }
+.stagger-4 { animation-delay: 400ms; }
+.stagger-5 { animation-delay: 500ms; }
+.stagger-6 { animation-delay: 600ms; }
+
+/* 4. Loading Skeleton: Calmer than a spinning loader */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  height: 1em;
+  width: 100%;
+  display: inline-block;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Range Slider Styling */
+input[type=range] {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* 5. Flow Guide Animation: Pulsing border to guide attention */
+@keyframes borderPulse {
+  0%, 100% { box-shadow: 0 6px 18px rgba(2,6,23,0.06), 0 0 0 0px rgba(37, 99, 235, 0); }
+  50% { box-shadow: 0 6px 18px rgba(2,6,23,0.06), 0 0 0 4px rgba(37, 99, 235, 0.4); }
+}
+
+.flow-step {
+  animation: borderPulse 4s infinite ease-in-out;
+}
+.flow-step:hover {
+  animation: none; /* Stop pulsing on hover to allow hover-lift effect */
+}

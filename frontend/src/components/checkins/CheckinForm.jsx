@@ -40,7 +40,7 @@ export default function CheckinForm() {
       // 2. Get a prediction based on the same data
       // Note: We need a 'daily' model for this to work. For now, we'll simulate it.
       // This part will work once a 'daily' model is trained.
-      const predictionPayload = { type: 'daily', features: form };
+      const predictionPayload = { type: 'daily', features: form, userId: user.id };
       const prediction = await predict(predictionPayload);
       setResult(prediction);
 
@@ -77,7 +77,7 @@ export default function CheckinForm() {
   }
 
   return (
-    <div className="card">
+    <div className="card fade-in">
       <h2>Daily Check-in</h2>
       <p className="small" style={{marginBottom: '1.5rem'}}>Log your metrics for today. This data contributes to your team's anonymous weekly report.</p>
       <form onSubmit={handleSubmit}>
@@ -112,7 +112,7 @@ export default function CheckinForm() {
         </div>
 
         {error && <p className="error-message">{error}</p>}
-        <button type="submit" className="quiz-button" disabled={isLoading || !user} style={{marginTop: '1rem'}}>
+        <button type="submit" className="quiz-button btn-animate" disabled={isLoading || !user} style={{marginTop: '1rem'}}>
           {isLoading ? 'Saving...' : 'Save Check-in'}
         </button>
       </form>

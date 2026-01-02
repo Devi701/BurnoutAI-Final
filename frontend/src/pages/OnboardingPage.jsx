@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { signupEmployee, signupEmployer } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { useUser } from '../context/UserContext';
 import Navbar from '../components/layout/Navbar';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login: setToken } = useAuth();
+  const { setUser } = useUser();
+
   const [step, setStep] = useState(1);
   const [role, setRole] = useState(null); // 'employee' or 'employer'
   const [consents, setConsents] = useState({
@@ -17,10 +23,35 @@ export default function OnboardingPage() {
     name: '',
     email: '',
     password: '',
-    companyCode: ''
+    companyCode: '',
+    referralCode: ''
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // --- 1. Smart Pre-filling from URL ---
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlEmail = params.get('email');
+    const urlCode = params.get('companyCode');
+    const urlRole = params.get('role');
+    const urlName = params.get('name');
+    const urlReferral = params.get('referralCode');
+
+    if (urlEmail || urlCode || urlRole || urlName || urlReferral) {
+      setFormData(prev => ({
+        ...prev,
+        email: urlEmail || prev.email,
+        companyCode: urlCode || prev.companyCode,
+        name: urlName || prev.name,
+        referralCode: urlReferral || prev.referralCode
+      }));
+      
+      if (urlRole === 'employee' || urlRole === 'employer') {
+        setRole(urlRole);
+      }
+    }
+  }, [location]);
 
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => setStep(s => s - 1);
@@ -31,24 +62,39 @@ export default function OnboardingPage() {
     setIsSubmitting(true);
 
     try {
+      let resp;
       if (role === 'employee') {
-        await signupEmployee(formData);
-        alert("Welcome aboard! Your safe space is ready.");
+        resp = await signupEmployee(formData);
       } else {
-        const resp = await signupEmployer(formData);
-        alert(`Company space created. Your code: ${resp.companyCode}`);
+        resp = await signupEmployer(formData);
       }
-      navigate('/login');
+
+      // --- Auto-Login Logic ---
+      setToken(resp.token);
+      setUser(resp.user);
+      localStorage.setItem('authToken', resp.token);
+      localStorage.setItem('user', JSON.stringify(resp.user));
+
+      // Move to Success/Gamification Step
+      setStep(5); 
     } catch (err) {
       setError(err.message);
       setIsSubmitting(false);
     }
   };
 
+  // Progress Bar Component
+  const ProgressBar = () => (
+    <div style={{ width: '100%', height: '6px', background: '#e2e8f0', position: 'fixed', top: 0, left: 0, zIndex: 1000 }}>
+      <div style={{ width: `${(step / 5) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
+    </div>
+  );
+
   // --- Step 1: Welcome & Tone Setting ---
   if (step === 1) {
     return (
       <>
+        <ProgressBar />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
@@ -73,6 +119,7 @@ export default function OnboardingPage() {
     const canContinue = consents.dataProcessing && consents.anonymity;
     return (
       <>
+        <ProgressBar />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -124,6 +171,7 @@ export default function OnboardingPage() {
   if (step === 3) {
     return (
       <>
+        <ProgressBar />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -153,9 +201,16 @@ export default function OnboardingPage() {
     );
   }
 
+  // --- Step 3.5: Skip logic if role was pre-selected via URL ---
+  if (step === 3 && role && new URLSearchParams(location.search).get('role')) {
+    setStep(4); // Auto-skip to form
+  }
+
   // --- Step 4: Profile Setup (Optional/Minimal) ---
-  return (
+  if (step === 4) {
+    return (
     <>
+      <ProgressBar />
       <Navbar />
       <div className="container" style={{ maxWidth: 500, marginTop: '3rem' }}>
         <div className="card">
@@ -211,6 +266,15 @@ export default function OnboardingPage() {
               </div>
             )}
 
+            <div className="form-row">
+              <label>Referral Code <span style={{fontWeight: 'normal', color: '#64748b'}}>(Optional)</span></label>
+              <input 
+                value={formData.referralCode} 
+                onChange={e => setFormData({...formData, referralCode: e.target.value})} 
+                placeholder="Enter referral code"
+              />
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem' }}>
               <button type="button" onClick={handleBack} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>Back</button>
               <button type="submit" className="quiz-button" disabled={isSubmitting}>
@@ -222,4 +286,37 @@ export default function OnboardingPage() {
       </div>
     </>
   );
+  }
+
+  // --- Step 5: Success & Gamification Hook ---
+  if (step === 5) {
+    return (
+      <>
+        <ProgressBar />
+        <Navbar />
+        <div className="container" style={{ maxWidth: 500, marginTop: '3rem', textAlign: 'center' }}>
+          <div className="card" style={{ borderTop: '5px solid #10b981', animation: 'fadeIn 0.5s' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
+            <h1 style={{ color: '#059669', marginTop: 0 }}>You're In!</h1>
+            <p style={{ fontSize: '1.2rem', color: '#334155' }}>
+              Welcome to your new wellness journey, <strong>{formData.name}</strong>.
+            </p>
+            
+            <div style={{ background: '#ecfdf5', padding: '1.5rem', borderRadius: '12px', margin: '2rem 0', border: '2px dashed #10b981' }}>
+              <h3 style={{ margin: 0, color: '#047857' }}>+100 Score Earned</h3>
+              <p style={{ margin: '0.5rem 0 0', color: '#065f46' }}>Badge Unlocked: <strong>Early Adopter</strong> 🏅</p>
+            </div>
+
+            <button 
+              className="quiz-button" 
+              style={{ padding: '1rem 2rem', fontSize: '1.1rem' }}
+              onClick={() => navigate(role === 'employer' ? '/employer' : '/employee')}
+            >
+              Go to Dashboard &rarr;
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 }

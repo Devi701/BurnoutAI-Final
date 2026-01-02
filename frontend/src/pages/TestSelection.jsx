@@ -18,6 +18,11 @@ function TestSelection() {
           Full Assessment (32 Questions)
         </Link>
       </div>
+      <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+        <Link to="/employee" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.9rem' }}>
+          &larr; Back to Dashboard
+        </Link>
+      </div>
     </div>
   );
 }

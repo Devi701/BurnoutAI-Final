@@ -49,6 +49,19 @@ export default function WeeklyReportPage() {
   if (loading) return <div className="container"><Navbar /><p style={{marginTop: '2rem'}}>Loading report...</p></div>;
   if (error) return <div className="container"><Navbar /><div className="card" style={{marginTop: '2rem', color: 'red'}}>{error}</div></div>;
 
+  if (report && report.privacyLocked) {
+    return (
+      <div className="container">
+        <Navbar />
+        <div className="card" style={{ marginTop: '2rem', borderLeft: '5px solid #0ea5e9', backgroundColor: '#f0f9ff' }}>
+          <h3 style={{color: '#0284c7', marginTop: 0}}>Report Unavailable</h3>
+          <p>Detailed analytics require at least 5 active employees to ensure anonymity.</p>
+          <p>Current employees: <strong>{report.employeeCount}</strong></p>
+        </div>
+      </div>
+    );
+  }
+
   if (!report || !report.datasets) {
     return (
       <div className="container">

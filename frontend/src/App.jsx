@@ -14,7 +14,10 @@ import FullTest from './pages/FullTest';
 import SignupEmployee from './pages/SignupEmployee';
 import SignupEmployer from './pages/SignupEmployer';
 import OnboardingPage from './pages/OnboardingPage';
+import LifeSimulator from './pages/LifeSimulator';
 import NotFound from './pages/NotFound';
+import SettingsPage from './pages/SettingsPage';
+import GamificationHub from './pages/GamificationHub';
 import './App.css';
 
 function AppContent() {
@@ -32,6 +35,9 @@ function AppContent() {
       <Route path="/small-test" element={<SmallTest />} />
       <Route path="/full-test" element={<FullTest />} />
       <Route path="/reports/weekly" element={<WeeklyReportPage />} />
+      <Route path="/impact" element={<LifeSimulator />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/gamification" element={<GamificationHub />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const checkinRoutes = require('./routes/checkins');
 const predictRoutes = require('./routes/predict');
 const reportRoutes = require('./routes/reports');
+const simulatorRoutes = require('./routes/simulator');
 
 // --- Database Initialization ---
 async function initializeDatabase() {
@@ -24,8 +25,28 @@ async function initializeDatabase() {
           await db.sequelize.query('PRAGMA foreign_keys = OFF');
         }
         // Note: If you have "Validation error" with existing data, uncomment the next line to reset DB (DATA LOSS)
+        // Using force:true in dev resets the DB and fixes sync issues (like Checkins_backup error).
+        // await db.sequelize.sync({ force: true });
+        // await db.sequelize.sync({ alter: true });
         // await db.sequelize.sync({ force: true });
         await db.sequelize.sync({ alter: true });
+
+        // Ensure Teams table exists (Raw SQL table)
+        await db.sequelize.query(`
+          CREATE TABLE IF NOT EXISTS Teams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            companyCode TEXT,
+            createdAt DATETIME,
+            updatedAt DATETIME
+          );
+        `);
+
+        // Ensure Users has teamId
+        try {
+          await db.sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
+        } catch (e) { /* ignore if exists */ }
+
         if (dialect === 'sqlite') {
           await db.sequelize.query('PRAGMA foreign_keys = OFF'); // Ensure FKs stay OFF for runtime
         }
@@ -70,6 +91,9 @@ async function main() {
   app.use('/api/checkins', checkinRoutes);
   app.use('/api/predict', predictRoutes);
   app.use('/api/reports', reportRoutes);
+  app.use('/api/action-impact', simulatorRoutes);
+  app.use('/api/teams', require('./routes/teams'));
+  app.use('/api/gamification', require('./routes/gamification'));
 
   // --- Frontend Serving (for production) ---
   if (process.env.NODE_ENV === 'production') {

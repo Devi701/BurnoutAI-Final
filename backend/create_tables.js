@@ -29,6 +29,7 @@ async function main() {
     { name: 'email', type: 'TEXT' },
     { name: 'password', type: 'TEXT' },
     { name: 'role', type: 'TEXT' },
+    { name: 'industry', type: 'TEXT' },
     { name: 'companyCode', type: 'TEXT' },
     { name: 'resetPasswordToken', type: 'TEXT' },
     { name: 'resetPasswordExpires', type: 'INTEGER' },
@@ -65,6 +66,59 @@ async function main() {
     } catch (err) {
       console.log(`Note: Could not add '${col.name}' column (it might already exist).`);
     }
+  }
+
+  // Add action_plan_trackings table
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS action_plan_trackings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER,
+      planId INTEGER,
+      date TEXT,
+      data TEXT,
+      createdAt DATETIME,
+      updatedAt DATETIME
+    );
+  `);
+
+  // Add pilot_surveys table
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS pilot_surveys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER,
+      companyCode TEXT,
+      activeDays INTEGER,
+      featuresUsed TEXT,
+      clarityScore INTEGER,
+      awareness TEXT,
+      behaviorChange TEXT,
+      behaviorChangeText TEXT,
+      safety TEXT,
+      continuedAccess TEXT,
+      mustHave TEXT,
+      dismissed BOOLEAN DEFAULT 0,
+      createdAt DATETIME,
+      updatedAt DATETIME
+    );
+  `);
+
+  // Add Teams table
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS Teams (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT,
+      companyCode TEXT,
+      createdAt DATETIME,
+      updatedAt DATETIME
+    );
+  `);
+
+  // Add teamId to Users
+  try {
+    await sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
+    console.log(`Successfully added 'teamId' column to Users table.`);
+  } catch (err) {
+    console.log(`Note: Could not add 'teamId' column (it might already exist).`);
   }
 
   // Attempt to migrate data from old user_id column if it exists and userId is empty

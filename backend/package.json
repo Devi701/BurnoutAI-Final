@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "argon2": "^0.40.1",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "csv-parse": "^5.5.5",
     "csv-stringify": "^6.4.6",
@@ -20,9 +21,11 @@
     "express-rate-limit": "^7.2.0",
     "helmet": "^7.1.0",
     "ml-cart": "^2.0.0",
+    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.13",
-    "pg": "^8.11.5",
+    "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
+    "posthog-node": "^5.18.0",
     "sequelize": "^6.37.3",
     "sqlite3": "^5.1.7"
   },

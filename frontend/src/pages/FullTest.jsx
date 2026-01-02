@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { predict } from '../services/api';
 import { useUser } from '../context/UserContext';
+import { analytics } from '../services/analytics';
 import './SmallTest.css'; // Re-using styles
 
 const questions = [
@@ -79,6 +80,10 @@ function FullTest() {
       const payload = { type: 'full', features: answers, userId: user?.id };
       const prediction = await predict(payload);
       setResult(prediction);
+
+      analytics.capture('full_assessment_submitted', {
+        score: prediction.score
+      });
     } catch (err) {
       setError(err.message || 'An error occurred while getting your score.');
     }
@@ -140,6 +145,11 @@ function FullTest() {
         ))}
         {error && <p className="error-message">{error}</p>}
         <button type="submit" className="quiz-button">Get My Score</button>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          <Link to="/employee" style={{ color: '#64748b', textDecoration: 'none', fontSize: '0.9rem' }}>
+            &larr; Back to Dashboard
+          </Link>
+        </div>
       </form>
     </div>
   );

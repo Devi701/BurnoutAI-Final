@@ -6,7 +6,7 @@ const db = {};
 let sequelize;
 
 if (process.env.DATABASE_URL) {
-  // Production / Render (PostgreSQL)
+  // Production (Railway/Supabase/Render) - PostgreSQL
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     protocol: 'postgres',
@@ -14,7 +14,7 @@ if (process.env.DATABASE_URL) {
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false // Required for Render's self-signed certs
+        rejectUnauthorized: false // Required for cloud databases with self-signed certs
       }
     }
   });
@@ -27,8 +27,13 @@ if (process.env.DATABASE_URL) {
   });
 }
 
-// Load models dynamically from the 'models' directory
-const modelsDir = path.join(__dirname, 'models');
+// Load models dynamically
+// Checks 'backend/db/models' first, then falls back to 'backend/models'
+let modelsDir = path.join(__dirname, 'models');
+if (!fs.existsSync(modelsDir)) {
+  modelsDir = path.join(__dirname, '../models');
+}
+
 if (fs.existsSync(modelsDir)) {
   fs.readdirSync(modelsDir)
     .filter(file => {

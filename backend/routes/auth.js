@@ -6,6 +6,19 @@ const { Op } = require('sequelize');
 const db = require('../db/database'); // Assuming models are attached here
 const { hashPassword, verifyPassword, needsRehash } = require('../utils/password');
 const rateLimit = require('express-rate-limit');
+const GamificationService = require('../services/gamificationService');
+
+// PostHog Backend Initialization
+let posthog = null;
+try {
+  const PostHog = require('posthog-node').PostHog;
+  if (process.env.POSTHOG_KEY) {
+    posthog = new PostHog(process.env.POSTHOG_KEY, { host: 'https://eu.posthog.com' });
+    console.log('✅ PostHog backend SDK initialized.');
+  } else {
+    console.log('⚠️ PostHog backend SDK not initialized (POSTHOG_KEY missing).');
+  }
+} catch (e) { console.log('PostHog not configured or installed on backend.'); }
 
 // Dummy hash for timing attack mitigation (pre-calculated)
 const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=1$fK5/5Q$dummyhashvalueforsecurity';
@@ -22,7 +35,7 @@ const transporter = nodemailer.createTransport({
 // Rate Limiter for Login (Brute Force Protection)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 login requests per windowMs
+  max: 10, // Limit each IP to 10 login requests per windowMs
   message: { error: 'Too many login attempts from this IP, please try again after 15 minutes' },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -30,7 +43,7 @@ const loginLimiter = rateLimit({
 
 const handleSignup = async (req, res) => {
   try {
-    let { email, password, name, role, companyCode } = req.body;
+    let { email, password, name, role, companyCode, referralCode } = req.body;
 
     // Default role if not provided
     if (!role) role = 'employee';
@@ -40,14 +53,14 @@ const handleSignup = async (req, res) => {
       // Auto-generate Company Code for employers (6 chars)
       companyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
     } else if (role === 'employee') {
-      // Require Company Code for employees
-      if (!companyCode) {
-        throw new Error('Company Code is required for employees.');
-      }
-      // Verify company code exists
-      const employer = await db.User.findOne({ where: { companyCode } });
-      if (!employer) {
-        throw new Error('Invalid Company Code.');
+      // Company Code is optional for employees during signup
+      if (companyCode) {
+        companyCode = companyCode.toUpperCase();
+        // Verify company code exists if provided
+        const employer = await db.User.findOne({ where: { companyCode } });
+        if (!employer) {
+          throw new Error('Invalid Company Code.');
+        }
       }
     }
 
@@ -55,7 +68,7 @@ const handleSignup = async (req, res) => {
     const hashedPassword = await hashPassword(password);
 
     // 2. Store user with hashed password
-    // Assuming db.User is your Sequelize model
+    // Assuming db.User is my Sequelize model
     const user = await db.User.create({
       email,
       password: hashedPassword,
@@ -64,11 +77,37 @@ const handleSignup = async (req, res) => {
       companyCode
     });
 
+    // --- Gamification: Initialize & Handle Referral ---
+    await GamificationService.initProfile(user.id);
+    
+    if (referralCode) {
+      // Process the referral reward for both parties
+      await GamificationService.processReferral(referralCode, user.id);
+    }
+
+    // Track Signup Event
+    if (posthog) {
+      posthog.capture({
+        distinctId: String(user.id),
+        event: 'user_signed_up',
+        properties: {
+          role: user.role,
+          company_id: user.companyCode,
+          signup_source: 'web_app'
+        }
+      });
+    }
+
     res.status(201).json({
       message: 'User registered successfully',
-      userId: user.id,
-      role: user.role,
-      companyCode: user.companyCode // Return code so employer can see it
+      token: 'mock-token', // In production, generate a real JWT here
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        companyCode: user.companyCode
+      }
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -178,14 +217,24 @@ router.post('/forgot-password', async (req, res) => {
 
     // Send Email
     const resetUrl = `${req.protocol}://${req.headers.host}/reset-password?token=${token}`;
-    await transporter.sendMail({
-      to: user.email,
-      subject: 'Password Reset Request',
-      text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n` +
-            `Please use the following token to reset your password: ${token}\n\n` +
-            `Or click: ${resetUrl}\n\n` +
-            `If you did not request this, please ignore this email.\n`
-    });
+    
+    try {
+      await transporter.sendMail({
+        to: user.email,
+        subject: 'Password Reset Request',
+        text: `You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n` +
+              `Please use the following token to reset your password: ${token}\n\n` +
+              `Or click: ${resetUrl}\n\n` +
+              `If you did not request this, please ignore this email.\n`
+      });
+    } catch (emailErr) {
+      console.error('Email send failed (expected in dev without SMTP):', emailErr.message);
+      // Log for development/testing purposes so you can still reset password
+      console.log('---------------------------------------------------');
+      console.log(`[DEV] Password Reset Link for ${user.email}:`);
+      console.log(resetUrl);
+      console.log('---------------------------------------------------');
+    }
 
     res.json({ message: 'If that email exists, a reset link has been sent.' });
   } catch (error) {
@@ -236,19 +285,159 @@ router.get('/employees', async (req, res) => {
       return res.status(400).json({ error: 'Company code is required' });
     }
 
-    const employees = await db.User.findAll({
-      where: { 
-        companyCode, 
-        [Op.or]: [{ role: 'employee' }, { role: null }] // Include employees and legacy users
-      },
-      attributes: ['id', 'name', 'email', 'createdAt'],
-      order: [['id', 'DESC']]
-    });
+    const employees = await db.sequelize.query(
+      `SELECT id, name, email, createdAt, teamId FROM Users WHERE companyCode = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
+      { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
+    );
 
     res.json(employees);
   } catch (error) {
     console.error('Error fetching employees:', error);
     res.status(500).json({ error: 'Failed to fetch employees: ' + error.message });
+  }
+});
+
+// POST /api/auth/join-company
+// Allows an existing user (employee) to join a company by code
+router.post('/join-company', async (req, res) => {
+  try {
+    console.log('Hit join-company route:', req.body); // Debug: Confirm request received
+    let { userId, companyCode } = req.body;
+
+    if (!userId || !companyCode) {
+      return res.status(400).json({ error: 'User ID and Company Code are required.' });
+    }
+
+    companyCode = companyCode.toUpperCase();
+
+    if (!db || !db.User) {
+      throw new Error('Database User model is not initialized.');
+    }
+
+    // Verify company code exists
+    const employer = await db.User.findOne({ where: { companyCode } });
+    if (!employer) {
+      return res.status(400).json({ error: 'Invalid Company Code.' });
+    }
+
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    user.companyCode = companyCode;
+    await user.save();
+
+    res.json({ message: 'Successfully joined company.', companyCode });
+  } catch (error) {
+    console.error('Join company error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/auth/leave-company
+// Allows an employee to leave their current company
+router.post('/leave-company', async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required.' });
+    }
+
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    user.companyCode = null;
+    await user.save();
+
+    res.json({ message: 'Successfully left company.' });
+  } catch (error) {
+    console.error('Leave company error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/auth/profile
+// Updates user profile information
+router.put('/profile', async (req, res) => {
+  try {
+    const { userId, name, email, industry } = req.body;
+    
+    const user = await db.User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (industry) user.industry = industry;
+    // Note: For MVP, settings/preferences would be saved here if the model supported it.
+    
+    await user.save();
+    
+    // Return updated user object
+    res.json({ 
+      message: 'Profile updated successfully', 
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        industry: user.industry,
+        companyCode: user.companyCode
+      }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/auth/regenerate-code
+// Regenerates company code for employers
+router.post('/regenerate-code', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await db.User.findByPk(userId);
+    
+    if (!user || user.role !== 'employer') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    user.companyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    await user.save();
+
+    res.json({ companyCode: user.companyCode });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/auth/me
+// Permanently deletes a user account (Right to Erasure)
+router.delete('/me', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'User ID required' });
+
+    const user = await db.User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Delete related data to ensure clean removal
+    await db.Checkin.destroy({ where: { userId } });
+    if (db.QuizResult) await db.QuizResult.destroy({ where: { userId } });
+    if (db.sequelize.models.ActionPlan) await db.sequelize.models.ActionPlan.destroy({ where: { userId } });
+    if (db.sequelize.models.ActionPlanTracking) await db.sequelize.models.ActionPlanTracking.destroy({ where: { userId } });
+    if (db.sequelize.models.PilotSurvey) await db.sequelize.models.PilotSurvey.destroy({ where: { userId } });
+
+    // Delete user
+    await user.destroy();
+
+    if (posthog) posthog.capture({ distinctId: String(userId), event: 'account_deleted' });
+    res.json({ message: 'Account deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
