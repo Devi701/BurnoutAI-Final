@@ -1,4 +1,5 @@
-const BASE = import.meta.env.MODE === 'production' ? '' : 'http://localhost:4000';
+// Use VITE_API_URL if set (Production), otherwise fallback to localhost (Dev)
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 async function request(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
