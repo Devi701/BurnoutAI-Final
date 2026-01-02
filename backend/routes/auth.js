@@ -7,6 +7,7 @@ const db = require('../db/database'); // Assuming models are attached here
 const { hashPassword, verifyPassword, needsRehash } = require('../utils/password');
 const rateLimit = require('express-rate-limit');
 const GamificationService = require('../services/gamificationService');
+const jwt = require('jsonwebtoken');
 
 // PostHog Backend Initialization
 let posthog = null;
@@ -98,9 +99,11 @@ const handleSignup = async (req, res) => {
       });
     }
 
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '24h' });
+
     res.status(201).json({
       message: 'User registered successfully',
-      token: 'mock-token', // In production, generate a real JWT here
+      token,
       user: {
         id: user.id,
         name: user.name,
@@ -174,9 +177,11 @@ router.post('/login', loginLimiter, async (req, res) => {
       await user.save();
     }
 
+    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'fallback_secret', { expiresIn: '24h' });
+
     res.json({
       message: 'Login successful',
-      token: 'mock-token',
+      token,
       user: {
         id: user.id,
         name: user.name,

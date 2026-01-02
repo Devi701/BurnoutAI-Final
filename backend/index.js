@@ -10,6 +10,7 @@ const checkinRoutes = require('./routes/checkins');
 const predictRoutes = require('./routes/predict');
 const reportRoutes = require('./routes/reports');
 const simulatorRoutes = require('./routes/simulator');
+const { authenticateToken } = require('./middleware/authMiddleware');
 
 // --- Database Initialization ---
 async function initializeDatabase() {
@@ -29,7 +30,14 @@ async function initializeDatabase() {
         // await db.sequelize.sync({ force: true });
         // await db.sequelize.sync({ alter: true });
         // await db.sequelize.sync({ force: true });
-        await db.sequelize.sync({ alter: true });
+        try {
+          await db.sequelize.sync({ alter: true });
+        } catch (err) {
+          if (dialect === 'sqlite') {
+            console.log('⚠️ SQLite sync error detected (likely Checkins_backup). Rebuilding DB...');
+            await db.sequelize.sync({ force: true });
+          } else throw err;
+        }
 
         // Ensure Teams table exists (Raw SQL table)
         await db.sequelize.query(`
@@ -88,12 +96,12 @@ async function main() {
   // --- API Routes ---
   app.get('/api', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'development' }));
   app.use('/api/auth', authRoutes);
-  app.use('/api/checkins', checkinRoutes);
-  app.use('/api/predict', predictRoutes);
-  app.use('/api/reports', reportRoutes);
-  app.use('/api/action-impact', simulatorRoutes);
-  app.use('/api/teams', require('./routes/teams'));
-  app.use('/api/gamification', require('./routes/gamification'));
+  app.use('/api/checkins', authenticateToken, checkinRoutes);
+  app.use('/api/predict', authenticateToken, predictRoutes);
+  app.use('/api/reports', authenticateToken, reportRoutes);
+  app.use('/api/action-impact', authenticateToken, simulatorRoutes);
+  app.use('/api/teams', authenticateToken, require('./routes/teams'));
+  app.use('/api/gamification', authenticateToken, require('./routes/gamification'));
 
   // --- Frontend Serving (for production) ---
   if (process.env.NODE_ENV === 'production') {

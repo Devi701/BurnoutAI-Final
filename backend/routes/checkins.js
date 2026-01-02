@@ -35,22 +35,28 @@ router.post('/', async (req, res) => {
   try {
     const { userId, stress, sleep, workload, coffee, companyCode, note } = req.body;
     
-    // Production: Limit to one per day, overwrite if exists
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // Check if user is the designated test user for unlimited check-ins
+    const user = await db.User.findByPk(userId);
+    const isTestUser = user && user.email === 'testuser@gmail.com';
 
-    const existingCheckin = await db.Checkin.findOne({
-      where: {
-        userId,
-        createdAt: { [Op.gte]: startOfDay, [Op.lte]: endOfDay }
+    if (!isTestUser) {
+      // Production: Limit to one per day, overwrite if exists
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date();
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const existingCheckin = await db.Checkin.findOne({
+        where: {
+          userId,
+          createdAt: { [Op.gte]: startOfDay, [Op.lte]: endOfDay }
+        }
+      });
+
+      if (existingCheckin) {
+        await existingCheckin.update({ stress, sleep, workload, coffee, companyCode, note });
+        return res.status(200).json(existingCheckin);
       }
-    });
-
-    if (existingCheckin) {
-      await existingCheckin.update({ stress, sleep, workload, coffee, companyCode, note });
-      return res.status(200).json(existingCheckin);
     }
 
     const newCheckin = await db.Checkin.create({
