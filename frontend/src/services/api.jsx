@@ -41,16 +41,22 @@ export function predict(payload) {
   return request('/api/predict', { method: 'POST', body: JSON.stringify(payload) });
 }
 
-export function signupEmployee(payload) {
-  return request('/api/auth/signup/employee', { method: 'POST', body: JSON.stringify(payload) });
+export async function signupEmployee(payload) {
+  const res = await request('/api/auth/signup/employee', { method: 'POST', body: JSON.stringify(payload) });
+  if (res.token) localStorage.setItem('token', res.token);
+  return res;
 }
 
-export function signupEmployer(payload) {
-  return request('/api/auth/signup/employer', { method: 'POST', body: JSON.stringify(payload) });
+export async function signupEmployer(payload) {
+  const res = await request('/api/auth/signup/employer', { method: 'POST', body: JSON.stringify(payload) });
+  if (res.token) localStorage.setItem('token', res.token);
+  return res;
 }
 
-export function login(payload) {
-  return request('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+export async function login(payload) {
+  const res = await request('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
+  if (res.token) localStorage.setItem('token', res.token);
+  return res;
 }
 
 export function fetchWeeklyReport(companyCode) {
