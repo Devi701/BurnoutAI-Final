@@ -1,5 +1,6 @@
 // Use VITE_API_URL if set (Production), otherwise fallback to localhost (Dev)
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+console.log('Current API Base URL:', BASE); // Debug: Check console to see where requests are going
 
 async function request(path, opts = {}) {
   const res = await fetch(`${BASE}${path}`, {
