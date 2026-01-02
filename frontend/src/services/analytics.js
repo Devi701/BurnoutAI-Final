@@ -2,12 +2,13 @@ import posthog from 'posthog-js';
 
 // Configuration
 const IS_PRODUCTION = import.meta.env.PROD || process.env.NODE_ENV === 'production';
-const API_KEY = import.meta.env.VITE_POSTHOG_KEY || 'phc_YOUR_PUBLIC_KEY'; // Replace with env var
+const API_KEY = import.meta.env.VITE_PUBLIC_POSTHOG_KEY; // Align with main.jsx
 
 export const analytics = {
   init: () => {
-    if (API_KEY.includes('YOUR_PUBLIC_KEY')) {
-      console.warn('⚠️ PostHog API Key is missing in frontend/.env. Analytics will not work.');
+    if (!API_KEY) {
+      console.warn('⚠️ PostHog API Key is missing. Analytics disabled.');
+      return;
     }
 
     posthog.init(API_KEY, {
@@ -20,6 +21,7 @@ export const analytics = {
   },
 
   identify: (user) => {
+    if (!API_KEY) return; // Safety check
     if (!user || !user.id) return;
 
 
@@ -43,6 +45,7 @@ export const analytics = {
   },
 
   capture: (eventName, properties = {}) => {
+    if (!API_KEY) return; // Safety check
     if (posthog.has_opted_out_capturing()) return;
 
     // Enrich with timestamp and ensure numeric types where possible

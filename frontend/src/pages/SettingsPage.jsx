@@ -6,6 +6,21 @@ import { updateProfile, leaveCompany, regenerateCompanyCode, fetchUserCheckins, 
 import { useNavigate } from 'react-router-dom';
 import { analytics } from '../services/analytics';
 
+// Helper components defined outside to prevent re-mounting on state changes (Fixes focus loss)
+const Section = ({ title, children }) => (
+  <div className="card" style={{ marginBottom: '2rem' }}>
+    <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontSize: '1.2rem', color: '#334155' }}>{title}</h3>
+    {children}
+  </div>
+);
+
+const Toggle = ({ label, checked, onChange }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
+    <span style={{ color: '#334155' }}>{label}</span>
+    <input type="checkbox" checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} />
+  </div>
+);
+
 export default function SettingsPage() {
   const { user, setUser } = useUser();
   const { logout } = useAuth();
@@ -56,11 +71,16 @@ export default function SettingsPage() {
 
   const handlePasswordReset = async () => {
     if (!user.email) return;
+    setLoading(true);
+    setMessage('');
+    setError('');
     try {
       await recover({ email: user.email });
-      alert(`If your email is valid, a reset link has been sent to ${user.email}. (Check server console in Dev mode)`);
+      setMessage(`If your email is valid, a reset link has been sent to ${user.email}.`);
     } catch (err) {
-      alert('Failed to send reset link: ' + err.message);
+      setError('Failed to send reset link: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -190,20 +210,6 @@ export default function SettingsPage() {
     alert('Preferences saved successfully.');
   };
 
-  const Section = ({ title, children }) => (
-    <div className="card" style={{ marginBottom: '2rem' }}>
-      <h3 style={{ marginTop: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem', fontSize: '1.2rem', color: '#334155' }}>{title}</h3>
-      {children}
-    </div>
-  );
-
-  const Toggle = ({ label, checked, onChange }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
-      <span style={{ color: '#334155' }}>{label}</span>
-      <input type="checkbox" checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} />
-    </div>
-  );
-
   if (!user) return null;
 
   return (
@@ -228,7 +234,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button type="submit" className="quiz-button" disabled={loading} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>Update Profile</button>
-              <button type="button" onClick={handlePasswordReset} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.5rem 1rem', cursor: 'pointer', color: '#334155' }}>Reset Password</button>
+              <button type="button" onClick={handlePasswordReset} disabled={loading} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.5rem 1rem', cursor: 'pointer', color: '#334155', opacity: loading ? 0.7 : 1 }}>{loading ? 'Sending...' : 'Reset Password'}</button>
             </div>
           </form>
           <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
@@ -252,9 +258,12 @@ export default function SettingsPage() {
                   analytics.capture('feature_toggled', { feature: 'data_processing', enabled: val });
                 }} 
               />
-              <div style={{ marginTop: '1rem' }}>
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button onClick={handleDownloadData} style={{ background: 'none', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.9rem', color: '#334155' }}>
                   Download personal data (CSV)
+                </button>
+                <button onClick={handleDeleteAccount} style={{ color: '#e11d48', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}>
+                  Delete Account
                 </button>
               </div>
             </Section>

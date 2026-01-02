@@ -1,10 +1,22 @@
 // Use VITE_API_URL if set (Production), otherwise fallback to localhost (Dev)
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-console.log('Current API Base URL:', BASE); // Debug: Check console to see where requests are going
+let BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+
+// Fix: Ensure protocol is present. If user entered "myapp.railway.app", force "https://myapp.railway.app"
+if (!BASE.startsWith('http')) {
+  BASE = `https://${BASE}`;
+}
+console.log('API Base URL:', BASE); 
 
 async function request(path, opts = {}) {
+  // 1. Get token from localStorage
+  const token = localStorage.getItem('token');
+  
+  // 2. Attach Authorization header if token exists
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...opts,
   });
   

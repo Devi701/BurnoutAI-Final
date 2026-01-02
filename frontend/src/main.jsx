@@ -6,18 +6,29 @@ import './styles/variables.css';
 import './App.css';
 import './styles/theme.css';
 
-createRoot(document.getElementById('root')).render(
+const posthogKey = import.meta.env.VITE_PUBLIC_POSTHOG_KEY;
+const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
+
+const MainApp = () => (
   <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+createRoot(document.getElementById('root')).render(
+  posthogKey ? (
     <PostHogProvider
-      apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+      apiKey={posthogKey}
       options={{
-        api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+        api_host: posthogHost,
         defaults: '2025-05-24',
         capture_exceptions: true,
         debug: import.meta.env.MODE === 'development',
       }}
     >
-      <App />
+      <MainApp />
     </PostHogProvider>
-  </React.StrictMode>
+  ) : (
+    <MainApp />
+  )
 );
