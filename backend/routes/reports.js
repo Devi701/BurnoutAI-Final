@@ -546,13 +546,19 @@ router.get('/teams', async (req, res) => {
 router.get('/:companyCode', async (req, res) => {
   try {
     const { companyCode } = req.params;
+    const { teamId } = req.query;
     
     // 1. Find Employees
+    const whereClause = { 
+      companyCode,
+      role: { [Op.ne]: 'employer' } 
+    };
+    if (teamId) {
+      whereClause.teamId = teamId;
+    }
+
     const employees = await db.User.findAll({ 
-      where: { 
-        companyCode,
-        role: { [Op.ne]: 'employer' } // Exclude the employer account itself
-      } 
+      where: whereClause
     });
     const employeeIds = employees.map(e => e.id);
     
@@ -720,7 +726,7 @@ router.get('/:companyCode', async (req, res) => {
       projectionLabels: ['Mon', 'Tue', 'Wed'],
       teamStatus: { label: 'Stable', color: '#10b981' },
       insight: { title: 'Good Recovery', suggestion: 'Team sleep levels are improving over the weekend.' },
-      drivers: { teamTopFactor: { factor: teamTopFactor, contributionPercent } },
+      drivers: { teamTopFactor: { factor: teamTopFactor, contributionPercent }, distribution: teamImpacts },
       teamAdherence
     });
 

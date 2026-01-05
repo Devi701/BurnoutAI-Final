@@ -44,10 +44,6 @@ export default function HistoryPage() {
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlanIds, setSelectedPlanIds] = useState([]);
-  const [showRiskTrend, setShowRiskTrend] = useState(true);
-  const [showRiskConfidence, setShowRiskConfidence] = useState(true);
-  const [showVarTrend, setShowVarTrend] = useState(true);
-  const [showVarConfidence, setShowVarConfidence] = useState(true);
   const [isMetricsExpanded, setIsMetricsExpanded] = useState(false);
   const [isActivityLogExpanded, setIsActivityLogExpanded] = useState(false);
   const [filterStart, setFilterStart] = useState('');
@@ -124,92 +120,28 @@ export default function HistoryPage() {
   }
 
   // Helper to construct chart data with projections
-  const getChartData = (label, metricKey, color, enableTrend, enableConfidence) => {
+  const getChartData = (label, metricKey, color) => {
     const actualData = data.datasets[metricKey] || [];
-    const projectedData = data.projections[metricKey] || [];
     const labels = data.labels || [];
-    const projLabels = data.projectionLabels || [];
-
-    // Connect the lines: The projection should start from the last actual point
-    const lastActual = actualData[actualData.length - 1];
     
-    // Pad actual data with nulls for the projection period
-    const paddedActual = [...actualData, ...Array(projectedData.length).fill(null)];
-    
-    // Pad projection data: nulls for history, then last actual point, then projection
-    // We use actualData.length - 1 because we want to overwrite the last point to connect them
-    const paddedProjection = [...Array(actualData.length - 1).fill(null), lastActual, ...projectedData];
-
     const datasets = [
         {
           label: label,
-          data: paddedActual,
+          data: actualData,
           borderColor: color,
           backgroundColor: color,
           tension: 0.3,
-          order: 1,
+          pointRadius: 4,
         },
       ];
 
-    if (enableTrend) {
-      datasets.push({
-          label: `Estimated ${label}`,
-          data: paddedProjection,
-          borderColor: color,
-          borderDash: [5, 5], // Dotted line
-          backgroundColor: 'rgba(0,0,0,0)',
-          pointStyle: 'rectRot',
-          tension: 0.3,
-          order: 1,
-      });
-    }
-
-    // Add Confidence Interval if available and enabled
-    const confidenceKey = metricKey + 'Confidence';
-    if (enableConfidence && data.projections[confidenceKey]) {
-      const { upper, lower, volatility } = data.projections[confidenceKey];
-      
-      // Pad bounds: nulls for history, then last actual point (to connect), then bounds
-      const paddedUpper = [...Array(actualData.length - 1).fill(null), lastActual, ...upper];
-      const paddedLower = [...Array(actualData.length - 1).fill(null), lastActual, ...lower];
-
-      // Calculate opacity based on volatility
-      // Stable (low vol) -> Darker (high opacity, e.g., 0.5)
-      // Volatile (high vol) -> Lighter (low opacity, e.g., 0.1)
-      const opacity = Math.max(0.1, Math.min(0.5, 3 / ((volatility || 5) + 1)));
-
-      datasets.push({
-        label: 'Confidence Upper',
-        data: paddedUpper,
-        borderColor: 'transparent',
-        backgroundColor: 'transparent',
-        pointRadius: 0,
-        fill: false,
-        tension: 0.3,
-        order: 2, // Draw behind lines
-      });
-
-      datasets.push({
-        label: 'Confidence Interval',
-        data: paddedLower,
-        borderColor: 'transparent',
-        backgroundColor: color.replace('rgb', 'rgba').replace(')', `, ${opacity})`), // Dynamic opacity
-        pointRadius: 0,
-        fill: '-1', // Fill to previous dataset (Upper)
-        tension: 0.3,
-        order: 2,
-      });
-    }
-
     return {
-      labels: [...labels, ...projLabels],
+      labels: labels,
       datasets: datasets,
     };
   };
 
   const latestPlan = plans.length > 0 ? plans[plans.length - 1] : null;
-
-  const lastRiskProj = data.projections.risk ? Math.round(data.projections.risk[data.projections.risk.length - 1]) : null;
 
   const handlePlanSelect = (planId) => {
     setSelectedPlanIds(prev => {
@@ -327,32 +259,50 @@ export default function HistoryPage() {
           {(filterStart || filterEnd) && <button onClick={() => { setFilterStart(''); setFilterEnd(''); setTimeout(loadData, 0); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>Clear</button>}
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', justifyContent: 'flex-end' }}>
-          <button 
-            onClick={() => setShowRiskTrend(!showRiskTrend)} 
-            title="Shows the projected future direction based on your recent data."
-            style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: showRiskTrend ? '#e0f2fe' : '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', fontWeight: '500' }}
-          >
-            {showRiskTrend ? 'Hide Risk Trend' : 'Show Risk Trend'}
-          </button>
-          <button 
-            onClick={() => setShowRiskConfidence(!showRiskConfidence)} 
-            title="The shaded area represents the range of probable outcomes. A wider area means more uncertainty."
-            style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: showRiskConfidence ? '#e0f2fe' : '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', fontWeight: '500' }}
-          >
-            {showRiskConfidence ? 'Hide Risk Confidence' : 'Show Risk Confidence'}
-          </button>
-        </div>
-
         {/* Burnout Risk Chart */}
         <div className="card" style={{ marginBottom: '2rem' }}>
-          <h3>Burnout Risk Indicators</h3>
-          <Line options={chartOptions} data={getChartData('Risk Indicator', 'risk', 'rgb(239, 68, 68)', showRiskTrend, showRiskConfidence)} />
-          {lastRiskProj !== null && (
-            <p style={{ marginTop: '1rem', fontStyle: 'italic', color: '#64748b' }}>
-              ⚠️ Based on current data trends, the model projects a potential risk score of <strong>{lastRiskProj}</strong> by the end of this period. This is an estimate, not a diagnosis.
+          <h3>Burnout Trends</h3>
+          <p className="small" style={{marginBottom: '1rem'}}>
+            Tracking your daily check-in scores over time.
+          </p>
+          
+          {/* Score Range Legend */}
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+              <span>0-30: Low Risk</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>
+              <span>30-60: Moderate Risk</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>
+              <span>60-100: High Risk</span>
+            </div>
+          </div>
+
+          <Line 
+            options={{
+              ...chartOptions,
+              scales: {
+                y: { 
+                  beginAtZero: true, 
+                  max: 100,
+                  grid: { color: '#f1f5f9' }
+                },
+                x: { grid: { display: false } }
+              }
+            }} 
+            data={getChartData('Risk Score', 'risk', '#6366f1')} 
+          />
+          
+          {/* Friendly Guidance */}
+          <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: '4px solid #6366f1' }}>
+            <p style={{ margin: 0, color: '#334155', fontWeight: '500' }}>
+              💡 Scores rising? Try a short break or speak with a manager. Consistent small steps help maintain balance.
             </p>
-          )}
+          </div>
         </div>
 
         {/* Team Comparison (Locked/Unlocked) */}
@@ -411,49 +361,12 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {/* Action Plans History Chart */}
+        {/* Action Plans History (Comparison Only, No Projections) */}
         {plans.length > 0 && (
-          <div className="card" style={{ marginBottom: '2rem', borderLeft: '5px solid #10b981' }}>
-            <h3>Latest Action Plan Projection</h3>
-            <p className="small">
-              Projected impact of your most recent action plan ({new Date(latestPlan.createdAt).toLocaleDateString()}).
-            </p>
-            <div style={{ height: '300px' }}>
-              {latestPlan && latestPlan.trend ? (
-                <Line 
-                  data={{
-                    labels: latestPlan.trend.map(t => `Day ${t.day}`),
-                    datasets: [
-                      {
-                        label: 'Projected Burnout Risk',
-                        data: latestPlan.trend.map(t => t.score),
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHitRadius: 10
-                      },
-                      {
-                        label: 'Baseline',
-                        data: Array(latestPlan.trend.length).fill(latestPlan.baselineScore),
-                        borderColor: '#94a3b8',
-                        borderDash: [5, 5],
-                        pointRadius: 0
-                      }
-                    ]
-                  }}
-                  options={{ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }}
-                />
-              ) : (
-                <p style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                  No trend data available for this plan.
-                </p>
-              )}
-            </div>
-
-            {/* Comparison UI */}
-            <div style={{ marginTop: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
+          <div className="card" style={{ marginBottom: '2rem' }}>
+            <h3>Action Plan History</h3>
+            
+            <div style={{ marginTop: '1rem' }}>
               <h4>Compare Action Plans</h4>
               <p className="small" style={{ marginBottom: '1rem' }}>Select two plans below to compare them side-by-side.</p>
               
@@ -529,39 +442,22 @@ export default function HistoryPage() {
 
         {isMetricsExpanded && (
           <>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginBottom: '1rem' }}>
-              <button 
-                onClick={() => setShowVarTrend(!showVarTrend)} 
-                title="Shows projected trends for these metrics."
-                style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: showVarTrend ? '#e0f2fe' : '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', fontWeight: '500', fontSize: '0.9rem' }}
-              >
-                {showVarTrend ? 'Hide Trends' : 'Show Trends'}
-              </button>
-              <button 
-                onClick={() => setShowVarConfidence(!showVarConfidence)} 
-                title="The shaded area shows the expected range for this metric based on your past trends."
-                style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: showVarConfidence ? '#e0f2fe' : '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', color: '#334155', fontWeight: '500', fontSize: '0.9rem' }}
-              >
-                {showVarConfidence ? 'Hide Confidence' : 'Show Confidence'}
-              </button>
-            </div>
-
             <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
               <div className="card">
                 <h4>Stress Levels</h4>
-                <Line options={chartOptions} data={getChartData('Stress', 'stress', 'rgb(249, 115, 22)', showVarTrend, showVarConfidence)} />
+                <Line options={chartOptions} data={getChartData('Stress', 'stress', 'rgb(249, 115, 22)')} />
               </div>
               <div className="card">
                 <h4>Sleep Hours</h4>
-                <Line options={chartOptions} data={getChartData('Sleep', 'sleep', 'rgb(59, 130, 246)', showVarTrend, showVarConfidence)} />
+                <Line options={chartOptions} data={getChartData('Sleep', 'sleep', 'rgb(59, 130, 246)')} />
               </div>
               <div className="card">
                 <h4>Workload</h4>
-                <Line options={chartOptions} data={getChartData('Workload', 'workload', 'rgb(168, 85, 247)', showVarTrend, showVarConfidence)} />
+                <Line options={chartOptions} data={getChartData('Workload', 'workload', 'rgb(168, 85, 247)')} />
               </div>
               <div className="card">
                 <h4>Coffee Consumption</h4>
-                <Line options={chartOptions} data={getChartData('Coffee', 'coffee', 'rgb(120, 53, 15)', showVarTrend, showVarConfidence)} />
+                <Line options={chartOptions} data={getChartData('Coffee', 'coffee', 'rgb(120, 53, 15)')} />
               </div>
             </div>
           </>

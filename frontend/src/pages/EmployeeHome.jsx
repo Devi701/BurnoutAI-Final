@@ -263,6 +263,46 @@ export default function EmployeeHome() {
     return `(Progress: ${count}/${target} this week)`;
   };
 
+  const getAdherenceFeedback = (actionType) => {
+    const now = new Date();
+    const day = now.getDay() || 7; // 1 (Mon) to 7 (Sun)
+    const startOfWeek = new Date(now);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(now.getDate() - day + 1);
+    const startStr = startOfWeek.toISOString().split('T')[0];
+
+    let completed = 0;
+    let tracked = 0;
+
+    trackingHistory.forEach(t => {
+      if (t.date >= startStr) {
+        const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
+        if (data && data[actionType] !== undefined) {
+          tracked++;
+          const entry = data[actionType];
+          if (entry === true || (entry && entry.completed)) {
+            completed++;
+          }
+        }
+      }
+    });
+
+    // Threshold: At least 3 tracked days, and >= 60% completion
+    if (tracked >= 3 && (completed / tracked) >= 0.6) {
+      const verbs = {
+        vacation_days: 'took time off',
+        sleep_hours: 'hit your sleep target',
+        workload_reduction: 'reduced workload',
+        boundary_hour: 'kept your boundary',
+        movement_sessions: 'moved',
+        social_minutes: 'connected socially'
+      };
+      const verb = verbs[actionType] || 'did this';
+      return `You ${verb} on ${completed} out of ${tracked} days - great habit-building!`;
+    }
+    return null;
+  };
+
   return (
     <>
       <Navbar streak={history?.streak} />
@@ -384,6 +424,9 @@ export default function EmployeeHome() {
                               <span style={{ fontSize: '0.9rem', color: '#334155' }}>{getQuestionText(action.type, action.value)}</span>
                               {action.type === 'movement_sessions' && (
                                 <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{getWeeklyProgress(action.type, action.value)}</span>
+                              )}
+                              {getAdherenceFeedback(action.type) && (
+                                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 'bold', display: 'block', marginTop: '2px' }}>{getAdherenceFeedback(action.type)}</span>
                               )}
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>

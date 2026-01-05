@@ -9,9 +9,11 @@ import {
   Tooltip,
   Legend,
   PointElement,
-  LineElement
+  LineElement,
+  ArcElement,
+  RadialLinearScale
 } from 'chart.js';
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
 import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateTeamImpact } from '../services/api';
@@ -25,7 +27,9 @@ ChartJS.register(
   Tooltip,
   Legend,
   PointElement,
-  LineElement
+  LineElement,
+  ArcElement,
+  RadialLinearScale
 );
 
 export default function EmployerHome() {
@@ -44,6 +48,10 @@ export default function EmployerHome() {
   const [simLoading, setSimLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [simError, setSimError] = useState('');
+  const [chartType, setChartType] = useState('bar');
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [teamReport, setTeamReport] = useState(null);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -265,8 +273,143 @@ export default function EmployerHome() {
     return {
       labels: validTeams.map(t => t.name),
       datasets: [
-        { label: 'Avg Stress', data: validTeams.map(t => t.avgStress), backgroundColor: '#ef4444', borderRadius: 4 },
-        { label: 'Avg Workload', data: validTeams.map(t => t.avgWorkload), backgroundColor: '#8b5cf6', borderRadius: 4 }
+        { 
+          label: 'Avg Stress', 
+          data: validTeams.map(t => t.avgStress), 
+          backgroundColor: '#ef4444', 
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          borderRadius: 4,
+          tension: 0.4
+        },
+        { 
+          label: 'Avg Workload', 
+          data: validTeams.map(t => t.avgWorkload), 
+          backgroundColor: '#8b5cf6', 
+          borderColor: '#8b5cf6',
+          borderWidth: 2,
+          borderRadius: 4,
+          tension: 0.4
+        }
+      ]
+    };
+  };
+
+  const getDriverChartData = (source = report) => {
+    if (!source || !source.drivers || !source.drivers.distribution) return null;
+    const dist = source.drivers.distribution;
+    return {
+      labels: ['Stress', 'Sleep Quality', 'Workload', 'Caffeine'],
+      datasets: [
+        {
+          data: [dist.stress, dist.sleep, dist.workload, dist.coffee],
+          backgroundColor: [
+            'rgba(239, 68, 68, 0.8)',  // Red for Stress
+            'rgba(59, 130, 246, 0.8)', // Blue for Sleep
+            'rgba(168, 85, 247, 0.8)', // Purple for Workload
+            'rgba(120, 53, 15, 0.8)',  // Brown for Coffee
+          ],
+          borderColor: [
+            'rgba(239, 68, 68, 1)',
+            'rgba(59, 130, 246, 1)',
+            'rgba(168, 85, 247, 1)',
+            'rgba(120, 53, 15, 1)',
+          ],
+          borderWidth: 1,
+        },
+      ],
+    };
+  };
+
+  const getRiskDistChartData = (source = report) => {
+    if (!source || !source.riskDistribution) return null;
+    const dist = source.riskDistribution;
+    return {
+      labels: ['Low', 'Moderate', 'High', 'Critical'],
+      datasets: [
+        {
+          data: [dist.low, dist.moderate, dist.high, dist.critical],
+          backgroundColor: ['#10b981', '#f59e0b', '#f97316', '#ef4444'],
+          borderWidth: 0,
+        },
+      ],
+    };
+  };
+
+  const getRadarChartData = (source = report, comparison = null) => {
+    if (!source || !source.datasets) return null;
+
+    const calcAvg = (arr) => {
+      const valid = arr.filter(v => v !== null);
+      if (valid.length === 0) return 0;
+      return (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1);
+    };
+
+    const datasets = [
+      {
+        label: comparison ? 'This Team' : 'Company Average',
+        data: [
+          calcAvg(source.datasets.stress),
+          calcAvg(source.datasets.sleep),
+          calcAvg(source.datasets.workload),
+          calcAvg(source.datasets.coffee)
+        ],
+        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+        borderColor: '#2563eb',
+        pointBackgroundColor: '#2563eb',
+      },
+      {
+        label: 'Ideal Baseline',
+        data: [3, 8, 5, 1],
+        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+        borderColor: '#10b981',
+        pointBackgroundColor: '#10b981',
+      }
+    ];
+
+    if (comparison) {
+      datasets.push({
+        label: 'Company Average',
+        data: [
+          calcAvg(comparison.datasets.stress),
+          calcAvg(comparison.datasets.sleep),
+          calcAvg(comparison.datasets.workload),
+          calcAvg(comparison.datasets.coffee)
+        ],
+        backgroundColor: 'rgba(100, 116, 139, 0.1)',
+        borderColor: '#94a3b8',
+        pointBackgroundColor: '#94a3b8',
+        borderDash: [5, 5]
+      });
+    }
+
+    return {
+      labels: ['Stress', 'Sleep', 'Workload', 'Coffee'],
+      datasets: datasets
+    };
+  };
+
+  const getTeamTrendChartData = (data) => {
+    if (!data || !data.datasets) return null;
+    return {
+      labels: data.labels,
+      datasets: [
+        {
+          label: 'Stress',
+          data: data.datasets.stress,
+          borderColor: '#ef4444',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Workload',
+          data: data.datasets.workload,
+          borderColor: '#8b5cf6',
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          borderDash: [5, 5]
+        }
       ]
     };
   };
@@ -288,6 +431,21 @@ export default function EmployerHome() {
         grid: { display: false, drawBorder: false },
         ticks: { display: false } // Hide y-axis labels for cleaner look
       }
+    }
+  };
+
+  const handleTeamClick = async (team) => {
+    if (team.memberCount < 5) return;
+    setSelectedTeam(team);
+    setTeamLoading(true);
+    try {
+      // Pass teamId as query param to existing report endpoint
+      const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${team.teamId}`);
+      setTeamReport(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTeamLoading(false);
     }
   };
 
@@ -421,6 +579,27 @@ export default function EmployerHome() {
                 />
                 <button type="submit" className="quiz-button" style={{ width: 'auto', padding: '0 1.5rem' }}>Create</button>
               </form>
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Suggestions:</span>
+                {['Sales', 'Design', 'Customer Support', 'Developers', 'Finance'].map(name => (
+                  <button 
+                    key={name}
+                    type="button"
+                    onClick={() => setNewTeamName(name)}
+                    style={{
+                      background: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '16px',
+                      padding: '4px 12px',
+                      fontSize: '0.85rem',
+                      color: '#334155',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
@@ -490,16 +669,75 @@ export default function EmployerHome() {
         {/* TAB 3: INSIGHTS (Comparison) */}
         {!loading && activeTab === 'insights' && (
           <div className="fade-in">
+            {/* New Fancy Graphs Row */}
+            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
+              {/* Driver Distribution */}
+              <div className="card">
+                <h3>Burnout Drivers</h3>
+                <p className="small">Relative impact of factors contributing to team burnout.</p>
+                <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                  {getDriverChartData() ? (
+                    <Pie data={getDriverChartData()} options={{ plugins: { legend: { position: 'right' } } }} />
+                  ) : (
+                    <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No driver data available</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Risk Distribution */}
+              <div className="card">
+                <h3>Risk Distribution</h3>
+                <p className="small">Proportion of employees in each risk category.</p>
+                <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                  {getRiskDistChartData() ? (
+                    <Doughnut data={getRiskDistChartData()} options={{ plugins: { legend: { position: 'right' } }, cutout: '60%' }} />
+                  ) : (
+                    <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Radar Chart */}
             <div className="card" style={{ marginBottom: '2rem' }}>
-              <h3>Team Comparison</h3>
+              <h3>Team Health Radar</h3>
+              <p className="small">Comparing current team averages against ideal wellness metrics.</p>
+              <div style={{ height: '350px', display: 'flex', justifyContent: 'center' }}>
+                {getRadarChartData() ? (
+                  <Radar 
+                    data={getRadarChartData()} 
+                    options={{
+                      scales: { r: { suggestedMin: 0, suggestedMax: 10 } },
+                      plugins: { legend: { position: 'bottom' } }
+                    }} 
+                  />
+                ) : <p>No data available</p>}
+              </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3>Team Comparison</h3>
+                <button 
+                  onClick={() => setChartType(prev => prev === 'bar' ? 'line' : 'bar')}
+                  className="quiz-button"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', width: 'auto', backgroundColor: '#64748b' }}
+                >
+                  View as {chartType === 'bar' ? 'Line' : 'Bar'} Graph
+                </button>
+              </div>
               <p className="small">Comparing aggregated metrics across teams with 5+ members.</p>
               
               {Array.isArray(teamMetrics) && teamMetrics.filter(t => t.memberCount >= 5).length > 0 ? (
                 <div style={{ height: '400px' }}>
-                  <Bar 
-                    data={getComparisonChartData()} 
-                    options={cleanChartOptions} 
-                  />
+                  {chartType === 'bar' ? (
+                    <Bar 
+                      data={getComparisonChartData()} 
+                      options={cleanChartOptions} 
+                    />
+                  ) : (
+                    <Line data={getComparisonChartData()} options={cleanChartOptions} />
+                  )}
                 </div>
               ) : (
                 <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', color: '#64748b' }}>
@@ -510,8 +748,18 @@ export default function EmployerHome() {
 
             <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
               {Array.isArray(teamMetrics) && teamMetrics.map(team => (
-                <div key={team.teamId} className="card" style={{ opacity: team.memberCount < 5 ? 0.7 : 1 }}>
-                  <h4>{team.name}</h4>
+                <div 
+                  key={team.teamId} 
+                  className="card" 
+                  style={{ opacity: team.memberCount < 5 ? 0.7 : 1, cursor: team.memberCount >= 5 ? 'pointer' : 'default', transition: 'transform 0.2s' }}
+                  onClick={() => handleTeamClick(team)}
+                  onMouseEnter={(e) => { if(team.memberCount >= 5) e.currentTarget.style.transform = 'translateY(-5px)'; }}
+                  onMouseLeave={(e) => { if(team.memberCount >= 5) e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4>{team.name}</h4>
+                    {team.memberCount >= 5 && <span style={{ fontSize: '0.8rem', color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '12px' }}>View Details &rarr;</span>}
+                  </div>
                   {team.memberCount < 5 ? (
                     <div style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span>🔒</span> Privacy Locked
@@ -694,6 +942,60 @@ export default function EmployerHome() {
           </p>
         </div>
       </div>
+
+      {/* Team Details Modal */}
+      {selectedTeam && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
+          <div className="card fade-in" style={{ width: '90%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+             <button onClick={() => setSelectedTeam(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+             
+             <h2 style={{ marginBottom: '0.5rem' }}>{selectedTeam.name} Insights</h2>
+             <p className="small" style={{ marginBottom: '2rem' }}>Detailed analytics for {selectedTeam.memberCount} active members.</p>
+             
+             {teamLoading ? (
+               <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Loading team data...</div>
+             ) : (
+               teamReport ? (
+                 <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    {/* 1. Trend Line */}
+                    <div className="card" style={{ gridColumn: '1 / -1' }}>
+                      <h3>Weekly Trends</h3>
+                      <div style={{ height: '300px' }}>
+                        <Line data={getTeamTrendChartData(teamReport)} options={cleanChartOptions} />
+                      </div>
+                    </div>
+
+                    {/* 2. Radar Comparison */}
+                    <div className="card">
+                      <h3>Team vs Company</h3>
+                      <p className="small">Comparing {selectedTeam.name} against company average.</p>
+                      <div style={{ height: '300px', display: 'flex', justifyContent: 'center' }}>
+                        <Radar 
+                          data={getRadarChartData(teamReport, report)} 
+                          options={{
+                            scales: { r: { suggestedMin: 0, suggestedMax: 10 } },
+                            plugins: { legend: { position: 'bottom' } }
+                          }} 
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Drivers */}
+                    <div className="card">
+                      <h3>Primary Drivers</h3>
+                      <p className="small">Factors contributing most to this team's stress.</p>
+                      <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                        <Pie data={getDriverChartData(teamReport)} options={{ plugins: { legend: { position: 'right' } } }} />
+                      </div>
+                    </div>
+                 </div>
+               ) : (
+                 <p>No data available for this team.</p>
+               )
+             )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

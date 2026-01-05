@@ -159,10 +159,14 @@ router.post('/simulate', async (req, res) => {
         unit: '%',
         max: 100,
         // Logic: Risk reduces linearly. Hours "lost" (capacity gap) increases.
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.006 * val)), // 0.6% risk reduction per 1% workload
-          hours: (val / 100) * HOURS_PER_WEEK // Hours lost per person
-        }),
+        calc: (val, p) => {
+          // Dynamic Sensitivity: Impact depends on how high the workload actually is
+          const sensitivity = Math.pow(p.workload / 5, 1.5); 
+          return {
+            risk: p.risk * (1 - (0.006 * val * sensitivity)), 
+            hours: (val / 100) * HOURS_PER_WEEK // Hours lost per person
+          };
+        },
         optimal: 20 // Recommendation
       },
       {
@@ -172,10 +176,14 @@ router.post('/simulate', async (req, res) => {
         unit: 'freq/day',
         max: 10,
         // Logic: Risk reduces with diminishing returns. Minimal time cost.
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.02 * val * (1 - val/20))), 
-          hours: (val * 0.1) // 6 mins per prompt
-        }),
+        calc: (val, p) => {
+          // Dynamic Sensitivity: High stress makes breaks more valuable
+          const sensitivity = Math.max(0.5, p.stress / 5);
+          return {
+            risk: p.risk * (1 - (0.02 * val * (1 - val/20) * sensitivity)), 
+            hours: (val * 0.1) // 6 mins per prompt
+          };
+        },
         optimal: 4
       },
       {
@@ -185,10 +193,14 @@ router.post('/simulate', async (req, res) => {
         unit: 'hrs',
         max: 40,
         // Logic: High risk reduction. Negative "Extra Hours" (Capacity Gain).
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.015 * val)),
-          hours: -val // Gain capacity
-        }),
+        calc: (val, p) => {
+          // Dynamic Sensitivity: Helps most when workload is high
+          const sensitivity = Math.pow(p.workload / 5, 1.2);
+          return {
+            risk: p.risk * (1 - (0.015 * val * sensitivity)),
+            hours: -val // Gain capacity
+          };
+        },
         optimal: 10
       },
       {
@@ -198,10 +210,14 @@ router.post('/simulate', async (req, res) => {
         unit: '%',
         max: 100,
         // Logic: Moderate risk reduction, zero cost.
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.003 * val)),
-          hours: 0
-        }),
+        calc: (val, p) => {
+          // Dynamic Sensitivity: Autonomy helps reduce stress
+          const sensitivity = Math.max(0.8, p.stress / 6);
+          return {
+            risk: p.risk * (1 - (0.003 * val * sensitivity)),
+            hours: 0
+          };
+        },
         optimal: 100
       },
       {
@@ -211,10 +227,14 @@ router.post('/simulate', async (req, res) => {
         unit: 'sess/mo',
         max: 8,
         // Logic: Good reduction, high time cost.
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.04 * val)),
-          hours: val * 1.5 // 1.5 hours per session
-        }),
+        calc: (val, p) => {
+           // Dynamic Sensitivity: Helps with coping (stress) and sleep hygiene
+           const sensitivity = (p.stress + (10 - p.sleep)) / 12;
+           return {
+            risk: p.risk * (1 - (0.04 * val * sensitivity)),
+            hours: val * 1.5 // 1.5 hours per session
+          };
+        },
         optimal: 2
       },
       {
@@ -223,10 +243,14 @@ router.post('/simulate', async (req, res) => {
         desc: 'Push back deadlines by days.',
         unit: 'days',
         max: 14,
-        calc: (val, p) => ({
-          risk: p.risk * (1 - (0.02 * val)),
-          hours: 0 // No direct hour cost, but delay (not modeled here)
-        }),
+        calc: (val, p) => {
+          // Dynamic Sensitivity: Helps when workload/stress is high
+          const sensitivity = (p.workload + p.stress) / 10;
+          return {
+            risk: p.risk * (1 - (0.02 * val * sensitivity)),
+            hours: 0 // No direct hour cost, but delay (not modeled here)
+          };
+        },
         optimal: 5
       }
     ];

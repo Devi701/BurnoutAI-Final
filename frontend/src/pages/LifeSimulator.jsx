@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -14,7 +14,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
-import { calculateActionImpact, saveActionPlan } from '../services/api';
+import { calculateActionImpact, saveActionPlan, fetchPersonalHistory } from '../services/api';
 import { analytics } from '../services/analytics';
 
 ChartJS.register(
@@ -33,6 +33,7 @@ export default function ActionImpact() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
 
   // Available actions configuration
   const [actions, setActions] = useState({
@@ -43,6 +44,25 @@ export default function ActionImpact() {
     movement_sessions: { selected: false, value: 3 },
     social_minutes: { selected: false, value: 30 }
   });
+
+  useEffect(() => {
+    if (user) {
+      fetchPersonalHistory(user.id).then(data => {
+        const driver = data?.topBurnoutFactor?.topFactor;
+        if (driver && driver !== 'Balanced' && driver !== 'N/A') {
+          let key = null;
+          if (driver === 'High Stress') key = 'movement_sessions';
+          else if (driver === 'Poor Sleep') key = 'sleep_hours';
+          else if (driver === 'Heavy Workload') key = 'workload_reduction';
+          else if (driver === 'Caffeine Intake') key = 'sleep_hours';
+          
+          if (key) {
+            setRecommendation({ key, driver });
+          }
+        }
+      }).catch(console.error);
+    }
+  }, [user]);
 
   const toggleAction = (key) => {
     setActions(prev => ({
@@ -119,6 +139,8 @@ export default function ActionImpact() {
                 desc="Time off helps reset stress levels."
                 checked={actions.vacation_days.selected}
                 onToggle={() => toggleAction('vacation_days')}
+                recommended={recommendation?.key === 'vacation_days'}
+                driver={recommendation?.driver}
               >
                 <label>Days off in next 2 weeks: <strong>{actions.vacation_days.value}</strong></label>
                 <input type="range" min="1" max="14" value={actions.vacation_days.value} onChange={(e) => updateValue('vacation_days', e.target.value)} />
@@ -130,6 +152,8 @@ export default function ActionImpact() {
                 desc="Consistent rest improves resilience."
                 checked={actions.sleep_hours.selected}
                 onToggle={() => toggleAction('sleep_hours')}
+                recommended={recommendation?.key === 'sleep_hours'}
+                driver={recommendation?.driver}
               >
                 <label>Target hours/night: <strong>{actions.sleep_hours.value}</strong></label>
                 <input type="range" min="5" max="10" step="0.5" value={actions.sleep_hours.value} onChange={(e) => updateValue('sleep_hours', e.target.value)} />
@@ -141,6 +165,8 @@ export default function ActionImpact() {
                 desc="Delegate tasks or say no to new ones."
                 checked={actions.workload_reduction.selected}
                 onToggle={() => toggleAction('workload_reduction')}
+                recommended={recommendation?.key === 'workload_reduction'}
+                driver={recommendation?.driver}
               >
                 <label>Reduction: <strong>{actions.workload_reduction.value}%</strong></label>
                 <input type="range" min="5" max="50" step="5" value={actions.workload_reduction.value} onChange={(e) => updateValue('workload_reduction', e.target.value)} />
@@ -152,6 +178,8 @@ export default function ActionImpact() {
                 desc="Stop working at a specific time."
                 checked={actions.boundary_hour.selected}
                 onToggle={() => toggleAction('boundary_hour')}
+                recommended={recommendation?.key === 'boundary_hour'}
+                driver={recommendation?.driver}
               >
                 <label>Stop work at: <strong>{actions.boundary_hour.value}:00</strong></label>
                 <input type="range" min="17" max="22" value={actions.boundary_hour.value} onChange={(e) => updateValue('boundary_hour', e.target.value)} />
@@ -163,6 +191,8 @@ export default function ActionImpact() {
                 desc="Exercise boosts mood and energy."
                 checked={actions.movement_sessions.selected}
                 onToggle={() => toggleAction('movement_sessions')}
+                recommended={recommendation?.key === 'movement_sessions'}
+                driver={recommendation?.driver}
               >
                 <label>Sessions per week: <strong>{actions.movement_sessions.value}</strong></label>
                 <input type="range" min="1" max="7" value={actions.movement_sessions.value} onChange={(e) => updateValue('movement_sessions', e.target.value)} />
@@ -174,6 +204,8 @@ export default function ActionImpact() {
                 desc="Time spent with friends/family buffers stress."
                 checked={actions.social_minutes.selected}
                 onToggle={() => toggleAction('social_minutes')}
+                recommended={recommendation?.key === 'social_minutes'}
+                driver={recommendation?.driver}
               >
                 <label>Minutes per day: <strong>{actions.social_minutes.value}</strong></label>
                 <input type="range" min="15" max="120" step="15" value={actions.social_minutes.value} onChange={(e) => updateValue('social_minutes', e.target.value)} />
@@ -215,8 +247,9 @@ export default function ActionImpact() {
 
             {/* Trend Chart */}
             {result.trend && (
-              <div style={{ height: '300px', marginBottom: '2rem' }}>
-                <Line 
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ height: '300px' }}>
+                  <Line 
                   data={{
                     labels: result.trend.map(t => `Day ${t.day}`),
                     datasets: [
@@ -240,7 +273,11 @@ export default function ActionImpact() {
                     ]
                   }}
                   options={{ responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 100 } } }}
-                />
+                  />
+                </div>
+                <p style={{ textAlign: 'center', fontSize: '0.85rem', color: '#94a3b8', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                  * This is only a simulation. Do not worry if your results do not match.
+                </p>
               </div>
             )}
 
@@ -259,15 +296,29 @@ export default function ActionImpact() {
   );
 }
 
-function ActionCard({ title, desc, checked, onToggle, children }) {
+function ActionCard({ title, desc, checked, onToggle, children, recommended, driver }) {
   return (
     <div style={{ 
-      border: checked ? '2px solid #2563eb' : '1px solid #e2e8f0', 
+      border: recommended ? '2px solid #10b981' : (checked ? '2px solid #2563eb' : '1px solid #e2e8f0'), 
       borderRadius: '8px', 
       padding: '1.5rem', 
       backgroundColor: checked ? '#eff6ff' : 'white',
-      transition: 'all 0.2s'
+      transition: 'all 0.2s',
+      position: 'relative'
     }}>
+      {recommended && (
+        <div style={{ 
+          backgroundColor: '#ecfdf5', 
+          color: '#065f46', 
+          padding: '0.5rem', 
+          borderRadius: '4px', 
+          marginBottom: '1rem', 
+          fontSize: '0.85rem', 
+          border: '1px solid #a7f3d0' 
+        }}>
+          <strong>Recommended:</strong> We believe this action will reduce your main driver ({driver}) the most.
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{title}</h3>

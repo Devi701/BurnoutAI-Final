@@ -6,45 +6,17 @@ import { analytics } from '../services/analytics';
 import './SmallTest.css'; // Re-using styles
 
 const questions = [
-  // Emotional Exhaustion (Burnout)
-  { id: 'EE1', text: 'I feel emotionally drained by my work.' },
-  { id: 'EE2', text: 'At the end of the workday, I feel completely exhausted.' },
-  { id: 'EE3', text: 'I feel burned out because of my job.' },
-  { id: 'EE4', text: 'I feel frustrated by my work demands.' },
-  { id: 'EE5', text: 'I feel fatigued when I think about my work.' },
-  { id: 'EE6', text: 'My work leaves me feeling mentally worn out.' },
-  { id: 'EE7', text: 'I feel I have little emotional energy left for work.' },
-  // Stress (DASS – Stress)
-  { id: 'S1', text: 'I find it difficult to relax after work.' },
-  { id: 'S2', text: 'I feel tense or wound up because of my job.' },
-  { id: 'S3', text: 'I feel overwhelmed by work-related responsibilities.' },
-  { id: 'S4', text: 'I feel under constant pressure at work.' },
-  { id: 'S5', text: 'I feel stressed even when I am not actively working.' },
-  // Somatic Fatigue & Sleep Quality
-  { id: 'SFQ1', text: 'I feel physically exhausted most days.' },
-  { id: 'SFQ2', text: 'I experience sleep problems due to work-related stress.' },
-  { id: 'SFQ3', text: 'I wake up feeling unrefreshed and tired.' },
-  // Work Pressure
-  { id: 'wp1', text: 'I have too much work to do in too little time.' },
-  { id: 'wp2', text: 'My workload requires me to work at a very fast pace.' },
-  { id: 'wp3', text: 'I feel pressured to meet tight deadlines at work.' },
-  { id: 'wp4', text: 'My job demands leave me little time to recover.' },
-  // Cognitive Job Demands
-  { id: 'cogn1', text: 'My work requires intense concentration.' },
-  { id: 'cogn2', text: 'I must constantly process complex information at work.' },
-  { id: 'cogn3', text: 'My job requires sustained mental effort.' },
-  { id: 'cogn4', text: 'I feel mentally overloaded by my job tasks.' },
-  // Supervisor & Coworker Support
-  { id: 'SS1', text: 'My supervisor provides support when I face difficulties at work.' },
-  { id: 'SS2', text: 'I feel understood by my supervisor.' },
-  { id: 'SS3', text: 'My supervisor cares about my well-being.' },
-  { id: 'CS1', text: 'My coworkers are willing to help me when needed.' },
-  { id: 'CS2', text: 'I feel supported by my colleagues at work.' },
-  { id: 'CS3', text: 'I can rely on my coworkers during difficult times.' },
-  // Autonomy
-  { id: 'auton1', text: 'I have control over how I carry out my work tasks.' },
-  { id: 'auton2', text: 'I can decide how to organize my work activities.' },
-  { id: 'auton3', text: 'I feel free to make decisions related to my job.' },
+  { id: 'boundaries_yes', text: 'I say ‘yes’ more than I should / find it hard to say ‘no’ to seniors/line managers.' },
+  { id: 'social_cancel', text: 'I often cancel social events last minute due to workload.' },
+  { id: 'conceal_deadlines', text: 'I sometimes conceal missed deadlines or set unrealistic deadlines.' },
+  { id: 'escape_thoughts', text: 'Thoughts about escaping from work (resigning) help me cope.' },
+  { id: 'distractions', text: 'I regularly use distractions to avoid completing work (daydreaming, phone checking, scrolling).' },
+  { id: 'unhealthy_soothing', text: 'Concerned about self-soothing behaviours (unhealthy eating, alcohol, recreational drugs).' },
+  { id: 'no_breaks', text: 'I seldom take breaks.' },
+  { id: 'skip_lunch', text: 'I skip lunch or work while eating.' },
+  { id: 'stimulants', text: 'I rely on caffeine or stimulants.' },
+  { id: 'hard_switch_off', text: 'I find it hard to “switch off” after work.' },
+  { id: 'sleep_worry', text: 'I wake during the night thinking about work.' },
 ];
 
 const options = [
