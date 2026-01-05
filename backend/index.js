@@ -25,32 +25,20 @@ async function initializeDatabase() {
         if (dialect === 'sqlite') {
           await db.sequelize.query('PRAGMA foreign_keys = OFF');
         }
-        // Note: If you have "Validation error" with existing data, uncomment the next line to reset DB (DATA LOSS)
-        // Using force:true in dev resets the DB and fixes sync issues (like Checkins_backup error).
-        // await db.sequelize.sync({ force: true });
-        // await db.sequelize.sync({ alter: true });
-        // await db.sequelize.sync({ force: true });
+        
         try {
+          // Sync models with database
           await db.sequelize.sync({ alter: true });
         } catch (err) {
-          if (dialect === 'sqlite') {
+          // Only attempt rebuild if we are strictly in development using SQLite
+          // This prevents production data loss on Supabase/Postgres
+          if (dialect === 'sqlite' && process.env.NODE_ENV !== 'production') {
             console.log('⚠️ SQLite sync error detected (likely Checkins_backup). Rebuilding DB...');
             await db.sequelize.sync({ force: true });
           } else throw err;
         }
 
-        // Ensure Teams table exists (Raw SQL table)
-        await db.sequelize.query(`
-          CREATE TABLE IF NOT EXISTS Teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            companyCode TEXT,
-            createdAt DATETIME,
-            updatedAt DATETIME
-          );
-        `);
-
-        // Ensure Users has teamId
+        // Ensure Users has teamId (Legacy check, handled by model definition now but kept for safety)
         try {
           await db.sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
         } catch (e) { /* ignore if exists */ }
@@ -95,6 +83,18 @@ async function main() {
 
   // --- API Routes ---
   app.get('/api', (req, res) => res.json({ ok: true, env: process.env.NODE_ENV || 'development' }));
+  
+  // Health Check Endpoint (Verifies DB Connection)
+  app.get('/api/health', async (req, res) => {
+    try {
+      const db = require('./db/database');
+      await db.sequelize.authenticate();
+      res.json({ status: 'ok', database: 'connected', dialect: db.sequelize.getDialect() });
+    } catch (err) {
+      res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
+    }
+  });
+
   app.use('/api/auth', authRoutes);
   app.use('/api/checkins', authenticateToken, checkinRoutes);
   app.use('/api/predict', authenticateToken, predictRoutes);
