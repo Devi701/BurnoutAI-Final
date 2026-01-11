@@ -19,7 +19,8 @@ async function initializeDatabase() {
     const db = require('./db/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
       await db.sequelize.authenticate();
-      console.log('Database connection has been established successfully.');
+      const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
+      console.log(`Database connection has been established successfully to: ${host}`);
       if (typeof db.sequelize.sync === 'function') {
         // Disable foreign keys temporarily to allow SQLite to handle table alterations
         const dialect = db.sequelize.getDialect();
@@ -90,7 +91,8 @@ async function main() {
     try {
       const db = require('./db/database');
       await db.sequelize.authenticate();
-      res.json({ status: 'ok', database: 'connected', dialect: db.sequelize.getDialect() });
+      const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
+      res.json({ status: 'ok', database: 'connected', dialect: db.sequelize.getDialect(), host });
     } catch (err) {
       res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
     }

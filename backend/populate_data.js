@@ -16,6 +16,8 @@ async function populateData() {
   try {
     console.log(`Connecting to database...`);
     await db.sequelize.authenticate();
+    const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
+    console.log(`Connected to database host: ${host}`);
     await db.sequelize.sync();
 
     console.log(`🚀 Generating data for Company Code: ${companyCode}`);
