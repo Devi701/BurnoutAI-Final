@@ -1,6 +1,6 @@
 import React from 'react';
 import { Line, Radar, Doughnut, Pie } from 'react-chartjs-2';
-import { simulateEmployerAction } from '../../services/api';
+import { simulateEmployerAction } from '../services/api'; // <-- fixed path
 
 const SIM_ACTION_TYPES = [
   { id: 'workload', label: 'Reduce Workload', desc: 'Decrease task volume & scope.', inputLabel: 'Intensity', max: 100, unit: '%' },
@@ -8,7 +8,6 @@ const SIM_ACTION_TYPES = [
   { id: 'boundaries', label: 'Enforce Boundaries', desc: 'Hard stop on emails/messages.', inputLabel: 'Strictness', max: 100, unit: '%' },
   { id: 'behavioral', label: 'Resilience Training', desc: 'Workshops & coaching sessions.', inputLabel: 'Sessions/Month', max: 8, unit: '' }
 ];
-
 export default function SimulatorTab({ 
   user, 
   simPlan, 

@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,7 +18,8 @@ import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
 import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateEmployerAction } from '../services/api';
 import { analytics } from '../services/analytics';
-import SimulatorTab from '../../pages/SimulatorTab';
+import SimulatorTab from './SimulatorTab';
+
 
 ChartJS.register(
   CategoryScale,
