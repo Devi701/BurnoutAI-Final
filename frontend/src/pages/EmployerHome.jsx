@@ -1342,8 +1342,6 @@ export default function EmployerHome() {
           </div>
         </div>
       )}
-      <Analytics />
-      <SpeedInsights />
     </>
   );
 }
