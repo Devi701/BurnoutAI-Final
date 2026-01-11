@@ -182,3 +182,7 @@ export function fetchTeamMetrics(companyCode) {
 export function simulateTeamImpact(payload) {
   return request('/api/teams/simulate', { method: 'POST', body: JSON.stringify(payload) });
 }
+
+export function simulateEmployerAction(payload) {
+  return request('/api/employer-simulator/simulate', { method: 'POST', body: JSON.stringify(payload) });
+}

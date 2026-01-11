@@ -18,6 +18,12 @@ try {
 router.get('/history/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+
+    // Security: Prevent IDOR (Accessing another user's history)
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized access to this history.' });
+    }
+
     const checkins = await db.Checkin.findAll({
       where: { userId },
       order: [['createdAt', 'DESC']]

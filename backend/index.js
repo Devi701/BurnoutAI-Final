@@ -10,6 +10,7 @@ const checkinRoutes = require('./routes/checkins');
 const predictRoutes = require('./routes/predict');
 const reportRoutes = require('./routes/reports');
 const simulatorRoutes = require('./routes/simulator');
+const employerSimulatorRoutes = require('./routes/employerSimulator');
 const { authenticateToken } = require('./middleware/authMiddleware');
 
 // --- Database Initialization ---
@@ -100,6 +101,7 @@ async function main() {
   app.use('/api/predict', authenticateToken, predictRoutes);
   app.use('/api/reports', authenticateToken, reportRoutes);
   app.use('/api/action-impact', authenticateToken, simulatorRoutes);
+  app.use('/api/employer-simulator', authenticateToken, employerSimulatorRoutes);
   app.use('/api/teams', authenticateToken, require('./routes/teams'));
   app.use('/api/gamification', authenticateToken, require('./routes/gamification'));
 

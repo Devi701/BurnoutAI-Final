@@ -14,10 +14,10 @@ const Section = ({ title, children }) => (
   </div>
 );
 
-const Toggle = ({ label, checked, onChange }) => (
+const Toggle = ({ label, checked, onChange, name }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
     <span style={{ color: '#334155' }}>{label}</span>
-    <input type="checkbox" checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} />
+    <input type="checkbox" name={name} checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} />
   </div>
 );
 
@@ -245,11 +245,11 @@ export default function SettingsPage() {
           <form onSubmit={handleUpdateProfile}>
             <div className="form-row">
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Full Name</label>
-              <input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <input name="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
             <div className="form-row">
               <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Email Address</label>
-              <input value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <input name="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button type="submit" className="quiz-button" disabled={loading} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>Update Profile</button>
@@ -270,6 +270,7 @@ export default function SettingsPage() {
               </div>
               <Toggle 
                 label="Allow anonymised data to improve models" 
+                name="dataProcessing"
                 checked={prefs.dataProcessing} 
                 onChange={e => {
                   const val = e.target.checked;
@@ -290,6 +291,7 @@ export default function SettingsPage() {
             <Section title="Notifications">
               <Toggle 
                 label="Daily check-in reminder" 
+                name="dailyReminder"
                 checked={prefs.dailyReminder} 
                 onChange={e => {
                   const val = e.target.checked;
@@ -299,6 +301,7 @@ export default function SettingsPage() {
               />
               <Toggle 
                 label="Weekly summary reminder" 
+                name="weeklyReminder"
                 checked={prefs.weeklyReminder} 
                 onChange={e => {
                   const val = e.target.checked;
@@ -323,6 +326,7 @@ export default function SettingsPage() {
                   <form onSubmit={handleJoinOrg} style={{ display: 'flex', gap: '0.5rem' }}>
                     <input 
                       placeholder="Enter Company Code" 
+                      name="joinCode"
                       value={joinCode}
                       onChange={e => setJoinCode(e.target.value)}
                       className="form-control"
@@ -346,6 +350,7 @@ export default function SettingsPage() {
               <div className="form-row">
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Industry Sector</label>
                 <select 
+                  name="industry"
                   className="form-control" 
                   style={{ width: '100%', padding: '8px' }}
                   value={formData.industry}
@@ -377,6 +382,7 @@ export default function SettingsPage() {
               </div>
               <Toggle 
                 label="Receive alerts when team risk crosses threshold" 
+                name="riskAlerts"
                 checked={prefs.riskAlerts} 
                 onChange={e => {
                   const val = e.target.checked;
@@ -410,6 +416,7 @@ export default function SettingsPage() {
           <div className="form-row">
             <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Timezone</label>
             <select 
+              name="timezone"
               className="form-control" 
               style={{ width: '100%', padding: '8px' }}
               value={prefs.timezone}

@@ -18,6 +18,11 @@ router.post('/', async (req, res, next) => {
     // Fallback if features are at root
     if (!features) features = req.body;
 
+    // Security: Prevent IDOR if saving data
+    if (userId && req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
+
     let continuousAdjustment = 0;
     let baselineTip = null;
 

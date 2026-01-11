@@ -450,6 +450,7 @@ export default function EmployeeHome() {
                             <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
                               <input 
                                 type="text" 
+                                name="reasonText"
                                 placeholder="Why not? (e.g. Too tired, No time)" 
                                 value={reasonText}
                                 onChange={(e) => setReasonText(e.target.value)}

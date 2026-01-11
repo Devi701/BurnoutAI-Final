@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -16,8 +16,9 @@ import {
 import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
-import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateTeamImpact } from '../services/api';
+import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateEmployerAction } from '../services/api';
 import { analytics } from '../services/analytics';
+import SimulatorTab from '../components/employer/SimulatorTab';
 
 ChartJS.register(
   CategoryScale,
@@ -32,26 +33,310 @@ ChartJS.register(
   RadialLinearScale
 );
 
+const generateLandscapeData = (report) => {
+  const gridResolution = 20; // 20x20 grid for high fidelity
+  const grid = Array(gridResolution).fill().map(() => Array(gridResolution).fill(0));
+  
+  if (!report || !report.riskDistribution) return grid;
+
+  const { low, moderate, high, critical } = report.riskDistribution;
+  
+  // Helper to add random points in a zone with Gaussian-like distribution
+  const addPoints = (count, xMin, xMax, yMin, yMax) => {
+    for (let i = 0; i < count; i++) {
+      // Simple random distribution within bounds
+      const x = Math.floor(xMin + Math.random() * (xMax - xMin));
+      const y = Math.floor(yMin + Math.random() * (yMax - yMin));
+      
+      if (grid[y] && grid[y][x] !== undefined) {
+        grid[y][x]++;
+      }
+    }
+  };
+
+  // Mapping Logic:
+  // X-axis: Stress (0 = Low, 19 = High)
+  // Y-axis: Recovery (0 = Low, 19 = High)
+  
+  // Low Risk (Green): Low Stress (0-8), High Recovery (12-19)
+  addPoints(low, 0, 9, 12, 20);
+  
+  // Moderate Risk (Yellow): Mid Stress (5-14), Mid Recovery (6-14)
+  addPoints(moderate, 5, 15, 6, 15);
+  
+  // High Risk (Orange): High Stress (12-19), Low/Mid Recovery (3-10)
+  addPoints(high, 12, 20, 3, 11);
+  
+  // Critical Risk (Red): Very High Stress (15-19), Very Low Recovery (0-5)
+  addPoints(critical, 15, 20, 0, 6);
+
+  return grid;
+};
+
+const DensityLandscape = ({ report }) => {
+  const gridData = useMemo(() => generateLandscapeData(report), [report]);
+  const maxDensity = Math.max(...gridData.flat(), 1);
+  const gridSize = gridData.length;
+  const [hoveredCell, setHoveredCell] = useState(null);
+
+  if (!report) return <div className="card" style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Loading landscape data...</div>;
+
+  return (
+    <div className="card" style={{ marginBottom: '2rem', overflow: 'hidden', position: 'relative', background: '#0f172a', color: 'white', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '1.5rem' }}>
+        <div>
+          <h3 style={{ margin: 0, color: 'white', fontSize: '1.5rem' }}>Workforce Density Landscape</h3>
+          <p style={{ margin: '0.5rem 0 0', color: '#94a3b8' }}>
+            3D Terrain view. Height = Employee Density.<br/>
+            <span style={{color: '#f87171'}}>Red</span> = High Burnout Risk. <span style={{color: '#4ade80'}}>Green</span> = High Recovery.
+          </p>
+        </div>
+        <div style={{ textAlign: 'right', fontSize: '0.9rem', color: '#cbd5e1' }}>
+          <div>Total Employees: <strong>{report.employeeCount !== undefined ? report.employeeCount : 0}</strong></div>
+        </div>
+      </div>
+
+      <div style={{ 
+        flex: 1, 
+        position: 'relative', 
+        perspective: '1200px', 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        padding: '2rem'
+      }}>
+        {/* 3D Plane */}
+        <div style={{ 
+          width: '500px', 
+          height: '500px', 
+          position: 'relative', 
+          transform: 'rotateX(55deg) rotateZ(45deg)', 
+          transformStyle: 'preserve-3d',
+          backgroundColor: 'rgba(255,255,255,0.03)',
+          borderRadius: '12px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.5)'
+        }}>
+          {/* Grid Cells / Towers */}
+          {gridData.map((row, y) => (
+            row.map((count, x) => {
+              if (count === 0) return null;
+
+              // X = Stress (0-19), Y = Recovery (0-19)
+              const stressPct = (x / (gridSize - 1));
+              const recoveryPct = (y / (gridSize - 1));
+              
+              // Risk Calculation: High Stress + Low Recovery = High Risk
+              // Risk = (Stress + (1-Recovery)) / 2
+              const riskFactor = (stressPct + (1 - recoveryPct)) / 2;
+              
+              // Hue: 0 (Red/High Risk) to 120 (Green/Low Risk)
+              const hue = (1 - riskFactor) * 120;
+              
+              // 3D Dimensions
+              const barHeight = (count / maxDensity) * 180; 
+              const widthPct = 100 / gridSize;
+              const left = x * widthPct;
+              const top = y * widthPct;
+
+              // Colors for faces
+              const colorTop = `hsla(${hue}, 85%, 55%, 0.95)`;
+              const colorFront = `hsla(${hue}, 85%, 35%, 0.9)`;
+              const colorSide = `hsla(${hue}, 85%, 20%, 0.9)`;
+              
+              const isHovered = hoveredCell && hoveredCell.x === x && hoveredCell.y === y;
+
+              return (
+                <div key={`${x}-${y}`} 
+                  onMouseEnter={() => setHoveredCell({ x, y, count, risk: Math.round(riskFactor * 100), stress: Math.round(stressPct * 100), recovery: Math.round(recoveryPct * 100) })}
+                  onMouseLeave={() => setHoveredCell(null)}
+                  style={{
+                    position: 'absolute',
+                    left: `${left}%`,
+                    top: `${top}%`,
+                    width: `${widthPct}%`,
+                    height: `${widthPct}%`,
+                    transformStyle: 'preserve-3d',
+                    zIndex: x + y, // Isometric depth sorting
+                    cursor: 'pointer'
+                  }}
+                >
+                  {/* Top Face */}
+                  <div style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    background: isHovered ? '#fff' : colorTop,
+                    transform: `translateZ(${barHeight}px)`,
+                    boxShadow: `0 0 ${count * 5}px ${colorTop}`,
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }} />
+                  
+                  {/* Front Face (South) */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${barHeight}px`,
+                    background: colorFront,
+                    transformOrigin: 'bottom',
+                    transform: 'rotateX(-90deg)',
+                    border: '1px solid rgba(0,0,0,0.1)'
+                  }} />
+                  
+                  {/* Side Face (East) */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    right: 0,
+                    width: `${barHeight}px`,
+                    height: '100%',
+                    background: colorSide,
+                    transformOrigin: 'right',
+                    transform: 'rotateY(90deg)',
+                    border: '1px solid rgba(0,0,0,0.1)'
+                  }} />
+                </div>
+              );
+            })
+          ))}
+          
+          {/* Empty State Message */}
+          {gridData.flat().every(c => c === 0) && (
+            <div style={{ 
+              position: 'absolute', 
+              top: '50%', 
+              left: '50%', 
+              transform: 'translate(-50%, -50%) rotateX(-55deg) rotateZ(-45deg)', // Counter-rotate to face user
+              textAlign: 'center', 
+              color: 'rgba(255,255,255,0.5)',
+              pointerEvents: 'none'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏔️</div>
+              <div>{report.employeeCount > 0 ? 'No employee data mapped yet.' : 'No employees found.'}</div>
+              <div style={{ fontSize: '0.8rem' }}>{report.employeeCount > 0 ? 'Waiting for check-ins...' : 'Add employees in Team Management.'}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Axis Labels (Overlay) */}
+        <div style={{ position: 'absolute', bottom: '20px', right: '20px', textAlign: 'right', pointerEvents: 'none' }}>
+          <div style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 'bold' }}>STRESS &rarr;</div>
+        </div>
+        <div style={{ position: 'absolute', top: '20px', left: '20px', pointerEvents: 'none' }}>
+          <div style={{ color: '#94a3b8', fontSize: '0.9rem', fontWeight: 'bold' }}>&uarr; RECOVERY</div>
+        </div>
+        
+        {/* Custom Tooltip Overlay */}
+        {hoveredCell && (
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            background: 'rgba(15, 23, 42, 0.9)',
+            border: '1px solid #334155',
+            padding: '1rem',
+            borderRadius: '8px',
+            zIndex: 1000,
+            pointerEvents: 'none',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+            minWidth: '150px'
+          }}>
+            <div style={{ color: '#94a3b8', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem' }}>Cluster Details</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', marginBottom: '0.5rem' }}>{hoveredCell.count} <span style={{fontSize: '0.9rem', fontWeight: 'normal'}}>Employees</span></div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '4px' }}>
+              <span style={{ color: '#cbd5e1' }}>Burnout Risk:</span>
+              <span style={{ fontWeight: 'bold', color: hoveredCell.risk > 50 ? '#f87171' : '#4ade80' }}>{hoveredCell.risk}%</span>
+            </div>
+            <div style={{ width: '100%', height: '4px', background: '#334155', borderRadius: '2px', marginBottom: '0.5rem' }}>
+              <div style={{ width: `${hoveredCell.risk}%`, height: '100%', background: hoveredCell.risk > 50 ? '#f87171' : '#4ade80', borderRadius: '2px' }}></div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#94a3b8' }}>
+              <span>Stress: {hoveredCell.stress}%</span>
+              <span>Recovery: {hoveredCell.recovery}%</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export default function EmployerHome() {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'teams', 'insights', 'simulator'
   const [report, setReport] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [simPopulation, setSimPopulation] = useState([]);
   const [teamMetrics, setTeamMetrics] = useState([]);
   const [employeesError, setEmployeesError] = useState('');
   const [loading, setLoading] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
-  const [simulationData, setSimulationData] = useState(null);
-  const [selectedSimTeams, setSelectedSimTeams] = useState([]);
-  const [sliderValues, setSliderValues] = useState({}); // { actionId: value (0-100) }
-  const [simLoading, setSimLoading] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [simError, setSimError] = useState('');
   const [chartType, setChartType] = useState('bar');
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamReport, setTeamReport] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
+  
+  const [insightMode, setInsightMode] = useState('overview'); // 'overview', 'team', 'compare'
+  const [insightTeamId, setInsightTeamId] = useState('');
+  const [insightTeamReport, setInsightTeamReport] = useState(null);
+  const [compareTeamIds, setCompareTeamIds] = useState([]);
+  const [comparisonReports, setComparisonReports] = useState({});
+  const [comparingLoading, setComparingLoading] = useState(false);
+  const [insightLoading, setInsightLoading] = useState(false);
+
+  // Simulator State
+  const [simPlan, setSimPlan] = useState({
+    name: 'New Action Plan',
+    actions: [{ type: 'workload', intensity: 50, adherence: 80 }],
+    durationWeeks: 12,
+    avgHourlyRate: 50,
+    projectDeadline: ''
+  });
+  const [simResults, setSimResults] = useState(null);
+  const [simLoading, setSimLoading] = useState(false);
+  const [simWeek, setSimWeek] = useState(0);
+
+  const [savedSimulations, setSavedSimulations] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('employer_saved_simulations');
+    if (saved) {
+      try {
+        setSavedSimulations(JSON.parse(saved));
+      } catch (e) { console.error("Failed to load saved simulations", e); }
+    }
+  }, []);
+
+  const handleSaveSimulation = () => {
+    if (!simResults) return;
+    const newSave = { id: Date.now(), date: new Date().toISOString(), plan: simPlan, results: simResults };
+    const updated = [newSave, ...savedSimulations];
+    setSavedSimulations(updated);
+    localStorage.setItem('employer_saved_simulations', JSON.stringify(updated));
+    alert('Simulation saved to Action Impact insights!');
+  };
+
+  const toggleSimAction = (typeId) => {
+    setSimPlan(prev => {
+      const exists = prev.actions.find(a => a.type === typeId);
+      if (exists) {
+        return { ...prev, actions: prev.actions.filter(a => a.type !== typeId) };
+      } else {
+        return { ...prev, actions: [...prev.actions, { type: typeId, intensity: 50, adherence: 80 }] };
+      }
+    });
+  };
+
+  const updateSimAction = (typeId, field, value) => {
+    setSimPlan(prev => ({
+      ...prev,
+      actions: prev.actions.map(a => a.type === typeId ? { ...a, [field]: Number(value) } : a)
+    }));
+  };
 
   useEffect(() => {
     if (user) {
@@ -112,6 +397,32 @@ export default function EmployerHome() {
     
     return () => { isMounted = false; };
   }, [user]);
+
+  // Fetch detailed reports for teams being compared
+  useEffect(() => {
+    if (insightMode === 'compare' && compareTeamIds.length > 0) {
+      const fetchMissing = async () => {
+        const missingIds = compareTeamIds.filter(id => !comparisonReports[id]);
+        if (missingIds.length === 0) return;
+
+        setComparingLoading(true);
+        const fetchedData = {};
+        
+        await Promise.all(missingIds.map(async (id) => {
+          try {
+            const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${id}`);
+            fetchedData[id] = data;
+          } catch (e) {
+            console.error(`Failed to fetch report for team ${id}`, e);
+          }
+        }));
+        
+        setComparisonReports(prev => ({ ...prev, ...fetchedData }));
+        setComparingLoading(false);
+      };
+      fetchMissing();
+    }
+  }, [insightMode, compareTeamIds, user.companyCode]);
 
   const refreshMetrics = () => {
     if (user?.companyCode) {
@@ -185,85 +496,20 @@ export default function EmployerHome() {
     alert('Company code copied to clipboard!');
   };
 
-  // --- Simulator Logic ---
-  // Fetch simulation curves when teams are selected
-  useEffect(() => {
-    if (activeTab === 'simulator' && selectedSimTeams.length > 0) {
-      setSimLoading(true);
-      setSimError('');
-      simulateTeamImpact({
-        teamIds: selectedSimTeams,
-        companyCode: user.companyCode
-      }).then(data => {
-        if (!data || !data.actions) {
-          setSimulationData(null);
-          setSimLoading(false);
-          return;
-        }
-        setSimulationData(data);
-        // Initialize sliders to 0
-        const initialSliders = {};
-        data.actions.forEach(a => initialSliders[a.id] = 0);
-        setSliderValues(initialSliders);
-        setSimLoading(false);
-      }).catch(err => {
-        console.error(err);
-        setSimError(err.message || 'Failed to load simulation data');
-        setSimulationData(null);
-        setSimLoading(false);
-      });
+  const handleInsightTeamChange = async (e) => {
+    const tId = e.target.value;
+    setInsightTeamId(tId);
+    if (tId) {
+      setInsightLoading(true); // Start loading
+      try {
+        const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${tId}`);
+        setInsightTeamReport(data);
+      } catch(err) { console.error(err); }
+      setInsightLoading(false); // End loading
     } else {
-      setSimulationData(null);
-      setSimError('');
+      setInsightTeamReport(null);
     }
-  }, [activeTab, selectedSimTeams, user.companyCode]);
-
-  const handleSaveSimulation = () => {
-    setSaved(true);
-    // In a real implementation, this would call an API to persist the scenario
   };
-
-  const toggleSimTeam = (teamId) => {
-    setSelectedSimTeams(prev => prev.includes(teamId) ? prev.filter(id => id !== teamId) : [...prev, teamId]);
-  };
-
-  const handleSliderChange = (actionId, val) => {
-    setSliderValues(prev => ({ ...prev, [actionId]: parseInt(val, 10) }));
-    setSaved(false);
-  };
-
-  // Calculate Aggregate Results based on current sliders
-  const calculateAggregate = () => {
-    if (!simulationData || !simulationData.baseline) return { risk: 0, hours: 0, reduction: 0 };
-    
-    const baselineRisk = simulationData.baseline.risk;
-    let totalRiskReduction = 0;
-    let totalExtraHours = 0;
-
-    simulationData.actions.forEach(action => {
-      const val = sliderValues[action.id] || 0;
-      
-      const maxRiskDrop = baselineRisk - action.curve[4].avgRisk; // Risk at 100
-      const currentRiskDrop = maxRiskDrop * (val / 100); // Linear approx for aggregation
-      
-      const maxHours = action.curve[4].totalExtraHours;
-      const currentHours = maxHours * (val / 100);
-
-      totalRiskReduction += currentRiskDrop;
-      totalExtraHours += currentHours;
-    });
-
-    const projectedRisk = Math.max(0, baselineRisk - totalRiskReduction);
-    const reductionPercent = baselineRisk > 0 ? ((baselineRisk - projectedRisk) / baselineRisk) * 100 : 0;
-
-    return {
-      risk: projectedRisk.toFixed(1),
-      reduction: reductionPercent.toFixed(1),
-      hours: Math.round(totalExtraHours)
-    };
-  };
-
-  const aggResults = calculateAggregate();
 
   // --- Chart Data Preparation ---
   const getComparisonChartData = () => {
@@ -414,6 +660,98 @@ export default function EmployerHome() {
     };
   };
 
+  const getMultiTeamComparisonData = () => {
+    const selectedMetrics = teamMetrics.filter(t => compareTeamIds.includes(String(t.teamId)));
+    if (selectedMetrics.length === 0) return null;
+
+    return {
+      labels: selectedMetrics.map(t => t.name),
+      datasets: [
+        {
+          label: 'Avg Stress',
+          data: selectedMetrics.map(t => t.avgStress),
+          backgroundColor: '#ef4444',
+          borderRadius: 4
+        },
+        {
+          label: 'Avg Workload',
+          data: selectedMetrics.map(t => t.avgWorkload),
+          backgroundColor: '#8b5cf6',
+          borderRadius: 4
+        }
+      ]
+    };
+  };
+
+  const getComparisonRiskData = () => {
+    if (!compareTeamIds || compareTeamIds.length === 0) return { labels: [], datasets: [] };
+    
+    const labels = [];
+    const low = [], moderate = [], high = [], critical = [];
+
+    compareTeamIds.forEach(id => {
+      const team = teams.find(t => String(t.id) === String(id));
+      const report = comparisonReports[id];
+      if (team) {
+        labels.push(team.name);
+        let l = 0, m = 0, h = 0, c = 0;
+        if (report && report.riskDistribution && !report.privacyLocked && report.employeeCount > 0) {
+           const total = Number(report.employeeCount) || 1;
+           const dist = report.riskDistribution;
+           l = ((Number(dist.low) || 0) / total) * 100;
+           m = ((Number(dist.moderate) || 0) / total) * 100;
+           h = ((Number(dist.high) || 0) / total) * 100;
+           c = ((Number(dist.critical) || 0) / total) * 100;
+        }
+        low.push(l); moderate.push(m); high.push(h); critical.push(c);
+      }
+    });
+
+    return {
+      labels,
+      datasets: [
+        { label: 'Low Risk', data: low, backgroundColor: '#10b981' },
+        { label: 'Moderate', data: moderate, backgroundColor: '#f59e0b' },
+        { label: 'High Risk', data: high, backgroundColor: '#f97316' },
+        { label: 'Critical', data: critical, backgroundColor: '#ef4444' }
+      ]
+    };
+  };
+
+  const getComparisonDriverData = () => {
+    if (!compareTeamIds || compareTeamIds.length === 0) return { labels: [], datasets: [] };
+    const labels = [];
+    const stress = [], sleep = [], workload = [], coffee = [];
+
+    compareTeamIds.forEach(id => {
+      const team = teams.find(t => String(t.id) === String(id));
+      const report = comparisonReports[id];
+      
+      if (team) {
+        labels.push(team.name);
+        let s = 0, sl = 0, w = 0, c = 0;
+        if (report && report.drivers && report.drivers.distribution && !report.privacyLocked && report.employeeCount > 0) {
+          const dist = report.drivers.distribution;
+          s = Number(dist.stress) || 0;
+          sl = Number(dist.sleep) || 0;
+          w = Number(dist.workload) || 0;
+          c = Number(dist.coffee) || 0;
+        }
+        stress.push(s); sleep.push(sl); workload.push(w); coffee.push(c);
+      }
+    });
+
+    return {
+      labels,
+      datasets: [
+        { label: 'Stress', data: stress, backgroundColor: '#ef4444' },
+        { label: 'Sleep', data: sleep, backgroundColor: '#3b82f6' },
+        { label: 'Workload', data: workload, backgroundColor: '#8b5cf6' },
+        { label: 'Caffeine', data: coffee, backgroundColor: '#78350f' }
+      ]
+    };
+  };
+
   const cleanChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -447,6 +785,24 @@ export default function EmployerHome() {
     } finally {
       setTeamLoading(false);
     }
+  };
+
+  const renderMetricTrend = (data, metricKey, color, label) => {
+    if (!data || !data.datasets || !data.datasets[metricKey]) return null;
+    const chartData = {
+      labels: data.labels,
+      datasets: [{
+        label: label,
+        data: data.datasets[metricKey],
+        borderColor: color,
+        backgroundColor: color + '20',
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.4,
+        fill: true
+      }]
+    };
+    return <Line data={chartData} options={{...cleanChartOptions, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } }}} />;
   };
 
   return (
@@ -544,12 +900,6 @@ export default function EmployerHome() {
                       </p>
                   </div>
                 )}
-
-                <div style={{marginTop: '2rem'}}>
-                  <Link to="/reports/weekly" className="quiz-button" style={{textAlign: 'center', textDecoration: 'none', display: 'inline-block', width: 'auto', padding: '12px 24px'}}>
-                    View Detailed Analytics & Graphs
-                  </Link>
-                </div>
               </>
             )}
 
@@ -572,6 +922,7 @@ export default function EmployerHome() {
               <h3>Create New Team</h3>
               <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: '1rem' }}>
                 <input 
+                  name="newTeamName"
                   value={newTeamName} 
                   onChange={e => setNewTeamName(e.target.value)} 
                   placeholder="e.g. Engineering, Sales" 
@@ -669,267 +1020,261 @@ export default function EmployerHome() {
         {/* TAB 3: INSIGHTS (Comparison) */}
         {!loading && activeTab === 'insights' && (
           <div className="fade-in">
-            {/* New Fancy Graphs Row */}
-            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-              {/* Driver Distribution */}
-              <div className="card">
-                <h3>Burnout Drivers</h3>
-                <p className="small">Relative impact of factors contributing to team burnout.</p>
-                <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
-                  {getDriverChartData() ? (
-                    <Pie data={getDriverChartData()} options={{ plugins: { legend: { position: 'right' } } }} />
-                  ) : (
-                    <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No driver data available</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Risk Distribution */}
-              <div className="card">
-                <h3>Risk Distribution</h3>
-                <p className="small">Proportion of employees in each risk category.</p>
-                <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
-                  {getRiskDistChartData() ? (
-                    <Doughnut data={getRiskDistChartData()} options={{ plugins: { legend: { position: 'right' } }, cutout: '60%' }} />
-                  ) : (
-                    <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
-                  )}
-                </div>
+            {/* Insight Mode Selector */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+              <div style={{ background: '#f1f5f9', padding: '4px', borderRadius: '8px', display: 'inline-flex' }}>
+                {['overview', 'team', 'compare', 'saved'].map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => { setInsightMode(mode); if(mode==='overview') setInsightTeamId(''); }}
+                    style={{
+                      padding: '8px 24px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: insightMode === mode ? 'white' : 'transparent',
+                      color: insightMode === mode ? '#2563eb' : '#64748b',
+                      fontWeight: insightMode === mode ? 'bold' : 'normal',
+                      boxShadow: insightMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      cursor: 'pointer',
+                      textTransform: 'capitalize'
+                    }}
+                  >
+                    {mode === 'overview' ? 'Company Overview' : mode === 'team' ? 'Individual Team' : mode === 'compare' ? 'Compare Teams' : 'Action Impact'}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Radar Chart */}
-            <div className="card" style={{ marginBottom: '2rem' }}>
-              <h3>Team Health Radar</h3>
-              <p className="small">Comparing current team averages against ideal wellness metrics.</p>
-              <div style={{ height: '350px', display: 'flex', justifyContent: 'center' }}>
-                {getRadarChartData() ? (
-                  <Radar 
-                    data={getRadarChartData()} 
-                    options={{
-                      scales: { r: { suggestedMin: 0, suggestedMax: 10 } },
-                      plugins: { legend: { position: 'bottom' } }
-                    }} 
-                  />
-                ) : <p>No data available</p>}
-              </div>
-            </div>
-
-            <div className="card" style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3>Team Comparison</h3>
-                <button 
-                  onClick={() => setChartType(prev => prev === 'bar' ? 'line' : 'bar')}
-                  className="quiz-button"
-                  style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', width: 'auto', backgroundColor: '#64748b' }}
-                >
-                  View as {chartType === 'bar' ? 'Line' : 'Bar'} Graph
-                </button>
-              </div>
-              <p className="small">Comparing aggregated metrics across teams with 5+ members.</p>
-              
-              {Array.isArray(teamMetrics) && teamMetrics.filter(t => t.memberCount >= 5).length > 0 ? (
-                <div style={{ height: '400px' }}>
-                  {chartType === 'bar' ? (
-                    <Bar 
-                      data={getComparisonChartData()} 
-                      options={cleanChartOptions} 
-                    />
-                  ) : (
-                    <Line data={getComparisonChartData()} options={cleanChartOptions} />
-                  )}
-                </div>
-              ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', background: '#f8fafc', color: '#64748b' }}>
-                  <p>Not enough data to display comparisons. Ensure teams have at least 5 members and active check-ins.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {Array.isArray(teamMetrics) && teamMetrics.map(team => (
-                <div 
-                  key={team.teamId} 
-                  className="card" 
-                  style={{ opacity: team.memberCount < 5 ? 0.7 : 1, cursor: team.memberCount >= 5 ? 'pointer' : 'default', transition: 'transform 0.2s' }}
-                  onClick={() => handleTeamClick(team)}
-                  onMouseEnter={(e) => { if(team.memberCount >= 5) e.currentTarget.style.transform = 'translateY(-5px)'; }}
-                  onMouseLeave={(e) => { if(team.memberCount >= 5) e.currentTarget.style.transform = 'translateY(0)'; }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4>{team.name}</h4>
-                    {team.memberCount >= 5 && <span style={{ fontSize: '0.8rem', color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '12px' }}>View Details &rarr;</span>}
+            {/* VIEW: OVERVIEW or TEAM (Shared Layout) */}
+            {(insightMode === 'overview' || insightMode === 'team') && (
+              <>
+                {insightMode === 'team' && (
+                  <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+                    <select 
+                      value={insightTeamId} 
+                      onChange={handleInsightTeamChange}
+                      style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', minWidth: '300px' }}
+                    >
+                      <option value="">-- Select a Team --</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
                   </div>
-                  {team.memberCount < 5 ? (
-                    <div style={{ color: '#ef4444', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span>🔒</span> Privacy Locked
+                )}
+
+                {insightLoading ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading team data...</div>
+                ) : ((insightMode === 'overview' && report) || (insightMode === 'team' && insightTeamReport)) ? (
+                  <>
+                    {/* 1. Landscape (Huge) */}
+                    <DensityLandscape report={insightMode === 'team' ? insightTeamReport : report} />
+
+                    {/* 2. Metric Trends (4 Small Cards) */}
+                    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                      {[
+                        { key: 'stress', label: 'Stress Level', color: '#ef4444' },
+                        { key: 'sleep', label: 'Sleep Quality', color: '#3b82f6' },
+                        { key: 'workload', label: 'Workload', color: '#8b5cf6' },
+                        { key: 'coffee', label: 'Caffeine', color: '#78350f' }
+                      ].map(m => {
+                        const data = insightMode === 'team' ? insightTeamReport : report;
+                        const lastVal = data?.datasets?.[m.key]?.slice(-1)[0] || 0;
+                        return (
+                          <div key={m.key} className="card">
+                            <div style={{ color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 'bold' }}>{m.label}</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: m.color, margin: '0.5rem 0' }}>{lastVal}</div>
+                            <div style={{ height: '60px' }}>
+                              {renderMetricTrend(data, m.key, m.color, m.label)}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span>Avg Stress</span>
-                        <span style={{ fontWeight: 'bold', color: team.avgStress > 7 ? '#ef4444' : '#10b981' }}>{team.avgStress}/10</span>
+
+                    {/* 3. Detailed Graphs Row */}
+                    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                      <div className="card">
+                        <h3>Burnout Drivers</h3>
+                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                          {getDriverChartData(insightMode === 'team' ? insightTeamReport : report) ? (
+                            <Pie data={getDriverChartData(insightMode === 'team' ? insightTeamReport : report)} options={{ plugins: { legend: { position: 'right' } } }} />
+                          ) : (
+                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No driver data available</p>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span>Avg Workload</span>
-                        <span style={{ fontWeight: 'bold' }}>{team.avgWorkload}/10</span>
+                      <div className="card">
+                        <h3>Risk Distribution</h3>
+                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                          {getRiskDistChartData(insightMode === 'team' ? insightTeamReport : report) ? (
+                            <Doughnut data={getRiskDistChartData(insightMode === 'team' ? insightTeamReport : report)} options={{ plugins: { legend: { position: 'right' } }, cutout: '60%' }} />
+                          ) : (
+                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ marginTop: '1rem', padding: '0.5rem', background: '#ecfdf5', borderRadius: '4px', fontSize: '0.9rem', color: '#065f46' }}>
-                        Predicted Improvement: <strong>{team.predictedImprovement}%</strong> if action plans followed.
+                      <div className="card">
+                        <h3>Health Radar</h3>
+                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                          {getRadarChartData(insightMode === 'team' ? insightTeamReport : report) ? (
+                            <Radar 
+                              data={getRadarChartData(insightMode === 'team' ? insightTeamReport : report)} 
+                              options={{ scales: { r: { suggestedMin: 0, suggestedMax: 10 } }, plugins: { legend: { position: 'bottom' } } }} 
+                            />
+                          ) : (
+                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No radar data available</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
+                  </>
+                ) : (
+                  insightMode === 'team' && <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>Please select a team to view insights.</div>
+                )}
+              </>
+            )}
+
+            {/* VIEW: COMPARE */}
+            {insightMode === 'compare' && (
+              <div className="fade-in">
+                <div className="card" style={{ marginBottom: '2rem' }}>
+                  <h3>Select Teams to Compare</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
+                    {teams.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setCompareTeamIds(prev => prev.includes(String(t.id)) ? prev.filter(id => id !== String(t.id)) : [...prev, String(t.id)])}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '20px',
+                          border: compareTeamIds.includes(String(t.id)) ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                          background: compareTeamIds.includes(String(t.id)) ? '#eff6ff' : 'white',
+                          color: compareTeamIds.includes(String(t.id)) ? '#2563eb' : '#64748b',
+                          cursor: 'pointer',
+                          fontWeight: compareTeamIds.includes(String(t.id)) ? 'bold' : 'normal'
+                        }}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                  {compareTeamIds.length < 2 && <p className="small" style={{ marginTop: '1rem', color: '#f59e0b' }}>Select at least 2 teams to compare.</p>}
                 </div>
-              ))}
-            </div>
+
+                {compareTeamIds.length >= 2 && (
+                  <div className="card">
+                    <h3>Metric Comparison</h3>
+                    <div style={{ height: '300px' }}>
+                      {getMultiTeamComparisonData() ? (
+                        <Bar 
+                          data={getMultiTeamComparisonData()} 
+                          options={cleanChartOptions} 
+                        />
+                      ) : (
+                        <p style={{ textAlign: 'center', paddingTop: '2rem', color: '#94a3b8' }}>Insufficient data for comparison</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {compareTeamIds.length >= 2 && !comparingLoading && (
+                  <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
+                    <div className="card">
+                      <h3>Risk Distribution</h3>
+                      <div style={{ height: '300px' }}>
+                        <Bar 
+                          key={`risk-${compareTeamIds.join('-')}`}
+                          data={getComparisonRiskData()} 
+                          options={{...cleanChartOptions, scales: { x: { stacked: true }, y: { stacked: true, ticks: { display: true } } }}} 
+                        />
+                      </div>
+                    </div>
+                    <div className="card">
+                      <h3>Driver Impact</h3>
+                      <div style={{ height: '300px' }}>
+                        <Bar 
+                          key={`driver-${compareTeamIds.join('-')}`}
+                          data={getComparisonDriverData()} 
+                          options={{...cleanChartOptions, scales: { y: { beginAtZero: true, ticks: { display: true } } }}} 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {comparingLoading && (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                    Loading detailed team data...
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* VIEW: ACTION IMPACT (Saved Simulations) */}
+            {insightMode === 'saved' && (
+              <div className="fade-in">
+                {savedSimulations.length === 0 ? (
+                  <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                    <p>No saved simulations yet. Run a simulation to save it here.</p>
+                    <button onClick={() => setActiveTab('simulator')} className="quiz-button" style={{ width: 'auto', marginTop: '1rem' }}>
+                      Go to Simulator
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                    {savedSimulations.map(sim => (
+                      <div key={sim.id} className="card" style={{ position: 'relative', borderTop: '4px solid #8b5cf6' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                          <div>
+                            <h4 style={{ margin: 0 }}>{sim.plan.name}</h4>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(sim.date).toLocaleDateString()}</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{sim.results.metrics.deltaPercent}%</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Risk Reduction</div>
+                          </div>
+                        </div>
+                        
+                        <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
+                          <strong>Interventions:</strong>
+                          <ul style={{ paddingLeft: '1.2rem', margin: '0.5rem 0', color: '#334155' }}>
+                            {sim.plan.actions.map((a, i) => (
+                              <li key={i}>{SIM_ACTION_TYPES.find(t => t.id === a.type)?.label || a.type} ({a.intensity}%)</li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
+                           <span>Est. Cost: <strong>${sim.results.metrics.estimatedCost.toLocaleString()}</strong></span>
+                           <span>Time: <strong>{sim.results.metrics.timeToImpact || '12+'} wks</strong></span>
+                        </div>
+                        
+                        <button onClick={() => { const updated = savedSimulations.filter(s => s.id !== sim.id); setSavedSimulations(updated); localStorage.setItem('employer_saved_simulations', JSON.stringify(updated)); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
-        {/* TAB 4: SIMULATOR */}
+        {/* TAB 4: ACTION SIMULATOR */}
         {!loading && activeTab === 'simulator' && (
-          <div className="fade-in">
-            <div className="grid" style={{ gridTemplateColumns: '1fr 3fr', gap: '2rem', alignItems: 'start' }}>
-              {/* Controls */}
-              <div className="card" style={{ height: 'fit-content' }}>
-                <h3>1. Select Teams</h3>
-                <p className="small">Choose teams to include in the simulation.</p>
-                
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '0.5rem' }}>
-                    {teams.map(team => (
-                      <div key={team.id} style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedSimTeams.includes(team.id)} 
-                            onChange={() => toggleSimTeam(team.id)}
-                          />
-                          {team.name}
-                        </label>
-                      </div>
-                    ))}
-                    {teams.length === 0 && <p className="small">No teams available.</p>}
-                  </div>
-                </div>
-              </div>
-
-              {/* Results */}
-              <div>
-                {selectedSimTeams.length === 0 ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', background: '#f8fafc' }}>
-                    <p>Select at least one team to start the simulation.</p>
-                  </div>
-                ) : simLoading ? (
-                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading simulation models...</div>
-                ) : simError ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
-                    <p><strong>Error:</strong> {simError}</p>
-                  </div>
-                ) : !simulationData ? (
-                  <div style={{ padding: '2rem', textAlign: 'center' }}>No data available.</div>
-                ) : (
-                  <>
-                    {/* Summary Card */}
-                    <div className="card" style={{ marginBottom: '2rem', background: 'linear-gradient(to right, #1e293b, #334155)', color: 'white' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <h2 style={{ margin: 0, color: 'white' }}>Projected Outcome</h2>
-                          <p style={{ color: '#94a3b8', margin: 0 }}>Combined impact of all active interventions</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#4ade80' }}>-{aggResults.reduction}%</div>
-                          <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Burnout Risk</div>
-                        </div>
-                        <div style={{ textAlign: 'right', borderLeft: '1px solid #475569', paddingLeft: '1.5rem' }}>
-                          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: aggResults.hours > 0 ? '#f87171' : '#60a5fa' }}>
-                            {aggResults.hours > 0 ? '+' : ''}{aggResults.hours}
-                          </div>
-                          <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Capacity Gap (Hrs)</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <h3>2. Adjust Interventions</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                      {simulationData.actions.map(action => (
-                        <div key={action.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                            <h4 style={{ margin: 0 }}>{action.title}</h4>
-                            <span style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
-                              Max: {action.max} {action.unit}
-                            </span>
-                          </div>
-                          <p className="small" style={{ color: '#64748b', minHeight: '40px' }}>{action.desc}</p>
-                          
-                          {/* Mini Graph */}
-                          <div style={{ height: '100px', marginBottom: '1rem' }}>
-                            <Line 
-                              data={{
-                                labels: action.curve.map(p => p.step),
-                                datasets: [{
-                                  data: action.curve.map(p => p.avgRisk),
-                                  borderColor: '#3b82f6',
-                                  borderWidth: 2,
-                                  pointRadius: 0,
-                                  tension: 0.4
-                                }]
-                              }}
-                              options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                                scales: { x: { display: false }, y: { display: false } }
-                              }}
-                            />
-                          </div>
-
-                          {/* Slider */}
-                          <div style={{ marginTop: 'auto' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                              <span>Intensity</span>
-                              <span>{Math.round((sliderValues[action.id] / 100) * action.max)} {action.unit}</span>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0" 
-                              max="100" 
-                              value={sliderValues[action.id] || 0} 
-                              onChange={(e) => handleSliderChange(action.id, e.target.value)}
-                              style={{ width: '100%', cursor: 'pointer' }}
-                            />
-                            
-                            {/* Optimal Point Marker */}
-                            <div style={{ position: 'relative', height: '20px', marginTop: '5px' }}>
-                              <div 
-                                style={{ 
-                                  position: 'absolute', 
-                                  left: `${action.optimal}%`, 
-                                  transform: 'translateX(-50%)', 
-                                  fontSize: '0.75rem', 
-                                  color: '#10b981',
-                                  display: 'flex', flexDirection: 'column', alignItems: 'center'
-                                }}
-                              >
-                                ▲ <span style={{ whiteSpace: 'nowrap' }}>Recommended</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-                      {saved ? (
-                        <span style={{ color: '#10b981', fontWeight: 'bold', padding: '10px 20px' }}>✓ Scenario Saved</span>
-                      ) : (
-                        <button onClick={handleSaveSimulation} className="quiz-button" style={{ backgroundColor: '#64748b', width: 'auto', padding: '10px 20px' }}>Save Scenario</button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <SimulatorTab 
+            user={user}
+            simPlan={simPlan}
+            setSimPlan={setSimPlan}
+            simResults={simResults}
+            setSimResults={setSimResults}
+            simLoading={simLoading}
+            setSimLoading={setSimLoading}
+            simWeek={simWeek}
+            setSimWeek={setSimWeek}
+            handleSaveSimulation={handleSaveSimulation}
+            toggleSimAction={toggleSimAction}
+            updateSimAction={updateSimAction}
+            cleanChartOptions={cleanChartOptions}
+          />
         )}
 
         {/* Privacy Assurance Footer (Always Visible) */}

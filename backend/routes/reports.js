@@ -11,6 +11,11 @@ router.get('/personal/me', async (req, res) => {
     const { userId, startDate, endDate } = req.query;
     if (!userId) return res.status(400).json({ error: 'User ID required' });
 
+    // Security: Prevent IDOR
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized access to this report.' });
+    }
+
     // Build query options
     const where = { userId };
     if (startDate || endDate) {
@@ -495,15 +500,30 @@ router.get('/teams', async (req, res) => {
     if (!companyCode) return res.status(400).json({ error: 'Company code required' });
 
     const teams = await db.sequelize.query(
-      `SELECT * FROM Teams WHERE companyCode = :companyCode`,
+      `SELECT * FROM "Teams" WHERE "companyCode" = :companyCode`,
       { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
     );
 
     // Fetch all employees for the company to avoid N+1 queries and ensure consistency
     const allEmployees = await db.sequelize.query(
-      `SELECT id, teamId FROM Users WHERE companyCode = :companyCode AND (role = 'employee' OR role IS NULL)`,
+      `SELECT id, "teamId" FROM "Users" WHERE "companyCode" = :companyCode AND (role = 'employee' OR role IS NULL)`,
       { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
     );
+
+    // Fetch all latest checkins for these employees in one query (Optimized)
+    const employeeIds = allEmployees.map(e => e.id);
+    const latestCheckins = await db.Checkin.findAll({
+      where: { userId: { [Op.in]: employeeIds } },
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Map latest checkin by userId
+    const checkinMap = new Map();
+    latestCheckins.forEach(c => {
+      if (!checkinMap.has(c.userId)) {
+        checkinMap.set(c.userId, c);
+      }
+    });
 
     const metrics = [];
 
@@ -516,10 +536,7 @@ router.get('/teams', async (req, res) => {
       let count = 0;
 
       for (const emp of employees) {
-        const [checkin] = await db.sequelize.query(
-          `SELECT stress, workload FROM checkins WHERE userId = :userId ORDER BY createdAt DESC LIMIT 1`,
-          { replacements: { userId: emp.id }, type: db.sequelize.QueryTypes.SELECT }
-        );
+        const checkin = checkinMap.get(emp.id);
         if (checkin) {
           totalStress += Number(checkin.stress || 0);
           totalWorkload += Number(checkin.workload || 0);
@@ -545,21 +562,43 @@ router.get('/teams', async (req, res) => {
 // Weekly Team Report Aggregation
 router.get('/:companyCode', async (req, res) => {
   try {
-    const { companyCode } = req.params;
-    const { teamId } = req.query;
+    let { companyCode } = req.params;
+    let { teamId } = req.query;
+
+    // Ensure companyCode is decoded to handle %3F from frontend encoding
+    try { companyCode = decodeURIComponent(companyCode); } catch (e) {}
+
+    // Handle case where query params are encoded into the path parameter (e.g. from frontend encoding issues)
+    if (companyCode && companyCode.includes('?')) {
+      const parts = companyCode.split('?');
+      companyCode = parts[0];
+      if (!teamId && parts[1]) {
+        const params = new URLSearchParams(parts[1]);
+        teamId = params.get('teamId') || params.get('TEAMID');
+      }
+    }
+
+    console.log(`Generating report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
     
     // 1. Find Employees
-    const whereClause = { 
-      companyCode,
-      role: { [Op.ne]: 'employer' } 
-    };
-    if (teamId) {
-      whereClause.teamId = teamId;
+    const whereClause = { companyCode };
+
+    if (teamId && teamId !== 'undefined' && teamId !== 'null') {
+      // If filtering by team, trust the team assignment (include anyone in the team)
+      const parsedTeamId = parseInt(teamId, 10);
+      if (!isNaN(parsedTeamId)) {
+        whereClause.teamId = parsedTeamId;
+      }
+    } else {
+      // For company overview, include employees and those with no role (exclude explicit 'employer' if needed)
+      whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
     }
 
     const employees = await db.User.findAll({ 
       where: whereClause
     });
+    console.log(`Found ${employees.length} employees.`);
+
     const employeeIds = employees.map(e => e.id);
     
     // Privacy Guard: Require at least 5 employees to show aggregated data

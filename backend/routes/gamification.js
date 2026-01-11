@@ -26,6 +26,12 @@ router.get('/leaderboard', async (req, res) => {
 router.put('/settings', async (req, res) => {
   try {
     const { userId, optInLeaderboard } = req.body;
+    
+    // Security: Prevent IDOR
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
+
     const stats = await GamificationService.updateSettings(userId, { optInLeaderboard });
     res.json(stats);
   } catch (error) {
@@ -37,6 +43,10 @@ router.put('/settings', async (req, res) => {
 router.get('/challenges', async (req, res) => {
   try {
     const { userId } = req.query;
+    // Security: Prevent IDOR
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
     const challenges = await GamificationService.getChallenges(userId);
     res.json(challenges);
   } catch (error) {
@@ -48,6 +58,10 @@ router.get('/challenges', async (req, res) => {
 router.post('/challenges/join', async (req, res) => {
   try {
     const { userId, challengeId } = req.body;
+    // Security: Prevent IDOR
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
     await GamificationService.joinChallenge(userId, challengeId);
     res.json({ success: true });
   } catch (error) {

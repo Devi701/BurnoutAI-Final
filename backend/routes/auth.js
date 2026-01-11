@@ -290,11 +290,15 @@ router.get('/employees', async (req, res) => {
       return res.status(400).json({ error: 'Company code is required' });
     }
 
+    // Ensure consistent casing for query
+    const code = companyCode.toUpperCase();
+
     const employees = await db.sequelize.query(
-      `SELECT id, name, email, createdAt, teamId FROM Users WHERE companyCode = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
-      { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
+      `SELECT id, name, email, "createdAt", "teamId" FROM "Users" WHERE "companyCode" = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
+      { replacements: { companyCode: code }, type: db.sequelize.QueryTypes.SELECT }
     );
 
+    console.log(`[API] /employees: Found ${employees.length} records for company ${companyCode}`);
     res.json(employees);
   } catch (error) {
     console.error('Error fetching employees:', error);

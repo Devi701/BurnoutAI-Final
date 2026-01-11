@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { DataTypes } = require('sequelize');
+const { DataTypes, Op } = require('sequelize');
 const db = require('../db/database');
 const { predictAndAdvise } = require('../services/predictionService');
 
@@ -44,6 +44,11 @@ const NUM_SIMULATIONS = 50; // 2. Monte Carlo: Run multiple times to average noi
 router.post('/', async (req, res) => {
   try {
     const { userId, actions } = req.body;
+
+    // Security: Prevent IDOR
+    if (req.user.id !== parseInt(userId, 10)) {
+      return res.status(403).json({ error: 'Unauthorized.' });
+    }
 
     // 1. Validate Inputs
     if (!userId) {

@@ -134,6 +134,7 @@ export default function PilotSurveyModal({ userId, companyCode, activeDays, onCl
           {formData.behaviorChange === 'Yes' && (
             <input 
               placeholder="What did you change? (Optional)" 
+              name="behaviorChangeText"
               value={formData.behaviorChangeText} 
               onChange={e => handleChange('behaviorChangeText', e.target.value)}
               style={inputStyle}
@@ -148,6 +149,7 @@ export default function PilotSurveyModal({ userId, companyCode, activeDays, onCl
 
           <Label>What is the ONE thing that would make this a must-have for you?</Label>
           <textarea 
+            name="mustHave"
             value={formData.mustHave} 
             onChange={e => handleChange('mustHave', e.target.value)}
             style={{ ...inputStyle, minHeight: '60px' }}
