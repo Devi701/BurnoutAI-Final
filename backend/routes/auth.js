@@ -294,7 +294,7 @@ router.get('/employees', async (req, res) => {
     const code = companyCode.toUpperCase();
 
     const employees = await db.sequelize.query(
-      `SELECT id, name, email, "createdAt", "teamId" FROM "Users" WHERE "companyCode" = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
+      `SELECT id, name, email, "createdAt", "teamId" FROM "Users" WHERE UPPER("companyCode") = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
       { replacements: { companyCode: code }, type: db.sequelize.QueryTypes.SELECT }
     );
 

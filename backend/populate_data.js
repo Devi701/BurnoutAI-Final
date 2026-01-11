@@ -4,13 +4,14 @@ const { hashPassword } = require('./utils/password');
 
 async function populateData() {
   // Get company code from terminal argument
-  const companyCode = process.argv[2];
+  const rawCompanyCode = process.argv[2];
 
-  if (!companyCode) {
+  if (!rawCompanyCode) {
     console.error('❌ Error: Please provide a company code.');
     console.log('Usage: node populate_data.js <COMPANY_CODE>');
     process.exit(1);
   }
+  const companyCode = rawCompanyCode.toUpperCase();
 
   try {
     console.log(`Connecting to database...`);
@@ -28,7 +29,7 @@ async function populateData() {
       if (!team) {
         team = await db.Team.create({
           name: 'General Team',
-          companyCode: companyCode
+          companyCode
         });
         console.log(`Created 'General Team' (ID: ${team.id})`);
       }
@@ -41,7 +42,7 @@ async function populateData() {
     const defaultPassword = await hashPassword('password123');
 
     console.log('Creating 30 employees...');
-    for (let i = 1; i <= 300; i++) {
+    for (let i = 1; i <= 30; i++) {
       // Unique email based on company code to avoid collisions
       const email = `emp${i}_${companyCode.toLowerCase()}@example.com`;
       
@@ -51,7 +52,7 @@ async function populateData() {
           name: `Employee ${i} (${companyCode})`,
           password: defaultPassword,
           role: 'employee',
-          companyCode: companyCode.toUpperCase(),
+          companyCode,
           teamId: teamId
         }
       });
@@ -93,9 +94,9 @@ async function populateData() {
     await db.Checkin.bulkCreate(checkins);
 
     // 4. Verify Data
-    const userCount = await db.User.count({ where: { companyCode: companyCode.toUpperCase() } });
+    const userCount = await db.User.count({ where: { companyCode } });
     const checkinCount = await db.Checkin.count({ 
-      include: [{ model: db.User, where: { companyCode: companyCode.toUpperCase() } }] 
+      include: [{ model: db.User, where: { companyCode } }] 
     }).catch(() => checkins.length); // Fallback if association fails
 
     console.log(`✅ Success! Added 30 employees and 300 check-ins to ${companyCode}.`);

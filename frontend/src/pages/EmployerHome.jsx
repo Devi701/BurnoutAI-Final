@@ -399,6 +399,24 @@ export default function EmployerHome() {
     return () => { isMounted = false; };
   }, [user]);
 
+  // Manual Refresh Function
+  const handleRefresh = () => {
+    if (!user?.companyCode) return;
+    setLoading(true);
+    Promise.allSettled([
+      fetchWeeklyReport(user.companyCode),
+      fetchEmployees(user.companyCode),
+      fetchTeams(user.companyCode),
+      fetchTeamMetrics(user.companyCode).catch(() => [])
+    ]).then(([reportResult, employeesResult, teamsResult, metricsResult]) => {
+      if (reportResult.status === 'fulfilled') setReport(reportResult.value);
+      if (employeesResult.status === 'fulfilled') setEmployees(employeesResult.value);
+      if (teamsResult.status === 'fulfilled') setTeams(teamsResult.value || []);
+      if (metricsResult.status === 'fulfilled') setTeamMetrics(metricsResult.value || []);
+      setLoading(false);
+    });
+  };
+
   // Fetch detailed reports for teams being compared
   useEffect(() => {
     if (insightMode === 'compare' && compareTeamIds.length > 0) {
@@ -810,7 +828,15 @@ export default function EmployerHome() {
     <>
       <Navbar />
       <div className="container">
-        <h1>Employer Dashboard</h1>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+          <h1>Employer Dashboard</h1>
+          <button 
+            onClick={handleRefresh} 
+            className="quiz-button" 
+            style={{width: 'auto', padding: '8px 16px', fontSize: '0.9rem', backgroundColor: '#fff', color: '#2563eb', border: '1px solid #2563eb'}}>
+            🔄 Refresh Data
+          </button>
+        </div>
         
         {user && (
           <div className="card" style={{marginBottom: '2rem', borderLeft: '5px solid #2563eb'}}>

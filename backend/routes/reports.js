@@ -500,14 +500,14 @@ router.get('/teams', async (req, res) => {
     if (!companyCode) return res.status(400).json({ error: 'Company code required' });
 
     const teams = await db.sequelize.query(
-      `SELECT * FROM "Teams" WHERE "companyCode" = :companyCode`,
-      { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
+      `SELECT * FROM "Teams" WHERE UPPER("companyCode") = :companyCode`,
+      { replacements: { companyCode: companyCode.toUpperCase() }, type: db.sequelize.QueryTypes.SELECT }
     );
 
     // Fetch all employees for the company to avoid N+1 queries and ensure consistency
     const allEmployees = await db.sequelize.query(
-      `SELECT id, "teamId" FROM "Users" WHERE "companyCode" = :companyCode AND (role = 'employee' OR role IS NULL)`,
-      { replacements: { companyCode }, type: db.sequelize.QueryTypes.SELECT }
+      `SELECT id, "teamId" FROM "Users" WHERE UPPER("companyCode") = :companyCode AND (role = 'employee' OR role IS NULL)`,
+      { replacements: { companyCode: companyCode.toUpperCase() }, type: db.sequelize.QueryTypes.SELECT }
     );
 
     // Fetch all latest checkins for these employees in one query (Optimized)
@@ -581,7 +581,7 @@ router.get('/:companyCode', async (req, res) => {
     console.log(`Generating report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
     
     // 1. Find Employees
-    const whereClause = { companyCode };
+    const whereClause = { companyCode: companyCode.toUpperCase() };
 
     if (teamId && teamId !== 'undefined' && teamId !== 'null') {
       // If filtering by team, trust the team assignment (include anyone in the team)
