@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -1341,6 +1343,8 @@ export default function EmployerHome() {
           </div>
         </div>
       )}
+      <Analytics />
+      <SpeedInsights />
     </>
   );
 }
