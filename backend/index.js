@@ -12,6 +12,7 @@ const reportRoutes = require('./routes/reports');
 const simulatorRoutes = require('./routes/simulator');
 const employerSimulatorRoutes = require('./routes/employerSimulator');
 const { authenticateToken } = require('./middleware/authMiddleware');
+const { hashPassword } = require('./utils/password');
 
 // --- Database Initialization ---
 async function initializeDatabase() {
@@ -113,6 +114,71 @@ async function main() {
         totalUsers: userCount,
         sampleUsers: users
       });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- POPULATE DATA ENDPOINT (Magic Link) ---
+  app.get('/api/debug/populate', async (req, res) => {
+    const { companyCode } = req.query;
+    if (!companyCode) return res.status(400).json({ error: 'companyCode query param required' });
+    
+    const code = companyCode.toUpperCase();
+    const db = require('./db/database');
+
+    try {
+      // 1. Create Team
+      let team = await db.Team.findOne({ where: { companyCode: code } });
+      if (!team) {
+        team = await db.Team.create({ name: 'General Team', companyCode: code });
+      }
+
+      // 2. Create Employees
+      const defaultPassword = await hashPassword('password123');
+      const employees = [];
+      
+      for (let i = 1; i <= 30; i++) {
+        const email = `emp${i}_${code.toLowerCase()}@example.com`;
+        const [user] = await db.User.findOrCreate({
+          where: { email },
+          defaults: {
+            name: `Employee ${i} (${code})`,
+            password: defaultPassword,
+            role: 'employee',
+            companyCode: code,
+            teamId: team.id
+          }
+        });
+        if (user.teamId !== team.id) {
+          user.teamId = team.id;
+          await user.save();
+        }
+        employees.push(user);
+      }
+
+      // 3. Create Checkins
+      const checkins = [];
+      const now = new Date();
+      for (let i = 0; i < 300; i++) {
+        const randomEmployee = employees[Math.floor(Math.random() * employees.length)];
+        const daysAgo = Math.floor(Math.random() * 90);
+        const date = new Date(now);
+        date.setDate(date.getDate() - daysAgo);
+        
+        checkins.push({
+          userId: randomEmployee.id,
+          stress: Math.floor(Math.random() * 10) + 1,
+          sleep: Math.floor(Math.random() * 9) + 3,
+          workload: Math.floor(Math.random() * 10) + 1,
+          coffee: Math.floor(Math.random() * 6),
+          createdAt: date,
+          updatedAt: date
+        });
+      }
+      await db.Checkin.bulkCreate(checkins);
+      
+      res.json({ success: true, message: `Added 30 employees and 300 checkins to ${code}` });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
