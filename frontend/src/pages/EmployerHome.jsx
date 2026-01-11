@@ -20,7 +20,7 @@ import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
 import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateEmployerAction } from '../services/api';
 import { analytics } from '../services/analytics';
-import SimulatorTab from '../components/employer/SimulatorTab';
+import SimulatorTab from '../../pages/SimulatorTab';
 
 ChartJS.register(
   CategoryScale,
