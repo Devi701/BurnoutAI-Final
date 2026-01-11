@@ -51,8 +51,15 @@ const handleSignup = async (req, res) => {
 
     // --- Role-Based Logic ---
     if (role === 'employer') {
-      // Auto-generate Company Code for employers (6 chars)
-      companyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+      if (companyCode) {
+        // Allow joining an existing company as an additional employer/admin
+        companyCode = companyCode.toUpperCase();
+        const existing = await db.User.findOne({ where: { companyCode } });
+        if (!existing) throw new Error('Invalid Company Code.');
+      } else {
+        // Auto-generate Company Code for new employers
+        companyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+      }
     } else if (role === 'employee') {
       // Company Code is optional for employees during signup
       if (companyCode) {
