@@ -41,7 +41,7 @@ async function populateData() {
     const defaultPassword = await hashPassword('password123');
 
     console.log('Creating 30 employees...');
-    for (let i = 1; i <= 30; i++) {
+    for (let i = 1; i <= 300; i++) {
       // Unique email based on company code to avoid collisions
       const email = `emp${i}_${companyCode.toLowerCase()}@example.com`;
       
