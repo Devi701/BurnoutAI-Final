@@ -499,16 +499,19 @@ router.get('/teams', async (req, res) => {
     const { companyCode } = req.query;
     if (!companyCode) return res.status(400).json({ error: 'Company code required' });
 
-    const teams = await db.sequelize.query(
-      `SELECT * FROM "Teams" WHERE UPPER("companyCode") = :companyCode`,
-      { replacements: { companyCode: companyCode.toUpperCase() }, type: db.sequelize.QueryTypes.SELECT }
-    );
+    // Use Sequelize Model to avoid table casing issues
+    const teams = await db.Team.findAll({
+      where: { companyCode: companyCode.toUpperCase().trim() }
+    });
 
     // Fetch all employees for the company to avoid N+1 queries and ensure consistency
-    const allEmployees = await db.sequelize.query(
-      `SELECT id, "teamId" FROM "Users" WHERE UPPER("companyCode") = :companyCode AND (role = 'employee' OR role IS NULL)`,
-      { replacements: { companyCode: companyCode.toUpperCase() }, type: db.sequelize.QueryTypes.SELECT }
-    );
+    const allEmployees = await db.User.findAll({
+      where: {
+        companyCode: companyCode.toUpperCase().trim(),
+        [Op.or]: [{ role: 'employee' }, { role: null }]
+      },
+      attributes: ['id', 'teamId']
+    });
 
     // Fetch all latest checkins for these employees in one query (Optimized)
     const employeeIds = allEmployees.map(e => e.id);

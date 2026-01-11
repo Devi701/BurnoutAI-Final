@@ -46,6 +46,10 @@ const handleSignup = async (req, res) => {
   try {
     let { email, password, name, role, companyCode, referralCode } = req.body;
 
+
+    // Normalize email to lowercase to avoid case-sensitivity issues
+    if (email) email = email.toLowerCase();
+
     // Default role if not provided
     if (!role) role = 'employee';
 
@@ -151,8 +155,10 @@ router.post('/signup/employee', (req, res) => {
 
 router.post('/login', loginLimiter, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
     const genericError = 'Invalid email or password';
+
+    if (email) email = email.toLowerCase();
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
@@ -167,6 +173,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     const user = await db.User.findOne({ where: { email } });
 
     // 2. Verify password (or dummy verify to prevent timing leaks)
+
     if (!user) {
       await verifyPassword(DUMMY_HASH, password || 'dummy');
       return res.status(401).json({ error: genericError });
@@ -298,12 +305,17 @@ router.get('/employees', async (req, res) => {
     }
 
     // Ensure consistent casing for query
-    const code = companyCode.toUpperCase();
+    const code = companyCode.toUpperCase().trim();
 
-    const employees = await db.sequelize.query(
-      `SELECT id, name, email, "createdAt", "teamId" FROM "Users" WHERE UPPER("companyCode") = :companyCode AND (role = 'employee' OR role IS NULL) ORDER BY id DESC`,
-      { replacements: { companyCode: code }, type: db.sequelize.QueryTypes.SELECT }
-    );
+    // Use Sequelize Model instead of raw query to avoid table name casing issues ("Users" vs users)
+    const employees = await db.User.findAll({
+      where: {
+        companyCode: code,
+        [Op.or]: [{ role: 'employee' }, { role: null }]
+      },
+      attributes: ['id', 'name', 'email', 'createdAt', 'teamId'],
+      order: [['id', 'DESC']]
+    });
 
     console.log(`[API] /employees: Found ${employees.length} records for company ${companyCode}`);
     res.json(employees);

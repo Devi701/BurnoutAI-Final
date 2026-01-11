@@ -96,6 +96,26 @@ async function main() {
     }
   });
 
+  // --- DEBUG ENDPOINT (Remove in final production) ---
+  app.get('/api/debug/db-check', async (req, res) => {
+    try {
+      const db = require('./db/database');
+      // Count users
+      const userCount = await db.User.count();
+      // Get first 5 users to verify data
+      const users = await db.User.findAll({ limit: 5, attributes: ['id', 'email', 'companyCode'] });
+      
+      res.json({
+        status: 'connected',
+        dialect: db.sequelize.getDialect(),
+        totalUsers: userCount,
+        sampleUsers: users
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.use('/api/auth', authRoutes);
   app.use('/api/checkins', authenticateToken, checkinRoutes);
   app.use('/api/predict', authenticateToken, predictRoutes);
