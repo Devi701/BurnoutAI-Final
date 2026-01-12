@@ -16,7 +16,6 @@ dns.lookup = (hostname, options, callback) => {
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
 
 // --- Route Imports ---
 const authRoutes = require('./routes/auth');
@@ -36,35 +35,6 @@ async function initializeDatabase() {
       await db.sequelize.authenticate();
       const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
       console.log(`Database connection has been established successfully to: ${host}`);
-      if (typeof db.sequelize.sync === 'function') {
-        // Disable foreign keys temporarily to allow SQLite to handle table alterations
-        const dialect = db.sequelize.getDialect();
-        if (dialect === 'sqlite') {
-          await db.sequelize.query('PRAGMA foreign_keys = OFF');
-        }
-        
-        try {
-          // Sync models with database
-          await db.sequelize.sync({ alter: true });
-        } catch (err) {
-          // Only attempt rebuild if we are strictly in development using SQLite
-          // This prevents production data loss on Supabase/Postgres
-          if (dialect === 'sqlite' && process.env.NODE_ENV !== 'production') {
-            console.log('⚠️ SQLite sync error detected (likely Checkins_backup). Rebuilding DB...');
-            await db.sequelize.sync({ force: true });
-          } else throw err;
-        }
-
-        // Ensure Users has teamId (Legacy check, handled by model definition now but kept for safety)
-        try {
-          await db.sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
-        } catch (e) { /* ignore if exists */ }
-
-        if (dialect === 'sqlite') {
-          await db.sequelize.query('PRAGMA foreign_keys = OFF'); // Ensure FKs stay OFF for runtime
-        }
-        console.log('All models were synchronized successfully.');
-      }
     } else if (typeof db === 'function') {
       db(); // Support for simple init function pattern
       console.log('Database initialized via function call.');
@@ -202,17 +172,6 @@ async function main() {
   app.use('/api/employer-simulator', authenticateToken, employerSimulatorRoutes);
   app.use('/api/teams', authenticateToken, require('./routes/teams'));
   app.use('/api/gamification', authenticateToken, require('./routes/gamification'));
-
-  // --- Frontend Serving (for production) ---
-  if (process.env.NODE_ENV === 'production') {
-    // Serve the static files from the React app
-    app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-    // Handles any requests that don't match the ones above
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-    });
-  }
 
   // --- Error Handling ---
   // 404 Not Found handler
