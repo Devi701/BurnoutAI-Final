@@ -6,6 +6,13 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
+// Aggressive Fix: Monkey-patch dns.lookup to ensure IPv4 is used.
+const originalLookup = dns.lookup;
+dns.lookup = (hostname, options, callback) => {
+  if (typeof options === 'function') return originalLookup(hostname, { family: 4 }, options);
+  return originalLookup(hostname, { ...options, family: 4 }, callback);
+};
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
