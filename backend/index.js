@@ -1,4 +1,11 @@
 require('dotenv').config(); // Load .env file at the top
+const dns = require('dns');
+
+// Fix: Force IPv4 to avoid ENETUNREACH errors on Render (IPv6 connection issues)
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -74,7 +81,23 @@ async function main() {
   // --- Core Middleware ---
   app.set('trust proxy', 1); // Trust Nginx reverse proxy
   app.use(helmet({ hsts: false })); // Disable HSTS in Node, handled by Nginx
-  app.use(cors());   // Enable Cross-Origin Resource Sharing
+
+  // --- CORS Configuration for Production Security ---
+  const whitelist = [
+    'https://<YOUR_VERCEL_APP_NAME>.vercel.app', // <-- IMPORTANT: Add your Vercel URL here
+    'http://localhost:5173' // For local development
+  ];
+  const corsOptions = {
+    origin: (origin, callback) => {
+      // Allow if not in production, if there's no origin (e.g. curl), or if origin is in whitelist
+      if (process.env.NODE_ENV !== 'production' || !origin || whitelist.some(o => origin.startsWith(o))) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  };
+  app.use(cors(corsOptions));
   app.use(express.json()); // Parse incoming JSON requests
   app.use(express.urlencoded({ extended: false })); // Parse URL-encoded bodies
 
