@@ -505,7 +505,13 @@ router.get('/magic-link', async (req, res) => {
     );
 
     // Redirect to frontend login page with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    let frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
+    
+    // Ensure protocol and no trailing slash
+    if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`;
+    if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
+
+    console.log(`[Magic Link] Redirecting to: ${frontendUrl}/login`);
     res.redirect(`${frontendUrl}/login?token=${token}`);
 
   } catch (error) {

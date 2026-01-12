@@ -60,7 +60,7 @@ async function main() {
 
   // --- CORS Configuration for Production Security ---
   const whitelist = [
-    process.env.FRONTEND_URL, // Best practice: Use an env var for the frontend URL
+    (process.env.FRONTEND_URL || '').trim(), // Best practice: Use an env var for the frontend URL
     'http://localhost:5173' // For local development
   ].filter(Boolean); // Remove undefined values to prevent errors
 
