@@ -469,4 +469,49 @@ router.delete('/me', async (req, res) => {
   }
 });
 
+// GET /api/auth/magic-link
+// One-click login for Pilot Users
+router.get('/magic-link', async (req, res) => {
+  try {
+    const { key } = req.query;
+    // Simple security check
+    if (key !== 'burnout_pilot_2026') {
+      return res.status(403).send('Invalid magic link key.');
+    }
+
+    const email = 'testcompany@gmail.com';
+    const companyCode = '10B196';
+    const password = 'Pilot2026!';
+
+    let user = await db.User.findOne({ where: { email } });
+
+    if (!user) {
+      // Create the pilot user if missing
+      const hashedPassword = await hashPassword(password);
+      user = await db.User.create({
+        name: 'Pilot Employer',
+        email: email.toLowerCase(),
+        password: hashedPassword,
+        role: 'employer',
+        companyCode: companyCode
+      });
+    }
+
+    // Generate a long-lived token (30 days) for the pilot
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '30d' }
+    );
+
+    // Redirect to frontend login page with token
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/login?token=${token}`);
+
+  } catch (error) {
+    console.error('Magic link error:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 module.exports = router;
