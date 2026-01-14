@@ -19,6 +19,7 @@ import { useUser } from '../context/UserContext';
 import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateEmployerAction } from '../services/api';
 import { analytics } from '../services/analytics';
 import SimulatorTab from './SimulatorTab';
+import PilotEnrollmentPopup from '../components/PilotEnrollmentPopup';
 
 
 ChartJS.register(
@@ -1368,6 +1369,9 @@ export default function EmployerHome() {
           </div>
         </div>
       )}
+
+      {/* Pilot Enrollment Popup (Appears after 90s) */}
+      <PilotEnrollmentPopup />
     </>
   );
 }

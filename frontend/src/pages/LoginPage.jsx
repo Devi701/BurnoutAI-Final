@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { login, recover } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
@@ -13,10 +13,25 @@ export default function LoginPage() {
   // Recovery state
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
+  // Initialize based on URL to prevent flash of login form
+  const [isProcessingMagicLink, setIsProcessingMagicLink] = useState(() => 
+    new URLSearchParams(window.location.search).has('token')
+  );
 
   const { login: setToken } = useAuth();
   const { setUser } = useUser();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const token = searchParams.get('token');
+    if (token) {
+      setIsProcessingMagicLink(true);
+      localStorage.setItem('authToken', token);
+      // Force reload to ensure AuthContext picks up the new token
+      window.location.href = '/employer';
+    }
+  }, [searchParams]);
 
   async function handle(e) {
     e.preventDefault();
@@ -48,6 +63,27 @@ export default function LoginPage() {
     } catch (err) {
       alert(err.message);
     }
+  }
+
+  if (isProcessingMagicLink) {
+    return (
+      <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+        <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+          <div style={{ 
+            border: '4px solid #f3f3f3', 
+            borderTop: '4px solid #2563eb', 
+            borderRadius: '50%', 
+            width: '50px', 
+            height: '50px', 
+            animation: 'spin 1s linear infinite', 
+            margin: '0 auto 1.5rem' 
+          }} />
+          <h3>Logging you in...</h3>
+          <p style={{ color: '#64748b' }}>Verifying your magic link.</p>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      </div>
+    );
   }
 
   return (

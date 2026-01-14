@@ -511,12 +511,42 @@ router.get('/magic-link', async (req, res) => {
     if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`;
     if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);
 
+    console.log(`[Magic Link] Generated token for ${email}`);
     console.log(`[Magic Link] Redirecting to: ${frontendUrl}/login`);
-    res.redirect(`${frontendUrl}/login?token=${token}`);
+    res.redirect(`${frontendUrl}/login?token=${encodeURIComponent(token)}`);
 
   } catch (error) {
     console.error('Magic link error:', error);
     res.status(500).send('Internal Server Error');
+  }
+});
+
+// POST /api/auth/pilot-feedback
+// Sends pilot enrollment feedback to admin email
+router.post('/pilot-feedback', async (req, res) => {
+  try {
+    const { userId, companyCode, response, feedback } = req.body;
+    
+    // Attempt to find user email for context, fallback if not found
+    let userEmail = 'Unknown';
+    if (userId) {
+      const u = await db.User.findByPk(userId);
+      if (u) userEmail = u.email;
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: 'maheshwariv919@gmail.com', // Admin email
+      subject: `Pilot Feedback: ${response} - ${companyCode || 'No Company'}`,
+      text: `User: ${userEmail} (ID: ${userId})\nCompany: ${companyCode}\nResponse: ${response}\nFeedback: ${feedback || 'None'}`
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Feedback email error:', error);
+    // Don't block the UI if email fails, just log it
+    res.json({ success: false, error: error.message });
   }
 });
 
