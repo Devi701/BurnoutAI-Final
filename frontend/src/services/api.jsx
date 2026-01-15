@@ -74,6 +74,10 @@ export function recover(payload) {
   return request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify(payload) });
 }
 
+export function fetchCurrentUser() {
+  return request('/api/auth/me', { method: 'GET' });
+}
+
 export function fetchUserCheckins(userId) {
   return request(`/api/checkins/history/${userId}`, { method: 'GET' });
 }

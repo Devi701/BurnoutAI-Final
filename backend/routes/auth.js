@@ -8,6 +8,7 @@ const { hashPassword, verifyPassword, needsRehash } = require('../utils/password
 const rateLimit = require('express-rate-limit');
 const GamificationService = require('../services/gamificationService');
 const jwt = require('jsonwebtoken');
+const { authenticateToken } = require('../middleware/authMiddleware');
 
 // PostHog Backend Initialization
 let posthog = null;
@@ -547,6 +548,22 @@ router.post('/pilot-feedback', async (req, res) => {
     console.error('Feedback email error:', error);
     // Don't block the UI if email fails, just log it
     res.json({ success: false, error: error.message });
+  }
+});
+
+// GET /api/auth/me
+// Returns the currently authenticated user's details
+router.get('/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await db.User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'email', 'role', 'companyCode', 'industry']
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    res.json(user);
+  } catch (error) {
+    console.error('Fetch me error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

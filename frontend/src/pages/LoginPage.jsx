@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { login, recover } from '../services/api';
+import { login, recover, fetchCurrentUser } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
 import '../App.css';
@@ -25,12 +25,27 @@ export default function LoginPage() {
 
   useEffect(() => {
     const token = searchParams.get('token');
-    if (token) {
-      setIsProcessingMagicLink(true);
-      localStorage.setItem('authToken', token);
-      // Force reload to ensure AuthContext picks up the new token
-      window.location.href = '/employer';
-    }
+    const processMagicLink = async () => {
+      if (token) {
+        setIsProcessingMagicLink(true);
+        // 1. Set the token with the correct key expected by api.jsx
+        localStorage.setItem('token', token);
+        
+        try {
+          // 2. Fetch the user profile so the dashboard has data
+          const user = await fetchCurrentUser();
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          // 3. Redirect
+          window.location.href = '/employer';
+        } catch (err) {
+          console.error("Magic link failed:", err);
+          setIsProcessingMagicLink(false);
+          alert("Magic link expired or invalid. Please log in manually.");
+        }
+      }
+    };
+    processMagicLink();
   }, [searchParams]);
 
   async function handle(e) {
@@ -45,7 +60,7 @@ export default function LoginPage() {
       setUser(userToSave);
 
       // 2. Persist the session in localStorage
-      localStorage.setItem('authToken', token);
+      localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userToSave));
 
       nav(role === 'employer' ? '/employer' : '/employee');
