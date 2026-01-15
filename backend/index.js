@@ -61,6 +61,9 @@ async function main() {
   // --- CORS Configuration for Production Security ---
   const whitelist = [
     (process.env.FRONTEND_URL || '').trim(), // Best practice: Use an env var for the frontend URL
+    'https://www.razoncomfort.com',
+    'https://razoncomfort.com',
+    'https://burnout-ai-final.vercel.app',
     'http://localhost:5173' // For local development
   ].filter(Boolean); // Remove undefined values to prevent errors
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { login, recover, fetchCurrentUser } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -22,11 +22,14 @@ export default function LoginPage() {
   const { setUser } = useUser();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
+  const magicLinkProcessed = useRef(false);
 
   useEffect(() => {
     const token = searchParams.get('token');
     const processMagicLink = async () => {
-      if (token) {
+      if (token && !magicLinkProcessed.current) {
+        magicLinkProcessed.current = true; // Prevent double-execution
+        
         setIsProcessingMagicLink(true);
         // 1. Set the token with the correct key expected by api.jsx
         localStorage.setItem('token', token);
@@ -41,7 +44,7 @@ export default function LoginPage() {
         } catch (err) {
           console.error("Magic link failed:", err);
           setIsProcessingMagicLink(false);
-          alert("Magic link expired or invalid. Please log in manually.");
+          alert(`Login failed: ${err.message || "Magic link invalid"}. Please try again.`);
         }
       }
     };

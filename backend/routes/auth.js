@@ -498,6 +498,10 @@ router.get('/magic-link', async (req, res) => {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      console.warn('⚠️ JWT_SECRET is missing in env! Using fallback. This may cause verification errors.');
+    }
+
     // Generate a long-lived token (30 days) for the pilot
     const token = jwt.sign(
       { id: user.id, role: user.role },
