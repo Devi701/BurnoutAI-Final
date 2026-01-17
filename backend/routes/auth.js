@@ -512,6 +512,11 @@ router.get('/magic-link', async (req, res) => {
     // Redirect to frontend login page with token
     let frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').trim();
     
+    // Force custom domain in production to ensure magic link stays on brand
+    if (process.env.NODE_ENV === 'production') {
+      frontendUrl = 'https://www.razoncomfort.com';
+    }
+
     // Ensure protocol and no trailing slash
     if (!frontendUrl.startsWith('http')) frontendUrl = `https://${frontendUrl}`;
     if (frontendUrl.endsWith('/')) frontendUrl = frontendUrl.slice(0, -1);

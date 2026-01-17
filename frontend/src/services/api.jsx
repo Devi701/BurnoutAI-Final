@@ -1,6 +1,11 @@
 // Use VITE_API_URL if set (Production), otherwise fallback to localhost (Dev)
 let BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
+// AUTO-FIX: If running on custom domain, force production backend
+if (typeof window !== 'undefined' && window.location.hostname.includes('razoncomfort.com')) {
+  BASE = 'https://burnoutai-final.onrender.com';
+}
+
 // Fix: Ensure protocol is present. If user entered "myapp.railway.app", force "https://myapp.railway.app"
 if (!BASE.startsWith('http')) {
   BASE = `https://${BASE}`;
