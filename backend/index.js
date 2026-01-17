@@ -95,11 +95,23 @@ async function main() {
   // --- API Routes ---
   app.get('/', (req, res) => {
     const baseUrl = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
-    res.json({
-      status: 'online',
-      message: 'Burnout MVP Backend API',
-      magic_link: `${baseUrl}/api/auth/magic-link?key=burnout_pilot_2026`
-    });
+    const magicLink = `${baseUrl}/api/auth/magic-link?key=burnout_pilot_2026`;
+    
+    // Log to console so it appears in Render logs immediately
+    console.log('🔑 MAGIC LINK REQUESTED:', magicLink);
+
+    // Return HTML for browsers, JSON for API clients
+    if (req.accepts('html')) {
+      res.send(`
+        <div style="font-family:sans-serif;text-align:center;padding:50px;">
+          <h1>Backend Online 🟢</h1>
+          <a href="${magicLink}" style="background:#2563eb;color:white;padding:15px 30px;text-decoration:none;border-radius:5px;font-size:18px;">Login to Pilot</a>
+          <p style="margin-top:20px;color:#666;font-size:12px;">${magicLink}</p>
+        </div>
+      `);
+    } else {
+      res.json({ status: 'online', magic_link: magicLink });
+    }
   });
   app.get('/api', (req, res) => res.json({ ok: true })); // Removed env leak
   
