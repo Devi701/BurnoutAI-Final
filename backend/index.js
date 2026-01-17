@@ -93,6 +93,14 @@ async function main() {
   });
 
   // --- API Routes ---
+  app.get('/', (req, res) => {
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `${req.protocol}://${req.get('host')}`;
+    res.json({
+      status: 'online',
+      message: 'Burnout MVP Backend API',
+      magic_link: `${baseUrl}/api/auth/magic-link?key=burnout_pilot_2026`
+    });
+  });
   app.get('/api', (req, res) => res.json({ ok: true })); // Removed env leak
   
   // Health Check Endpoint (Verifies DB Connection)
@@ -132,6 +140,13 @@ async function main() {
   const PORT = process.env.PORT || 4000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://0.0.0.0:${PORT}`);
+    
+    // Print Magic Link to logs for easy access
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+    console.log('-------------------------------------------------------');
+    console.log('🔑 PILOT MAGIC LINK:');
+    console.log(`${baseUrl}/api/auth/magic-link?key=burnout_pilot_2026`);
+    console.log('-------------------------------------------------------');
   });
 }
 
