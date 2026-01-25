@@ -62,7 +62,7 @@ export default function EmployeeHome() {
       }
 
       // Recover session progress (e.g. if they clicked View Results and came back)
-      const storedStep = parseInt(sessionStorage.getItem('burnout_flow_step') || '0');
+      const storedStep = Number.parseInt(sessionStorage.getItem('burnout_flow_step') || '0');
       let finalStep = Math.max(calculatedStep, storedStep);
 
       // Smart Skips based on Data

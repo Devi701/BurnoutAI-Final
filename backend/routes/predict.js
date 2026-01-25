@@ -86,15 +86,15 @@ async function calculateDailyAdjustment(userId, features, baseline) {
 
 function calculateFullAssessmentScore(features) {
   const config = {
-    boundaries_yes: { weight: 1.0, tip: "Practice saying 'no' to small requests first." },
+    boundaries_yes: { weight: 1, tip: "Practice saying 'no' to small requests first." },
     social_cancel: { weight: 1.2, tip: "Protect your personal time; isolation worsens burnout." },
     conceal_deadlines: { weight: 1.4, tip: "Transparency reduces anxiety. Communicate delays early." },
     escape_thoughts: { weight: 1.5, tip: "Consider speaking with a mentor about your career path." },
-    distractions: { weight: 1.0, tip: "Use time-blocking to manage focus periods." },
+    distractions: { weight: 1, tip: "Use time-blocking to manage focus periods." },
     unhealthy_soothing: { weight: 1.5, tip: "Seek healthy coping mechanisms like exercise or talking to a friend." },
     no_breaks: { weight: 1.1, tip: "Set a timer for 5-minute breaks every hour." },
     skip_lunch: { weight: 1.1, tip: "Nutrition fuels resilience. Step away for lunch." },
-    stimulants: { weight: 1.0, tip: "Reduce caffeine intake after noon to improve sleep." },
+    stimulants: { weight: 1, tip: "Reduce caffeine intake after noon to improve sleep." },
     hard_switch_off: { weight: 1.2, tip: "Create a transition ritual to separate work from home life." },
     sleep_worry: { weight: 1.3, tip: "Write down tomorrow's to-do list before bed to clear your mind." }
   };
@@ -137,7 +137,7 @@ function calculateFullAssessmentScore(features) {
  *          This route is mounted at /api/predict, so its full path is POST /api/predict.
  * @access  Public
  */
-router.post('/', async (req, res, next) => {
+router.post('/', async (req, res) => {
   try {
     // Expect a body like: { type: 'small'|'full', features: { ... } }
     let { type = 'small', userId, features } = req.body;
@@ -235,7 +235,7 @@ router.post('/', async (req, res, next) => {
     res.json(result);
   } catch (error) {
     // Pass any errors to the global error handler in index.js
-    next(error);
+    res.status(500).json({ error: error.message });
   }
 });
 

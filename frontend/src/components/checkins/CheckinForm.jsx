@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import { submitCheckin, fetchUserCheckins } from '../../services/api';
 import { useUser } from '../../context/UserContext';
@@ -24,6 +25,18 @@ const RangeInput = ({ label, name, min, max, value, leftLabel, rightLabel, color
     </div>
   </div>
 );
+
+RangeInput.propTypes = {
+  label: PropTypes.string.isRequired,
+  name: PropTypes.string.isRequired,
+  min: PropTypes.string.isRequired,
+  max: PropTypes.string.isRequired,
+  value: PropTypes.number.isRequired,
+  leftLabel: PropTypes.string.isRequired,
+  rightLabel: PropTypes.string.isRequired,
+  color: PropTypes.string,
+  onChange: PropTypes.func.isRequired
+};
 
 export default function CheckinForm() {
   const { user } = useUser();
@@ -64,7 +77,7 @@ export default function CheckinForm() {
       fetchUserCheckins(user.id)
         .then(data => {
           if (data && data.checkins && data.checkins.length > 0) {
-            const last = data.checkins?.[0];
+            const last = data.checkins[0];
             setFormData(prev => ({
               ...prev,
               // Only prefill stable habits, reset volatile ones like Energy/Stress
@@ -160,8 +173,9 @@ export default function CheckinForm() {
 
       {/* Note */}
       <div style={{ marginBottom: '2rem' }}>
-        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>Daily Note (Optional)</label>
+        <label htmlFor="note-input" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>Daily Note (Optional)</label>
         <textarea 
+          id="note-input"
           name="note" 
           value={formData.note} 
           onChange={handleTextChange}

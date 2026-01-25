@@ -281,7 +281,7 @@ router.get('/personal/me', async (req, res) => {
         }
 
         // C. Generate Projections
-        const lastDate = new Date(historyPoints[historyPoints.length - 1].date);
+        const lastDate = new Date(historyPoints.at(-1).date);
         
         for (let i = 1; i <= projectionDays; i++) {
           const nextDate = new Date(lastDate);
@@ -316,7 +316,7 @@ router.get('/personal/me', async (req, res) => {
         }
       } else {
         // Fallback: Not enough data, repeat last value
-        const lastVal = historyPoints.length > 0 ? historyPoints[historyPoints.length - 1][key] : 0;
+        const lastVal = historyPoints.length > 0 ? historyPoints.at(-1)[key] : 0;
         for(let i=0; i<projectionDays; i++) {
             projectedValues.push(lastVal);
             upper.push(lastVal);
@@ -332,7 +332,7 @@ router.get('/personal/me', async (req, res) => {
     const projectedRisk = [];
     const riskUpper = [];
     const riskLower = [];
-    const lastDate = historyPoints.length > 0 ? new Date(historyPoints[historyPoints.length - 1].date) : new Date();
+    const lastDate = historyPoints.length > 0 ? new Date(historyPoints.at(-1).date) : new Date();
 
     // Calculate Standard Deviation of recent risk scores for confidence interval
     const recentRisk = riskData.slice(-14);
@@ -384,7 +384,7 @@ router.get('/personal/me', async (req, res) => {
 
     if (checkins.length > 0) {
       // Helper: Pearson Correlation Coefficient
-      const calculateCorrelation = (x, y) => {
+      const calculateCorrelationLocal = (x, y) => {
         const n = x.length;
         if (n < 2) return 0;
         const sumX = x.reduce((a, b) => a + b, 0);
@@ -400,7 +400,7 @@ router.get('/personal/me', async (req, res) => {
       };
 
       // Helper: Exponential Moving Average
-      const calcEMA = (arr) => {
+      const calcEMALocal = (arr) => {
         if (arr.length === 0) return 0;
         const k = 2 / (arr.length + 1);
         return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
@@ -413,15 +413,15 @@ router.get('/personal/me', async (req, res) => {
       const vecEnergy = relevantPoints.map(p => p.energy);
 
       // A. Calculate Correlations (User-specific sensitivity)
-      const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
-      const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
+      const corrStress = Math.abs(calculateCorrelationLocal(vecStress, vecRisk));
+      const corrEnergy = Math.abs(calculateCorrelationLocal(vecEnergy, vecRisk));
 
       // B. Define Base Weights (Domain Knowledge / Biological Importance)
       const baseWeights = { stress: 0.6, energy: 0.4 };
 
       // C. Calculate Current Severity (EMA of last 7 days)
-      const recentStress = calcEMA(vecStress.slice(-7));
-      const recentEnergy = calcEMA(vecEnergy.slice(-7));
+      const recentStress = calcEMALocal(vecStress.slice(-7));
+      const recentEnergy = calcEMALocal(vecEnergy.slice(-7));
 
       // D. Calculate Deviation from Optimal (Normalized 0-1)
       const devStress = Math.max(0, recentStress / 100); 
@@ -559,7 +559,7 @@ router.get('/:companyCode', async (req, res) => {
     try { companyCode = decodeURIComponent(companyCode); } catch (e) {}
 
     // Handle case where query params are encoded into the path parameter (e.g. from frontend encoding issues)
-    if (companyCode && companyCode.includes('?')) {
+    if (companyCode?.includes('?')) {
       const parts = companyCode.split('?');
       companyCode = parts[0];
       if (!teamId && parts[1]) {
@@ -575,8 +575,8 @@ router.get('/:companyCode', async (req, res) => {
 
     if (teamId && teamId !== 'undefined' && teamId !== 'null') {
       // If filtering by team, trust the team assignment (include anyone in the team)
-      const parsedTeamId = parseInt(teamId, 10);
-      if (!isNaN(parsedTeamId)) {
+      const parsedTeamId = Number.parseInt(teamId, 10);
+      if (!Number.isNaN(parsedTeamId)) {
         whereClause.teamId = parsedTeamId;
       }
     } else {
@@ -631,7 +631,6 @@ router.get('/:companyCode', async (req, res) => {
     const teamAdherence = totalTrackedItems > 0 ? Math.round((totalCompletedItems / totalTrackedItems) * 100) : 0;
 
     // Calculate current risk for each employee to populate distribution
-    const empCheckins = checkins; // Assuming checkins are already fetched for all employees
 
     for (const empId of employeeIds) {
       const employeeCheckins = checkins.filter(c => c.userId === empId);

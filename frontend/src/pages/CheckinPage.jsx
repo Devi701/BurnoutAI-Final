@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import CheckinForm from '../components/checkins/CheckinForm';
@@ -65,6 +66,17 @@ const PulseSurveyForm = ({ survey }) => {
       </button>
     </form>
   );
+};
+
+PulseSurveyForm.propTypes = {
+  survey: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    name: PropTypes.string.isRequired,
+    questions: PropTypes.arrayOf(PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      text: PropTypes.string.isRequired
+    })).isRequired
+  }).isRequired
 };
 
 export default function CheckinPage() {

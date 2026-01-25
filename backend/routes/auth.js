@@ -133,7 +133,9 @@ const handleSignup = async (req, res) => {
       return res.status(400).json({ error: 'Email is already registered.' });
     }
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: error.errors?.map(e => e.message).join(', ') });
+      return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
+      return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
+      return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
     }
 
     res.status(400).json({ error: 'Registration failed: ' + error.message });

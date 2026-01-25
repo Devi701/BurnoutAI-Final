@@ -42,11 +42,11 @@ try {
   ];
 
   for (const col of columnsToAdd) {
-    if (!existingUserCols.has(col.name)) {
+    if (existingUserCols.has(col.name)) {
+      console.log(`Note: Column '${col.name}' already exists in Users.`);
+    } else {
       await sequelize.query(`ALTER TABLE Users ADD COLUMN ${col.name} ${col.type}`);
       console.log(`Successfully added '${col.name}' column to Users table.`);
-    } else {
-      console.log(`Note: Column '${col.name}' already exists in Users.`);
     }
   }
 
@@ -68,11 +68,11 @@ try {
   const existingCheckinCols = new Set(checkinCols.map(c => c.name));
 
   for (const col of checkinColumnsToAdd) {
-    if (!existingCheckinCols.has(col.name)) {
+    if (existingCheckinCols.has(col.name)) {
+      console.log(`Note: Column '${col.name}' already exists in checkins.`);
+    } else {
       await sequelize.query(`ALTER TABLE checkins ADD COLUMN ${col.name} ${col.type}`);
       console.log(`Successfully added '${col.name}' column to checkins table.`);
-    } else {
-      console.log(`Note: Column '${col.name}' already exists in checkins.`);
     }
   }
 
@@ -122,11 +122,11 @@ try {
   `);
 
   // Add teamId to Users
-  if (!existingUserCols.has('teamId')) {
+  if (existingUserCols.has('teamId')) {
+    console.log(`Note: Column 'teamId' already exists in Users.`);
+  } else {
     await sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
     console.log(`Successfully added 'teamId' column to Users table.`);
-  } else {
-    console.log(`Note: Column 'teamId' already exists in Users.`);
   }
 
   // Attempt to migrate data from old user_id column if it exists and userId is empty
@@ -140,7 +140,7 @@ try {
        console.log("Migrated data from user_id to userId.");
     }
   } catch (err) {
-    console.log("Migration step skipped or failed: " + err.message);
+    console.log("Migration step skipped or failed: " + err?.message);
   }
 
   // OPTIONAL: set company_code for existing rows that are NULL (uncomment if desired)
@@ -154,7 +154,7 @@ try {
     const [cResults] = await sequelize.query("PRAGMA table_info(checkins)");
     console.log("Current Checkins table columns:", cResults.map(c => c.name).join(', '));
   } catch (e) {
-    console.log("Could not verify Users table.");
+    console.log("Could not verify Users table.", e);
   }
 
   // print distinct user count for ACME (change code if needed)

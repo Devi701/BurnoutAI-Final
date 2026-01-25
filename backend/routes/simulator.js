@@ -15,7 +15,7 @@ try {
 
 // Define ActionPlan model dynamically if db.sequelize is available
 // Note: In a full production app, this should be in /models/ActionPlan.js and imported in database.js
-let ActionPlan;
+let ActionPlan = null;
 if (db && db.sequelize) {
   ActionPlan = db.sequelize.define('ActionPlan', {
     userId: { type: DataTypes.INTEGER, allowNull: false },
@@ -41,7 +41,7 @@ const NUM_SIMULATIONS = 50; // 2. Monte Carlo: Run multiple times to average noi
 
 function runSimulation(baselineFeatures, actions) {
   const dailySums = new Array(SIMULATION_DAYS).fill(0);
-  const noise = () => (Math.random() * 1.0) - 0.5;
+  const noise = () => (Math.random() * 1) - 0.5;
 
   for (let sim = 0; sim < NUM_SIMULATIONS; sim++) {
     let currentScore = Math.round((baselineFeatures.stress + (100 - baselineFeatures.energy)) / 2); 

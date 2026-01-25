@@ -165,9 +165,6 @@ export default function PilotSurveyModal({ userId, companyCode, activeDays, onCl
   );
 }
 
-Label.propTypes = { children: PropTypes.node.isRequired };
-Select.propTypes = { value: PropTypes.string.isRequired, onChange: PropTypes.func.isRequired, options: PropTypes.array.isRequired };
-
 const Label = ({ children }) => <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155', marginBottom: '-0.5rem' }}>{children}</label>;
 
 const Select = ({ value, onChange, options }) => (
@@ -175,6 +172,9 @@ const Select = ({ value, onChange, options }) => (
     {options.map(o => <option key={o} value={o}>{o}</option>)}
   </select>
 );
+
+Label.propTypes = { children: PropTypes.node.isRequired };
+Select.propTypes = { value: PropTypes.string.isRequired, onChange: PropTypes.func.isRequired, options: PropTypes.array.isRequired };
 
 const inputStyle = {
   padding: '8px',

@@ -32,7 +32,7 @@ async function initializeDatabase() {
     const db = require('./db/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
       await db.sequelize.authenticate();
-      const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
+      const host = db.sequelize.config?.host ?? db.sequelize.options?.host ?? 'unknown';
       console.log(`Database connection has been established successfully to: ${host}`);
     } else if (typeof db === 'function') {
       db(); // Support for simple init function pattern

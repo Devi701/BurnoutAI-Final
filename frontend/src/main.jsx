@@ -24,6 +24,7 @@ createRoot(document.getElementById('root')).render(
         defaults: '2025-05-24',
         capture_exceptions: true,
         debug: import.meta.env.MODE === 'development',
+        capture_performance: false, // Disable Web Vitals to prevent loading errors
       }}
     >
       <MainApp />

@@ -39,7 +39,7 @@ const generateLandscapeData = (report) => {
   const gridResolution = 20;
   const grid = new Array(gridResolution).fill().map(() => new Array(gridResolution).fill(0));
   
-  if (!report || !report.riskDistribution) return grid;
+  if (!report?.riskDistribution) return grid;
 
   const { low, moderate, high, critical } = report?.riskDistribution || {};
   
@@ -73,10 +73,6 @@ const generateLandscapeData = (report) => {
   addPoints(critical, 15, 20, 0, 6);
 
   return grid;
-};
-
-DensityLandscape.propTypes = {
-  report: PropTypes.object
 };
 
 const DensityLandscape = ({ report }) => {
@@ -152,7 +148,7 @@ const DensityLandscape = ({ report }) => {
               const isHovered = hoveredCell && hoveredCell.x === x && hoveredCell.y === y;
 
               return (
-                <div key={`${x}-${y}`}
+                <div key={`${x}-${y}`} role="button" tabIndex="0" onKeyDown={() => {}}
                   onMouseEnter={() => setHoveredCell({ x, y, count, risk: Math.round(riskFactor * 100), stress: Math.round(stressPct * 100), recovery: Math.round(recoveryPct * 100) })}
                   onMouseLeave={() => setHoveredCell(null)}
                   style={{
@@ -267,6 +263,10 @@ const DensityLandscape = ({ report }) => {
       </div>
     </div>
   );
+};
+
+DensityLandscape.propTypes = {
+  report: PropTypes.object
 };
 
 export default function EmployerHome() {
@@ -1472,12 +1472,6 @@ export default function EmployerHome() {
   );
 }
 
-SurveyCreator.propTypes = {
-  user: PropTypes.object.isRequired,
-  onSave: PropTypes.func.isRequired,
-  onClose: PropTypes.func.isRequired
-};
-
 const SurveyCreator = ({ user, onSave, onClose }) => {
   const [name, setName] = useState('');
   const [questions, setQuestions] = useState([{ id: 'q1', text: '', type: 'scale' }]);
@@ -1538,10 +1532,9 @@ const SurveyCreator = ({ user, onSave, onClose }) => {
   );
 };
 
-SurveyResultsViewer.propTypes = {
-  survey: PropTypes.object.isRequired,
-  results: PropTypes.object,
-  loading: PropTypes.bool,
+SurveyCreator.propTypes = {
+  user: PropTypes.object.isRequired,
+  onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired
 };
 
@@ -1582,4 +1575,11 @@ const SurveyResultsViewer = ({ survey, results, loading, onClose }) => {
       </div>
     </div>
   );
+};
+
+SurveyResultsViewer.propTypes = {
+  survey: PropTypes.object.isRequired,
+  results: PropTypes.object,
+  loading: PropTypes.bool,
+  onClose: PropTypes.func.isRequired
 };

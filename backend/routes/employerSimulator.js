@@ -82,15 +82,20 @@ router.post('/simulate', async (req, res) => {
     const variance = changes.reduce((a,b) => a + Math.pow(b - meanChange, 2), 0) / changes.length;
     const volatility = Math.sqrt(variance);
 
+    let trend = 'Flat';
+    if (delta > 0) {
+      trend = 'Improving';
+    } else if (delta < 0) {
+      trend = 'Worsening';
+    }
+
     res.json({
       timeline,
       metrics: {
         deltaPercent: deltaPercent.toFixed(1),
         timeToImpact: impactDay > -1 ? impactDay : null,
         volatility: volatility.toFixed(2),
-        trend: delta > 0 ? 'Improving' 
-             : delta < 0 ? 'Worsening' 
-             : 'Flat',
+        trend,
         estimatedCost: Math.round(estimatedCost || 0),
         projectDeadline: plan.projectDeadline || null
       }

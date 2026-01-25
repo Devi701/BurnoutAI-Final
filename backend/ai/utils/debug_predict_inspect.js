@@ -93,7 +93,7 @@ async function inspectPredictions() {
 
   // If rowToFeatureArray exists, show mapping
   if (typeof dp.rowToFeatureArray === 'function') {
-    const meta = (dp.loadModelSync && dp.loadModelSync(smallModel)) || {};
+    const meta = dp.loadModelSync?.(smallModel) || {};
     const features = meta.features || (Array.isArray(meta) ? meta : null);
     inspectRowToFeatureArray(features);
   }
