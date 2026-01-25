@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 
 const UserContext = createContext();
 
@@ -28,3 +29,7 @@ export function UserProvider({ children }) {
 }
 
 export const useUser = () => useContext(UserContext);
+
+UserProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};

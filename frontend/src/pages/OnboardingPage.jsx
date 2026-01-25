@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { signupEmployee, signupEmployer } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -11,6 +12,10 @@ const ProgressBar = ({ step }) => (
     <div style={{ width: `${(step / 5) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
   </div>
 );
+
+ProgressBar.propTypes = {
+  step: PropTypes.number.isRequired,
+};
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
