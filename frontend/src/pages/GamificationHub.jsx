@@ -136,7 +136,7 @@ export default function GamificationHub() {
               <span style={{ fontSize: '0.85rem', color: '#475569' }}>
                 {profile?.stats?.optInLeaderboard ? 'Visible' : 'Hidden'}
               </span>
-              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }}>
+              <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '40px', height: '20px' }} aria-label="Toggle Leaderboard Visibility">
                 <input 
                   type="checkbox" 
                   checked={!!profile?.stats?.optInLeaderboard} 
@@ -149,12 +149,7 @@ export default function GamificationHub() {
             </div>
           </div>
           
-          {!profile?.stats?.optInLeaderboard ? (
-            <div style={{ textAlign: 'center', padding: '2rem', background: '#f8fafc', borderRadius: '8px', color: '#64748b' }}>
-              <p>🔒 <strong>Privacy First:</strong> You are currently hidden from the leaderboard.</p>
-              <p style={{ fontSize: '0.9rem' }}>Opt-in above to share your wellness progress and inspire your team.</p>
-            </div>
-          ) : (
+          {profile?.stats?.optInLeaderboard ? (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '2px solid #f1f5f9' }}>
@@ -166,7 +161,7 @@ export default function GamificationHub() {
               </thead>
               <tbody>
                 {leaderboard.map((leader, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid #f1f5f9', background: index === 0 ? '#fffbeb' : 'transparent' }}>
+                  <tr key={leader.userId || index} style={{ borderBottom: '1px solid #f1f5f9', background: index === 0 ? '#fffbeb' : 'transparent' }}>
                     <td style={{ padding: '1rem', fontWeight: 'bold', color: index < 3 ? '#d97706' : '#64748b' }}>#{index + 1}</td>
                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                       <div style={{ width: '32px', height: '32px', background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#475569' }}>{leader.avatar}</div>
@@ -179,6 +174,11 @@ export default function GamificationHub() {
                 ))}
               </tbody>
             </table>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem', background: '#f8fafc', borderRadius: '8px', color: '#64748b' }}>
+              <p>🔒 <strong>Privacy First:</strong> You are currently hidden from the leaderboard.</p>
+              <p style={{ fontSize: '0.9rem' }}>Opt-in above to share your wellness progress and inspire your team.</p>
+            </div>
           )}
         </div>
 

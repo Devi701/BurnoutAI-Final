@@ -50,4 +50,4 @@ async function verifyGamificationModels() {
   }
 }
 
-verifyGamificationModels();
+try { await verifyGamificationModels(); } catch (e) { console.error(e); }

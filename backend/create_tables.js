@@ -1,6 +1,6 @@
 const db = require('./db/database');
 
-async function main() {
+try {
   const sequelize = db.sequelize;
   
   // Skip manual table creation for PostgreSQL (Sequelize sync in index.js handles it)
@@ -23,6 +23,10 @@ async function main() {
     );
   `);
 
+  // Get existing columns for Users to avoid try-catch on ALTER
+  const [userCols] = await sequelize.query("PRAGMA table_info(Users)");
+  const existingUserCols = new Set(userCols.map(c => c.name));
+
   // Manually fix Users table by adding missing columns required by auth.js
   const columnsToAdd = [
     { name: 'name', type: 'TEXT' },
@@ -38,11 +42,11 @@ async function main() {
   ];
 
   for (const col of columnsToAdd) {
-    try {
+    if (!existingUserCols.has(col.name)) {
       await sequelize.query(`ALTER TABLE Users ADD COLUMN ${col.name} ${col.type}`);
       console.log(`Successfully added '${col.name}' column to Users table.`);
-    } catch (err) {
-      console.log(`Note: Could not add '${col.name}' column (it might already exist).`);
+    } else {
+      console.log(`Note: Column '${col.name}' already exists in Users.`);
     }
   }
 
@@ -59,12 +63,16 @@ async function main() {
     { name: 'note', type: 'TEXT' }
   ];
 
+  // Get existing columns for checkins
+  const [checkinCols] = await sequelize.query("PRAGMA table_info(checkins)");
+  const existingCheckinCols = new Set(checkinCols.map(c => c.name));
+
   for (const col of checkinColumnsToAdd) {
-    try {
+    if (!existingCheckinCols.has(col.name)) {
       await sequelize.query(`ALTER TABLE checkins ADD COLUMN ${col.name} ${col.type}`);
       console.log(`Successfully added '${col.name}' column to checkins table.`);
-    } catch (err) {
-      console.log(`Note: Could not add '${col.name}' column (it might already exist).`);
+    } else {
+      console.log(`Note: Column '${col.name}' already exists in checkins.`);
     }
   }
 
@@ -114,19 +122,20 @@ async function main() {
   `);
 
   // Add teamId to Users
-  try {
+  if (!existingUserCols.has('teamId')) {
     await sequelize.query(`ALTER TABLE Users ADD COLUMN teamId INTEGER`);
     console.log(`Successfully added 'teamId' column to Users table.`);
-  } catch (err) {
-    console.log(`Note: Could not add 'teamId' column (it might already exist).`);
+  } else {
+    console.log(`Note: Column 'teamId' already exists in Users.`);
   }
 
   // Attempt to migrate data from old user_id column if it exists and userId is empty
   try {
+    // Re-fetch checkins info in case we added columns
     const [columns] = await sequelize.query("PRAGMA table_info(checkins)");
-    const colNames = columns.map(c => c.name);
+    const colNames = new Set(columns.map(c => c.name));
 
-    if (colNames.includes('user_id') && colNames.includes('userId')) {
+    if (colNames.has('user_id') && colNames.has('userId')) {
        await sequelize.query("UPDATE checkins SET userId = user_id WHERE userId IS NULL");
        console.log("Migrated data from user_id to userId.");
     }
@@ -161,9 +170,7 @@ async function main() {
   }
 
   process.exit(0);
-}
-
-main().catch(err => {
-  console.error('create_tables error:', err && err.message ? err.message : err);
+} catch (err) {
+  console.error('create_tables error:', err?.message ?? err);
   process.exit(1);
-});
+}

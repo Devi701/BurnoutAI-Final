@@ -83,4 +83,4 @@ async function run() {
   }
 }
 
-run();
+try { await run(); } catch (e) { console.error(e); }

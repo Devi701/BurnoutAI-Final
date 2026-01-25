@@ -17,7 +17,7 @@
 const normalizeMetric = (key, value) => {
   if (value === null || value === undefined) return null;
   const val = Number(value);
-  if (isNaN(val)) return null;
+  if (Number.isNaN(val)) return null;
 
   switch (key) {
     // Direct Mapping: High Value = High Risk
@@ -94,7 +94,7 @@ function analyzeBurnoutDrivers(checkins = [], quizResults = []) {
     let breakdown = q.breakdown;
     // Handle potential stringified JSON from DB
     if (typeof breakdown === 'string') {
-      try { breakdown = JSON.parse(breakdown); } catch (e) { breakdown = {}; }
+      try { breakdown = JSON.parse(breakdown); } catch (e) { breakdown = {}; console.error('JSON parse error:', e.message); }
     }
     if (!breakdown) return;
 
@@ -121,7 +121,7 @@ function analyzeBurnoutDrivers(checkins = [], quizResults = []) {
         top = { factor, score: avg };
       }
     });
-    return { userId: parseInt(userId), topFactor: top.factor, score: top.score };
+    return { userId: Number.parseInt(userId), topFactor: top.factor, score: top.score };
   });
 
   return { teamTopFactor, employeeInsights };

@@ -22,7 +22,7 @@ export const analytics = {
 
   identify: (user) => {
     if (!API_KEY) return; // Safety check
-    if (!user || !user.id) return;
+    if (!user?.id) return;
 
 
     // Ensure we are opted in if not internal
@@ -52,7 +52,7 @@ export const analytics = {
     const eventProps = {
       ...properties,
       timestamp: new Date().toISOString(),
-      $current_url: window.location.href
+      $current_url: globalThis.location.href
     };
 
     posthog.capture(eventName, eventProps);

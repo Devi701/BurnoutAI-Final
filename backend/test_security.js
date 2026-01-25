@@ -5,13 +5,7 @@ const BASE_URL = process.argv[2] || 'http://localhost:4000/api';
 const EMAIL = 'boss@test.com';
 const PASSWORD = 'password123';
 
-async function runSecurityTests() {
-  console.log(`🛡️  Starting Security Audit against: ${BASE_URL}\n`);
-
-  let token = null;
-  let userId = null;
-
-  // --- 1. SQL Injection Test (Login) ---
+async function testSqlInjection() {
   console.log('1️⃣  Testing SQL Injection (Login Bypass)...');
   try {
     await axios.post(`${BASE_URL}/auth/login`, {
@@ -20,24 +14,27 @@ async function runSecurityTests() {
     });
     console.log('   ❌ FAILED: SQL Injection might have succeeded (Login successful).');
   } catch (err) {
-    if (err.response && err.response.status === 401) {
+    if (err.response?.status === 401) {
       console.log('   ✅ PASSED: SQL Injection blocked (401 Unauthorized).');
-    } else if (err.response && err.response.status === 500) {
+    } else if (err.response?.status === 500) {
       console.log('   ⚠️  WARNING: Server error (500). Check logs for SQL syntax errors leaking.');
     } else {
-      console.log(`   ✅ PASSED: Request rejected with status ${err.response ? err.response.status : 'Unknown'}.`);
+      console.log(`   ✅ PASSED: Request rejected with status ${err.response?.status ?? 'Unknown'}.`);
     }
   }
+}
 
-  // --- 2. Sensitive Data Exposure ---
+async function testSensitiveData() {
   console.log('\n2️⃣  Testing Sensitive Data Exposure...');
+  let token = null;
+  let userId = null;
   try {
     let res;
     try {
       res = await axios.post(`${BASE_URL}/auth/login`, { email: EMAIL, password: PASSWORD });
-    } catch (loginErr) {
+    } catch (error_) {
       // Auto-create user if missing (Self-healing test)
-      if (loginErr.response && (loginErr.response.status === 401 || loginErr.response.status === 404)) {
+      if (error_.response && (error_.response.status === 401 || error_.response.status === 404)) {
         console.log('   ℹ️  User not found. Creating test employer...');
         await axios.post(`${BASE_URL}/auth/signup/employer`, {
           email: EMAIL,
@@ -46,7 +43,7 @@ async function runSecurityTests() {
           companyCode: 'SEC001'
         });
         res = await axios.post(`${BASE_URL}/auth/login`, { email: EMAIL, password: PASSWORD });
-      } else throw loginErr;
+      } else throw error_;
     }
 
     token = res.data.token;
@@ -64,22 +61,25 @@ async function runSecurityTests() {
   } catch (err) {
     console.log('   ⚠️  SKIPPED: Could not log in or create user. ' + err.message);
   }
+  return { token, userId };
+}
 
-  // --- 3. Unauthenticated Access Control ---
+async function testUnauthenticatedAccess(userId) {
   console.log('\n3️⃣  Testing Unauthenticated Access...');
   try {
     // Try to access a protected route without a token
     await axios.get(`${BASE_URL}/reports/personal/me?userId=${userId || 1}`);
     console.log('   ❌ FAILED: Protected endpoint accessed without token.');
   } catch (err) {
-    if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+    if (err.response?.status === 401 || err.response?.status === 403) {
       console.log('   ✅ PASSED: Access denied (401/403).');
     } else {
-      console.log(`   ❓ UNEXPECTED: Status ${err.response ? err.response.status : err.message}`);
+      console.log(`   ❓ UNEXPECTED: Status ${err.response?.status ?? err.message}`);
     }
   }
+}
 
-  // --- 4. Rate Limiting (Brute Force Protection) ---
+async function testRateLimiting() {
   console.log('\n4️⃣  Testing Rate Limiting (Brute Force)...');
   console.log('   Sending 20 rapid login attempts...');
   const attempts = [];
@@ -87,7 +87,7 @@ async function runSecurityTests() {
     attempts.push(
       axios.post(`${BASE_URL}/auth/login`, { email: 'hacker@test.com', password: 'wrongpassword' })
         .then(r => r.status)
-        .catch(err => err.response ? err.response.status : 'Error')
+        .catch(err => err.response?.status ?? 'Error')
     );
   }
   const results = await Promise.all(attempts);
@@ -98,8 +98,9 @@ async function runSecurityTests() {
   } else {
     console.log('   ❌ FAILED: No rate limiting detected (Brute force possible).');
   }
+}
 
-  // --- 5. Broken Object Level Authorization (BOLA/IDOR) ---
+async function testIdor(token, userId) {
   console.log('\n5️⃣  Testing IDOR (Accessing another user\'s data)...');
   if (token && userId) {
     const targetId = userId + 1; // Try a different ID
@@ -109,27 +110,28 @@ async function runSecurityTests() {
       });
       
       // If we get data back, check if it's actually data or empty
-      if (res.data && res.data.checkins && res.data.checkins.length > 0) {
+      if (res.data?.checkins?.length > 0) {
          console.log(`   ❌ FAILED: IDOR Vulnerability! Accessed data for User ID ${targetId} using User ID ${userId}'s token.`);
-      } else if (res.data && res.data.checkins) {
+      } else if (res.data?.checkins) {
          console.log(`   ⚠️  WARNING: Request succeeded for User ID ${targetId} (returned empty array). Backend should ideally block this.`);
       } else {
          console.log(`   ✅ PASSED: No data returned.`);
       }
     } catch (err) {
-      if (err.response && (err.response.status === 403 || err.response.status === 401)) {
+      if (err.response?.status === 403 || err.response?.status === 401) {
         console.log('   ✅ PASSED: Access to other user data denied.');
-      } else if (err.response && err.response.status === 404) {
+      } else if (err.response?.status === 404) {
          console.log('   ℹ️  INCONCLUSIVE: Target user not found (404).');
       } else {
-         console.log(`   ❓ UNEXPECTED: Status ${err.response ? err.response.status : err.message}`);
+         console.log(`   ❓ UNEXPECTED: Status ${err.response?.status ?? err.message}`);
       }
     }
   } else {
     console.log('   ⚠️  SKIPPED: Need valid login to test IDOR.');
   }
+}
 
-  // --- 6. Database Error Leakage ---
+async function testDbLeak() {
   console.log('\n6️⃣  Testing Database Error Leakage...');
   try {
     // Send malformed payload to trigger DB error
@@ -151,8 +153,23 @@ async function runSecurityTests() {
       }
     }
   }
+}
+
+async function runSecurityTests() {
+  console.log(`🛡️  Starting Security Audit against: ${BASE_URL}\n`);
+
+  await testSqlInjection();
+  const { token, userId } = await testSensitiveData();
+  await testUnauthenticatedAccess(userId);
+  await testRateLimiting();
+  await testIdor(token, userId);
+  await testDbLeak();
 
   console.log('\n🏁 Security Audit Complete.');
 }
 
-runSecurityTests();
+try {
+  await runSecurityTests();
+} catch (error) {
+  console.error(error);
+}

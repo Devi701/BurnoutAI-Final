@@ -47,4 +47,4 @@ async function seedDatabase() {
   }
 }
 
-seedDatabase();
+try { await seedDatabase(); } catch (e) { console.error(e); }

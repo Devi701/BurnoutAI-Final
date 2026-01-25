@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
-const parse = require('csv-parse/lib/sync'); // csv-parse v4
-const { preprocessFeatures, trainModel } = require('./data_helpers'); // Adjust path if needed
+const fs = require('node:fs');
+const path = require('node:path');
+const { parse } = require('csv-parse/sync'); // csv-parse v4
+const { DecisionTreeRegression } = require('ml-cart');
 
 // Paths
 const dataFile = path.join(__dirname, '../datasets/stress data full processed.csv');
@@ -17,18 +17,30 @@ let records = parse(rawData, {
 });
 
 // Preprocess: convert all numeric fields to floats, replace invalids with 0
-records = records.map(row => {
-  const newRow = {};
-  for (let key in row) {
-    const val = parseFloat(row[key]);
-    newRow[key] = isNaN(val) ? 0 : val;
-  }
-  return newRow;
+const featureCols = [
+  'EE1','EE2','EE3','EE4','EE5','EE6','EE7',
+  'S1','S2','S3','S4','S5',
+  'SFQ1','SFQ2','SFQ3',
+  'wp1','wp2','wp3','wp4',
+  'cogn1','cogn2','cogn3','cogn4',
+  'SS1','SS2','SS3','CS1','CS2','CS3',
+  'auton1','auton2','auton3'
+];
+const targetCol = 'burnout_score';
+
+const X = records.map(r => featureCols.map(f => {
+  const val = Number.parseFloat(r[f]);
+  return Number.isNaN(val) ? 0 : val;
+}));
+const y = records.map(r => {
+  const val = Number.parseFloat(r[targetCol]);
+  return Number.isNaN(val) ? 0 : val;
 });
 
 // Train model
-const model = trainModel(preprocessFeatures(records));
+const tree = new DecisionTreeRegression({ maxDepth: 7 });
+tree.train(X, y);
 
 // Save model
-fs.writeFileSync(modelFile, JSON.stringify(model, null, 2));
+fs.writeFileSync(modelFile, JSON.stringify(tree.toJSON(), null, 2));
 console.log('Full model updated successfully.');

@@ -11,7 +11,7 @@ try {
   if (process.env.POSTHOG_KEY) {
     posthog = new PostHog(process.env.POSTHOG_KEY, { host: 'https://eu.posthog.com' });
   }
-} catch (e) { console.log('PostHog not configured in checkins.'); }
+} catch (e) { console.error('PostHog not configured in checkins:', e.message); }
 
 // GET /api/checkins/history/:userId
 // Fetches all check-ins for a specific user, ordered by newest first
@@ -20,7 +20,7 @@ router.get('/history/:userId', async (req, res) => {
     const { userId } = req.params;
 
     // Security: Prevent IDOR (Accessing another user's history)
-    if (req.user.id !== parseInt(userId, 10)) {
+    if (req.user.id !== Number.parseInt(userId, 10)) {
       return res.status(403).json({ error: 'Unauthorized access to this history.' });
     }
 
@@ -35,123 +35,105 @@ router.get('/history/:userId', async (req, res) => {
   }
 });
 
+async function handleCheckinStorage(userId, body) {
+  const { 
+    energy, sleepHours, sleepQuality, breaks, middayEnergy,
+    stress, workload, anxiety,
+    engagement, mood, motivation,
+    peerSupport, managementSupport, commuteStress,
+    companyCode, note 
+  } = body;
+
+  const user = await db.User.findByPk(userId);
+  const isTestUser = user && user.email.toLowerCase() === 'testuser@gmail.com';
+  
+  let customDate = new Date();
+
+  if (isTestUser) {
+    // Test User: Increment date to simulate history (Next Day)
+    const lastCheckin = await db.Checkin.findOne({
+      where: { userId },
+      order: [['createdAt', 'DESC']]
+    });
+    if (lastCheckin) {
+      const nextDay = new Date(lastCheckin.createdAt);
+      nextDay.setDate(nextDay.getDate() + 1);
+      customDate = nextDay;
+    }
+  } else {
+    // Production: Limit to one per day, overwrite if exists
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingCheckin = await db.Checkin.findOne({
+      where: {
+        userId,
+        createdAt: { [Op.gte]: startOfDay, [Op.lte]: endOfDay }
+      }
+    });
+
+    if (existingCheckin) {
+      await existingCheckin.update({ 
+        energy, sleepHours, sleepQuality, breaks, middayEnergy,
+        stress, workload, anxiety, engagement, mood, motivation,
+        peerSupport, managementSupport, commuteStress, companyCode, note 
+      });
+      return { checkin: existingCheckin, isNew: false };
+    }
+  }
+
+  const newCheckin = await db.Checkin.create({
+    userId,
+    energy, sleepHours, sleepQuality, breaks, middayEnergy,
+    stress, workload, anxiety,
+    engagement, mood, motivation,
+    peerSupport, managementSupport, commuteStress,
+    companyCode,
+    note,
+    createdAt: customDate,
+    updatedAt: customDate
+  });
+
+  return { checkin: newCheckin, isNew: true };
+}
+
 // POST /api/checkins
 // Saves a new daily check-in
 router.post('/', async (req, res) => {
   try {
-    const { userId, stress, sleep, workload, coffee, companyCode, note } = req.body;
+    const { userId, companyCode, stress, energy, workload, sleepQuality, engagement } = req.body;
     
-    // Check if user is the designated test user for unlimited check-ins
-    const user = await db.User.findByPk(userId);
-    const isTestUser = user && user.email.toLowerCase() === 'testuser@gmail.com';
-    
-    let customDate = new Date();
+    const { checkin, isNew } = await handleCheckinStorage(userId, req.body);
 
-    if (!isTestUser) {
-      // Production: Limit to one per day, overwrite if exists
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
-
-      const existingCheckin = await db.Checkin.findOne({
-        where: {
-          userId,
-          createdAt: { [Op.gte]: startOfDay, [Op.lte]: endOfDay }
-        }
-      });
-
-      if (existingCheckin) {
-        await existingCheckin.update({ stress, sleep, workload, coffee, companyCode, note });
-        return res.status(200).json(existingCheckin);
-      }
-    } else {
-      // Test User: Increment date to simulate history (Next Day)
-      const lastCheckin = await db.Checkin.findOne({
-        where: { userId },
-        order: [['createdAt', 'DESC']]
-      });
-      if (lastCheckin) {
-        const nextDay = new Date(lastCheckin.createdAt);
-        nextDay.setDate(nextDay.getDate() + 1);
-        customDate = nextDay;
-      }
+    if (!isNew) {
+      return res.status(200).json(checkin);
     }
 
-    const newCheckin = await db.Checkin.create({
-      userId,
-      stress,
-      sleep,
-      workload,
-      coffee,
-      companyCode,
-      note,
-      createdAt: customDate,
-      updatedAt: customDate
-    });
-
     // --- Gamification Trigger ---
-    // Calculate streak (simplified for this context, or pass existing streak logic)
-    // We'll let the service handle the logic, just passing the event
-    // Ideally, we pass the calculated streak from below, but for MVP we trigger 'daily_checkin'
-    // The service will handle basic XP.
     const gamificationResult = await GamificationService.processEvent(userId, 'daily_checkin', { streak: 1 }); // Placeholder streak
 
     // --- Analytics Tracking ---
     if (posthog) {
       try {
-        const user = await db.User.findByPk(userId);
-        if (user) {
-          // Check if this is the first checkin
-          const count = await db.Checkin.count({ where: { userId } });
-          
-          if (count === 1) {
-            posthog.capture({ distinctId: String(userId), event: 'first_checkin_completed', properties: { company_id: companyCode } });
-          }
-
-          // Calculate Streak
-          const recentCheckins = await db.Checkin.findAll({
-            where: { userId },
-            attributes: ['createdAt'],
-            order: [['createdAt', 'DESC']],
-            limit: 60
-          });
-          
-          let streak = 0;
-          const uniqueDays = [...new Set(recentCheckins.map(c => new Date(c.createdAt).setHours(0,0,0,0)))];
-          const today = new Date().setHours(0,0,0,0);
-          
-          if (uniqueDays.length > 0 && uniqueDays[0] === today) {
-             streak = 1;
-             let current = today;
-             for (let i = 1; i < uniqueDays.length; i++) {
-                const prev = new Date(current);
-                prev.setDate(prev.getDate() - 1);
-                if (uniqueDays[i] === prev.setHours(0,0,0,0)) {
-                   streak++;
-                   current = uniqueDays[i];
-                } else {
-                   break;
-                }
-             }
-          }
-
-          if (streak > 1) {
-             posthog.capture({ distinctId: String(userId), event: 'streak_reached', properties: { streak_length: streak, company_id: companyCode } });
-          }
-
-          posthog.capture({
-            distinctId: String(userId),
-            event: 'daily_checkin_completed',
-            properties: {
-              stress, sleep, workload, coffee, company_id: companyCode, streak_length: streak
-            }
-          });
+        const count = await db.Checkin.count({ where: { userId } });
+        if (count === 1) {
+          posthog.capture({ distinctId: String(userId), event: 'first_checkin_completed', properties: { company_id: companyCode } });
         }
+        posthog.capture({
+          distinctId: String(userId),
+          event: 'daily_checkin_completed',
+          properties: {
+            stress, energy, workload, sleep_quality: sleepQuality, 
+            company_id: companyCode,
+            engagement
+          }
+        });
       } catch (err) { console.error('Analytics error:', err.message); }
     }
 
-    res.status(201).json({ ...newCheckin.toJSON(), gamification: gamificationResult });
+    res.status(201).json({ ...checkin.toJSON(), gamification: gamificationResult });
   } catch (error) {
     console.error('Error creating check-in:', error);
     res.status(400).json({ error: 'Failed to save check-in' });

@@ -2,7 +2,7 @@ const axios = require('axios');
 
 // 1. Configurable Target & Concurrency
 const BASE_URL = process.argv[2] || 'http://localhost:4000/api';
-const CONCURRENT_REQUESTS = parseInt(process.argv[3]) || 50;
+const CONCURRENT_REQUESTS = Number.parseInt(process.argv[3]) || 50;
 
 // Using the seeded employer credentials from seed_db.js
 const EMAIL = 'boss@test.com';
@@ -68,7 +68,7 @@ async function runPerformanceTest() {
         });
         successCount++;
         process.stdout.write('.');
-      } catch (e) {
+      } catch (error) {
         failCount++;
         process.stdout.write('x');
       }
@@ -84,7 +84,7 @@ async function runPerformanceTest() {
     // Stats Calculation
     latencies.sort((a, b) => a - b);
     const min = latencies[0];
-    const max = latencies[latencies.length - 1];
+    const max = latencies.at(-1);
     const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
     const p95 = latencies[Math.floor(latencies.length * 0.95)];
     const p99 = latencies[Math.floor(latencies.length * 0.99)];
@@ -110,4 +110,8 @@ async function runPerformanceTest() {
   }
 }
 
-runPerformanceTest();
+try {
+  await runPerformanceTest();
+} catch (error) {
+  console.error(error);
+}

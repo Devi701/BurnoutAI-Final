@@ -1,5 +1,5 @@
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 const DP_PATH = path.join(__dirname, 'debug_predict');
 let dp;
@@ -31,7 +31,56 @@ async function tryPredict(fnName, ...args) {
   }
 }
 
-(async function main() {
+async function inspectLoaders(loader) {
+  console.log('Using loader:', loader.name || '(loader)');
+  try {
+    const lmSmall = loader.length === 2 ? loader(smallModel, { sync: true }) : loader(smallModel);
+    console.log('Loaded small model keys:', Object.keys(lmSmall || {}));
+    const features = lmSmall?.features || lmSmall?.meta || lmSmall?.metadata;
+    console.log('Inferred features:', features);
+  } catch (e) {
+    console.log('loader error:', e.message);
+  }
+}
+
+function inspectRowToFeatureArray(features) {
+  console.log('rowToFeatureArray exists — producing array for sampleRow');
+  try {
+    if (Array.isArray(features)) {
+      console.log('features from model/meta:', features);
+      console.log('feature array:', dp.rowToFeatureArray(sampleRow, features));
+    } else {
+      console.log('no features found in meta; skipping rowToFeatureArray demo');
+    }
+  } catch (e) {
+    console.log('rowToFeatureArray error:', e.message);
+  }
+}
+
+async function inspectPredictions() {
+  // Try high-level predictFromModel if present
+  if (typeof dp.predictFromModel === 'function') {
+    console.log('Calling predictFromModel(smallModel, sampleRow)');
+    await tryPredict('predictFromModel', smallModel, sampleRow);
+    console.log('Calling predictFromModel(fullModel, sampleRow)');
+    await tryPredict('predictFromModel', fullModel, sampleRow);
+  } else if (typeof dp.loadModelSync === 'function' && typeof dp.predictWithTree === 'function') {
+    // Try lower-level predictWithTree if available
+    try {
+      const { tree, features } = dp.loadModelSync(smallModel);
+      console.log('Loaded tree and features:', Array.isArray(features) ? features.length : 'none');
+      const arr = typeof dp.rowToFeatureArray === 'function' ? dp.rowToFeatureArray(sampleRow, features) : Object.values(sampleRow);
+      const out = dp.predictWithTree(tree, arr);
+      console.log('predictWithTree output:', out);
+    } catch (e) {
+      console.log('predictWithTree flow failed:', e.message);
+    }
+  } else {
+    console.log('No predictFromModel / loadModelSync+predictWithTree available. See exports above and paste debug_predict.js here.');
+  }
+}
+
+// Top-level execution
   console.log('Model files exist:',
     fs.existsSync(smallModel), smallModel,
     fs.existsSync(fullModel), fullModel
@@ -39,57 +88,16 @@ async function tryPredict(fnName, ...args) {
 
   // Prefer loadModel* if available
   if (dp.loadModelSync || dp.loadModel) {
-    const loader = dp.loadModelSync || dp.loadModel;
-    console.log('Using loader:', loader.name || '(loader)');
-    try {
-      const lmSmall = loader.length === 2 ? loader(smallModel, { sync: true }) : loader(smallModel);
-      console.log('Loaded small model keys:', Object.keys(lmSmall || {}));
-      const features = lmSmall.features || lmSmall.meta || lmSmall.metadata;
-      console.log('Inferred features:', features);
-    } catch (e) {
-      console.log('loader error:', e.message);
-    }
+    await inspectLoaders(dp.loadModelSync || dp.loadModel);
   }
 
   // If rowToFeatureArray exists, show mapping
   if (typeof dp.rowToFeatureArray === 'function') {
-    console.log('rowToFeatureArray exists — producing array for sampleRow');
-    try {
-      const meta = (dp.loadModelSync && dp.loadModelSync(smallModel)) || {};
-      const features = meta.features || (Array.isArray(meta) ? meta : null);
-      if (features && Array.isArray(features)) {
-        console.log('features from model/meta:', features);
-        console.log('feature array:', dp.rowToFeatureArray(sampleRow, features));
-      } else {
-        console.log('no features found in meta; skipping rowToFeatureArray demo');
-      }
-    } catch (e) {
-      console.log('rowToFeatureArray error:', e.message);
-    }
+    const meta = (dp.loadModelSync && dp.loadModelSync(smallModel)) || {};
+    const features = meta.features || (Array.isArray(meta) ? meta : null);
+    inspectRowToFeatureArray(features);
   }
 
-  // Try high-level predictFromModel if present
-  if (typeof dp.predictFromModel === 'function') {
-    console.log('Calling predictFromModel(smallModel, sampleRow)');
-    await tryPredict('predictFromModel', smallModel, sampleRow);
-    console.log('Calling predictFromModel(fullModel, sampleRow)');
-    await tryPredict('predictFromModel', fullModel, sampleRow);
-  } else {
-    // Try lower-level predictWithTree if available
-    if (typeof dp.loadModelSync === 'function' && typeof dp.predictWithTree === 'function') {
-      try {
-        const { tree, features } = dp.loadModelSync(smallModel);
-        console.log('Loaded tree and features:', Array.isArray(features) ? features.length : 'none');
-        const arr = typeof dp.rowToFeatureArray === 'function' ? dp.rowToFeatureArray(sampleRow, features) : Object.values(sampleRow);
-        const out = dp.predictWithTree(tree, arr);
-        console.log('predictWithTree output:', out);
-      } catch (e) {
-        console.log('predictWithTree flow failed:', e.message);
-      }
-    } else {
-      console.log('No predictFromModel / loadModelSync+predictWithTree available. See exports above and paste debug_predict.js here.');
-    }
-  }
+  await inspectPredictions();
 
   console.log('--- inspector done');
-})();

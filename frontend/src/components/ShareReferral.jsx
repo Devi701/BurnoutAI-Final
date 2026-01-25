@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 
 export default function ShareReferral({ referralCode, scoreReward = 500 }) {
   const [copied, setCopied] = useState(false);
   
   // Generate the full URL with the referral code parameter
-  const referralLink = `${window.location.origin}/onboarding?referralCode=${referralCode || ''}`;
+  const referralLink = `${globalThis.location.origin}/onboarding?referralCode=${referralCode || ''}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(referralLink);
@@ -21,7 +22,7 @@ export default function ShareReferral({ referralCode, scoreReward = 500 }) {
           url: referralLink,
         });
       } catch (err) {
-        // Share cancelled or failed
+        console.error('Share failed:', err);
       }
     } else {
       handleCopyLink();
@@ -41,11 +42,12 @@ export default function ShareReferral({ referralCode, scoreReward = 500 }) {
         borderRadius: '8px', 
         marginTop: '1rem' 
       }}>
-        <label style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>
+        <label htmlFor="referral-link" style={{ display: 'block', fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>
           Your Referral Link
         </label>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <input 
+            id="referral-link"
             readOnly 
             value={referralLink} 
             style={{ 
@@ -81,3 +83,8 @@ export default function ShareReferral({ referralCode, scoreReward = 500 }) {
     </div>
   );
 }
+
+ShareReferral.propTypes = {
+  referralCode: PropTypes.string,
+  scoreReward: PropTypes.number
+};

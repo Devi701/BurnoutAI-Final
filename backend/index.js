@@ -1,5 +1,5 @@
 require('dotenv').config(); // Load .env file at the top
-const dns = require('dns');
+const dns = require('node:dns');
 
 // Fix: Force IPv4 to avoid ENETUNREACH errors on Render (IPv6 connection issues)
 if (dns.setDefaultResultOrder) {
@@ -59,13 +59,13 @@ async function main() {
   app.use(helmet({ hsts: false })); // Disable HSTS in Node, handled by Nginx
 
   // --- CORS Configuration for Production Security ---
-  const whitelist = [
+  const whitelist = new Set([
     (process.env.FRONTEND_URL || '').trim(), // Best practice: Use an env var for the frontend URL
     'https://www.razoncomfort.com',
     'https://razoncomfort.com',
     'https://burnout-ai-final.vercel.app',
     'http://localhost:5173' // For local development
-  ].filter(Boolean); // Remove undefined values to prevent errors
+  ].filter(Boolean)); // Remove undefined values to prevent errors
 
   const corsOptions = {
     origin: (origin, callback) => {
@@ -73,7 +73,7 @@ async function main() {
       if (
         process.env.NODE_ENV !== 'production' || 
         !origin || 
-        whitelist.includes(origin)
+        whitelist.has(origin)
       ) {
         callback(null, true);
       } else {
@@ -162,6 +162,8 @@ async function main() {
   });
 }
 
-main().catch(error => {
+try {
+  await main();
+} catch (error) {
   console.error("Failed to start the server:", error);
-});
+}

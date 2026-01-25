@@ -74,7 +74,7 @@ function FullTest() {
           <h3>Here are some tips that might help:</h3>
           <ul>
             {result.tips.map((tip, index) => (
-              <li key={index}>{tip}</li>
+              <li key={`tip-${index}`}>{tip}</li>
             ))}
           </ul>
         </div>

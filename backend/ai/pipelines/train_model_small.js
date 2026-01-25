@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { DecisionTreeRegression } = require('ml-cart');
-const parse = require('csv-parse/lib/sync'); // For reading CSV
+const { parse } = require('csv-parse/sync'); // For reading CSV
 
 // File paths
 const dataFile = path.join(__dirname, '../datasets/stress_data_pseudolabeled.csv');
@@ -30,11 +30,11 @@ const trainSize = Math.floor(0.8 * records.length);
 const trainRecords = records.slice(0, trainSize);
 const testRecords = records.slice(trainSize);
 
-const X_train = trainRecords.map(r => featureColumns.map(f => parseFloat(r[f]) || 0));
-const y_train = trainRecords.map(r => parseFloat(r[targetColumn]) || 0);
+const X_train = trainRecords.map(r => featureColumns.map(f => Number.parseFloat(r[f]) || 0));
+const y_train = trainRecords.map(r => Number.parseFloat(r[targetColumn]) || 0);
 
-const X_test = testRecords.map(r => featureColumns.map(f => parseFloat(r[f]) || 0));
-const y_test = testRecords.map(r => parseFloat(r[targetColumn]) || 0);
+const X_test = testRecords.map(r => featureColumns.map(f => Number.parseFloat(r[f]) || 0));
+const y_test = testRecords.map(r => Number.parseFloat(r[targetColumn]) || 0);
 
 // Train a temporary model on the training set
 const dtForEval = new DecisionTreeRegression({
@@ -73,8 +73,8 @@ console.log('--------------------------\n');
 console.log('Training final model on the full dataset...');
 
 // Prepare the full dataset
-const X_full = records.map(r => featureColumns.map(f => parseFloat(r[f]) || 0));
-const y_full = records.map(r => parseFloat(r[targetColumn]) || 0);
+const X_full = records.map(r => featureColumns.map(f => Number.parseFloat(r[f]) || 0));
+const y_full = records.map(r => Number.parseFloat(r[targetColumn]) || 0);
 
 // Train the final Decision Tree model on all data
 const finalRf = new DecisionTreeRegression({

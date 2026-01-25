@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import '../../App.css';
@@ -27,3 +28,7 @@ export default function Navbar({ streak }) {
     </nav>
   );
 }
+
+Navbar.propTypes = {
+  streak: PropTypes.number
+};

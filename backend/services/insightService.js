@@ -40,7 +40,7 @@ function generateEmployerInsights(aggregatedData) {
 
   // Return the highest priority insight, or a default one if none are triggered.
   if (insights.length > 0) {
-    return insights.sort((a, b) => a.priority - b.priority)[0];
+    return insights.toSorted((a, b) => a.priority - b.priority)[0];
   }
 
   return {

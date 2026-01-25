@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { DecisionTreeRegression } = require('ml-cart');
-const parse = require('csv-parse/lib/sync');
+const { parse } = require('csv-parse/sync');
 
 // File paths
 const dataFile = path.join(__dirname, '../datasets/daily_checkin_data.csv');

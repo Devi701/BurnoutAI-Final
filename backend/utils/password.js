@@ -19,6 +19,7 @@ const verifyPassword = async (hash, password) => {
   try {
     return await argon2.verify(hash, password);
   } catch (err) {
+    console.error('Password verification error:', err.message);
     // Handle internal errors or malformed hashes securely
     return false;
   }
@@ -28,6 +29,7 @@ const needsRehash = (hash) => {
   try {
     return argon2.needsRehash(hash, HASH_CONFIG);
   } catch (err) {
+    console.error('Rehash check error:', err.message);
     return false;
   }
 };

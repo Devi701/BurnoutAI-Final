@@ -5,7 +5,7 @@ const COMPANY_CODE = process.argv[2] || '7B08C8';
 const NUM_USERS = 30;
 const CHECKINS_PER_USER = 10;
 
-async function main() {
+try {
   try {
     console.log(`Connecting to database...`);
     await db.sequelize.authenticate();
@@ -49,7 +49,7 @@ async function main() {
           userId: userId,
           companyCode: COMPANY_CODE,
           stress: Math.floor(Math.random() * 10) + 1,
-          sleep: parseFloat((Math.random() * 5 + 4).toFixed(1)),
+          sleep: Number.parseFloat((Math.random() * 5 + 4).toFixed(1)),
           workload: Math.floor(Math.random() * 10) + 1,
           coffee: Math.floor(Math.random() * 5),
           note: 'Auto-generated check-in',
@@ -69,6 +69,6 @@ async function main() {
     console.error('Error:', error);
     process.exit(1);
   }
+} catch (error) {
+  console.error('Top-level error:', error);
 }
-
-main();

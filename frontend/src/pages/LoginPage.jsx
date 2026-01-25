@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { login, recover, fetchCurrentUser } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [recoveryEmail, setRecoveryEmail] = useState('');
   // Initialize based on URL to prevent flash of login form
   const [isProcessingMagicLink, setIsProcessingMagicLink] = useState(() => 
-    new URLSearchParams(window.location.search).has('token')
+    new URLSearchParams(globalThis.location.search).has('token')
   );
 
   const { login: setToken } = useAuth();
@@ -40,7 +40,7 @@ export default function LoginPage() {
           localStorage.setItem('user', JSON.stringify(user));
           
           // 3. Redirect
-          window.location.href = '/employer';
+          globalThis.location.href = '/employer';
         } catch (err) {
           console.error("Magic link failed:", err);
           setIsProcessingMagicLink(false);
@@ -134,6 +134,10 @@ export default function LoginPage() {
               <button type="submit" style={{marginTop: 10, background:'#475569'}}>Send Reset Link</button>
             </form>
           )}
+
+          <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.9rem' }}>
+            Don't have an account? <Link to="/signup">Sign up</Link>
+          </div>
         </div>
       </div>
     </div>

@@ -39,6 +39,82 @@ export default function EmployeeHome() {
   const [activeDaysCount, setActiveDaysCount] = useState(0);
   const analyticsSent = useRef(false);
 
+  const loadUserData = async () => {
+    try {
+      const [data, plans] = await Promise.all([
+        fetchPersonalHistory(user.id),
+        fetchActionPlans(user.id).catch(() => [])
+      ]);
+
+      setHistory(data);
+      
+      // Flow Guide: Auto-advance based on completion status
+      let calculatedStep = 1;
+      if (data?.hasBaseline) {
+        calculatedStep = 2; // Baseline established -> Go to Daily Check-in
+        
+        // If already checked in today, go to View Results
+        const lastDate = data.dates && data.dates.length > 0 
+          ? new Date(data.dates[data.dates.length - 1]).toLocaleDateString() 
+          : null;
+        const today = new Date().toLocaleDateString();
+        if (lastDate === today) calculatedStep = 3;
+      }
+
+      // Recover session progress (e.g. if they clicked View Results and came back)
+      const storedStep = parseInt(sessionStorage.getItem('burnout_flow_step') || '0');
+      let finalStep = Math.max(calculatedStep, storedStep);
+
+      // Smart Skips based on Data
+      // 1. If at Step 4 (Simulator) but Plan exists -> Skip to 5 (Tracking)
+      if (finalStep === 4 && plans && plans.length > 0) finalStep = 5;
+      
+      setActiveFlowStep(finalStep);
+
+      if (plans && plans.length > 0) {
+        const plan = plans[plans.length - 1];
+        setLatestPlan(plan);
+        
+        // Fetch tracking for this plan
+        try {
+          const tracks = await fetchPlanTracking(plan.id);
+          setTrackingHistory(tracks);
+          
+          // Check if we have tracking for today
+          const todayStr = new Date().toISOString().split('T')[0];
+          const todayRecord = tracks.find(t => t.date === todayStr);
+          if (todayRecord) {
+            setTodayTracking(typeof todayRecord.data === 'string' ? JSON.parse(todayRecord.data) : todayRecord.data);
+            
+            // If we have tracking data and we are at step 5, move to 6
+            if (finalStep === 5) {
+               setActiveFlowStep(6);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load tracking", e);
+        }
+      }
+
+      // Check Survey Eligibility
+      try {
+        const surveyStatus = await fetchSurveyStatus(user.id);
+        console.log('[Analytics] Survey Status Check:', surveyStatus);
+        // TEMPORARY: Lower threshold to 1 day for testing
+        if (!surveyStatus.completed && surveyStatus.activeDays >= 1) {
+          setActiveDaysCount(surveyStatus.activeDays);
+          setShowSurvey(true);
+          analytics.capture('pilot_survey_viewed', { days_active: surveyStatus.activeDays });
+        }
+      } catch (e) { console.error("Survey check failed", e); }
+
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Initialize/Identify user for analytics
     if (user) {
@@ -46,81 +122,7 @@ export default function EmployeeHome() {
     }
 
     if (user) {
-      Promise.all([
-        fetchPersonalHistory(user.id),
-        fetchActionPlans(user.id).catch(() => [])
-      ]).then(async ([data, plans]) => {
-        setHistory(data);
-        
-        // Flow Guide: Auto-advance based on completion status
-        let calculatedStep = 1;
-        if (data?.hasBaseline) {
-          calculatedStep = 2; // Baseline established -> Go to Daily Check-in
-          
-          // If already checked in today, go to View Results
-          const lastDate = data.dates && data.dates.length > 0 
-            ? new Date(data.dates[data.dates.length - 1]).toLocaleDateString() 
-            : null;
-          const today = new Date().toLocaleDateString();
-          if (lastDate === today) calculatedStep = 3;
-        }
-
-        // Recover session progress (e.g. if they clicked View Results and came back)
-        const storedStep = parseInt(sessionStorage.getItem('burnout_flow_step') || '0');
-        let finalStep = Math.max(calculatedStep, storedStep);
-
-        // Smart Skips based on Data
-        // 1. If at Step 4 (Simulator) but Plan exists -> Skip to 5 (Tracking)
-        if (finalStep === 4 && plans && plans.length > 0) finalStep = 5;
-        
-        // 2. If at Step 5 (Tracking) but Tracking done today -> Skip to 6 (Leaderboard)
-        // We need to check tracking status inside the tracking fetch block, but we can approximate here if we move logic or wait.
-        // For now, we'll let the tracking fetch effect update it if needed, or just rely on user click.
-        
-        setActiveFlowStep(finalStep);
-
-        if (plans && plans.length > 0) {
-          const plan = plans[plans.length - 1];
-          setLatestPlan(plan);
-          
-          // Fetch tracking for this plan
-          try {
-            const tracks = await fetchPlanTracking(plan.id);
-            setTrackingHistory(tracks);
-            
-            // Check if we have tracking for today
-            const todayStr = new Date().toISOString().split('T')[0];
-            const todayRecord = tracks.find(t => t.date === todayStr);
-            if (todayRecord) {
-              setTodayTracking(typeof todayRecord.data === 'string' ? JSON.parse(todayRecord.data) : todayRecord.data);
-              
-              // If we have tracking data and we are at step 5, move to 6
-              if (finalStep === 5) {
-                 setActiveFlowStep(6);
-              }
-            }
-          } catch (e) {
-            console.error("Failed to load tracking", e);
-          }
-        }
-
-        // Check Survey Eligibility
-        try {
-          const surveyStatus = await fetchSurveyStatus(user.id);
-          console.log('[Analytics] Survey Status Check:', surveyStatus);
-          // TEMPORARY: Lower threshold to 1 day for testing
-          if (!surveyStatus.completed && surveyStatus.activeDays >= 1) {
-            setActiveDaysCount(surveyStatus.activeDays);
-            setShowSurvey(true);
-            analytics.capture('pilot_survey_viewed', { days_active: surveyStatus.activeDays });
-          }
-        } catch (e) { console.error("Survey check failed", e); }
-
-        setLoading(false);
-      }).catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+      loadUserData();
     }
   }, [user]);
 
@@ -129,7 +131,7 @@ export default function EmployeeHome() {
     if (history && history.datasets && !analyticsSent.current) {
       const riskScores = history.datasets.risk || [];
       const currentScore = riskScores.length > 0 ? riskScores[riskScores.length - 1] : 0;
-      const weeklyAvg = calculateAvg([...riskScores].reverse().slice(0, 7)) || 0;
+      const weeklyAvg = calculateAvg([...riskScores].reverse().slice(0, 7)) ?? 0;
       const riskBand = getSeverity(currentScore === 0 ? 'N/A' : currentScore).label;
 
       analytics.capture('burnout_score_viewed', {
@@ -251,7 +253,7 @@ export default function EmployeeHome() {
 
     let count = 0;
     trackingHistory.forEach(t => {
-      if (t.date >= startStr) {
+      if (t?.date >= startStr) {
         const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
         const entry = data[actionType];
         if (entry === true || (entry && entry.completed)) {
@@ -275,9 +277,9 @@ export default function EmployeeHome() {
     let tracked = 0;
 
     trackingHistory.forEach(t => {
-      if (t.date >= startStr) {
+      if (t?.date >= startStr) {
         const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
-        if (data && data[actionType] !== undefined) {
+        if (data?.[actionType] !== undefined) {
           tracked++;
           const entry = data[actionType];
           if (entry === true || (entry && entry.completed)) {
@@ -319,7 +321,7 @@ export default function EmployeeHome() {
             
               {/* 0. Baseline Assessment Section (Conditional) - Shows at top if needed */}
               {!hasBaseline && (
-                <div className={`card ${activeFlowStep === 1 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(1)} style={{ borderLeft: '5px solid #2563eb', backgroundColor: '#eff6ff' }}>
+                <div className={`card ${activeFlowStep === 1 ? 'flow-step' : ''}`} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(1)} onClick={() => handleFlowAdvance(1)} style={{ borderLeft: '5px solid #2563eb', backgroundColor: '#eff6ff' }}>
                   <h3>Initialize Your Baseline</h3>
                   <p>To get accurate predictions, please complete a one-time baseline assessment.</p>
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -336,7 +338,7 @@ export default function EmployeeHome() {
               )}
 
               {/* 1. Burnout Risk Indicator (Primary) */}
-              <div className={`card ${activeFlowStep === 1 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(1)}>
+              <div className={`card ${activeFlowStep === 1 ? 'flow-step' : ''}`} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(1)} onClick={() => handleFlowAdvance(1)}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3>Burnout Risk Indicator</h3>
                   {hasBaseline && <span style={{ color: '#10b981', fontWeight: 'bold', fontSize: '0.9rem' }}>Baseline established ✓</span>}
@@ -357,7 +359,7 @@ export default function EmployeeHome() {
                   {/* Weekly Average */}
                   <div style={{ borderLeft: '1px solid #e2e8f0', paddingLeft: '3rem' }}>
                     <div className="small" style={{ color: '#64748b', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      Weekly Average
+                      Weekly Average&nbsp;
                       <span title="The weekly score smooths daily variation by averaging your last 7 check-ins." style={{ cursor: 'help', fontSize: '0.8rem', background: '#e2e8f0', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>?</span>
                     </div>
                     <div style={{ fontSize: '3.5rem', fontWeight: '800', color: '#334155', lineHeight: 1 }}>
@@ -371,7 +373,7 @@ export default function EmployeeHome() {
               </div>
 
               {/* 2. Daily Check-in CTA */}
-              <div className={`card hover-lift ${activeFlowStep === 2 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(2)} style={{ padding: '2rem', border: '1px solid #e2e8f0' }}>
+              <div className={`card hover-lift ${activeFlowStep === 2 ? 'flow-step' : ''}`} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(2)} onClick={() => handleFlowAdvance(2)} style={{ padding: '2rem', border: '1px solid #e2e8f0' }}>
                 <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Daily Check-in</h3>
                 <p style={{ color: '#64748b', marginBottom: '1.5rem', fontSize: '1.1rem' }}>Log your stress, sleep, and workload to keep your risk score accurate.</p>
                 
@@ -392,7 +394,7 @@ export default function EmployeeHome() {
               {latestPlan && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.5rem' }}>
                   {/* Stats Card */}
-                  <div className={`card hover-lift ${activeFlowStep === 5 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(5)} style={{ borderLeft: '5px solid #8b5cf6', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div className={`card hover-lift ${activeFlowStep === 5 ? 'flow-step' : ''}`} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(5)} onClick={() => handleFlowAdvance(5)} style={{ borderLeft: '5px solid #8b5cf6', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <h3 style={{ marginTop: 0, color: '#5b21b6', fontSize: '1.1rem' }}>Plan Progress</h3>
                     
                     <div style={{ marginBottom: '1rem' }}>
@@ -417,8 +419,8 @@ export default function EmployeeHome() {
                   <div className="card hover-lift">
                     <h3 style={{ marginTop: 0, fontSize: '1.1rem' }}>Daily Action Tracker</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '1rem' }}>
-                      {latestPlan.actions.map((action, idx) => (
-                        <div key={idx} style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9' }}>
+                      {latestPlan.actions.map((action) => (
+                        <div key={action.type} style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #f1f5f9' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                               <span style={{ fontSize: '0.9rem', color: '#334155' }}>{getQuestionText(action.type, action.value)}</span>
@@ -472,7 +474,7 @@ export default function EmployeeHome() {
             <div style={{ flex: 1, minWidth: '250px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
               {/* 1. Actions to reduce burnout risk (Simulator CTA) */}
-              <div className={`card hover-lift ${activeFlowStep === 4 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(4)} style={{ borderLeft: '5px solid #8b5cf6', backgroundColor: '#f5f3ff', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <div className={`card hover-lift ${activeFlowStep === 4 ? 'flow-step' : ''}`} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(4)} onClick={() => handleFlowAdvance(4)} style={{ borderLeft: '5px solid #8b5cf6', backgroundColor: '#f5f3ff', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
                 <h3 style={{ marginTop: 0, color: '#5b21b6' }}>Actions to reduce burnout risk</h3>
                 <p style={{ color: '#4c1d95' }}>
                   Simulate how changes in sleep, workload, and boundaries can lower your risk score.
@@ -485,7 +487,7 @@ export default function EmployeeHome() {
               </div>
 
               {/* Gamification Hub Link */}
-              <Link to="/gamification" style={{ textDecoration: 'none' }}>
+              <Link to="/gamification" style={{ textDecoration: 'none' }} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(6)}>
                 <div className={`card hover-lift ${activeFlowStep === 6 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(6)} style={{ 
                   borderLeft: '5px solid #f59e0b', 
                   backgroundColor: '#fffbeb', 
@@ -500,7 +502,7 @@ export default function EmployeeHome() {
               </Link>
 
               {/* 2. View your results */}
-              <Link to="/history" style={{ textDecoration: 'none', flex: 1, display: 'flex' }}>
+              <Link to="/history" style={{ textDecoration: 'none', flex: 1, display: 'flex' }} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handleFlowAdvance(3)}>
                 <div className={`card hover-lift ${activeFlowStep === 3 ? 'flow-step' : ''}`} onClick={() => handleFlowAdvance(3)} style={{ textAlign: 'center', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '150px', backgroundColor: '#fff', border: '1px solid #e2e8f0', width: '100%' }}>
                   <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>📊</div>
                   <h3 style={{fontSize: '1.2rem', margin: '0.5rem 0'}}>View your results</h3>

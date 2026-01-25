@@ -12,7 +12,7 @@ export default function JoinCompany() {
     e.preventDefault();
     if (!code) return;
 
-    if (!user || !user.id) {
+    if (!user?.id) {
       setMessage('User not identified. Please refresh.');
       setIsError(true);
       return;
@@ -33,9 +33,9 @@ export default function JoinCompany() {
   };
 
   const handleLeave = async () => {
-    if (!window.confirm('Are you sure you want to leave your current company?')) return;
+    if (!globalThis.confirm('Are you sure you want to leave your current company?')) return;
 
-    if (!user || !user.id) return;
+    if (!user?.id) return;
 
     try {
       await leaveCompany({ userId: user.id });

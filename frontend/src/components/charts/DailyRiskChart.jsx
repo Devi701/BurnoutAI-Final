@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export default function DailyRiskChart({ value=0 }) {
   return (
@@ -10,3 +11,7 @@ export default function DailyRiskChart({ value=0 }) {
     </div>
   );
 }
+
+DailyRiskChart.propTypes = {
+  value: PropTypes.number
+};

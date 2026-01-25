@@ -1,12 +1,13 @@
 const { Sequelize, DataTypes } = require('sequelize');
-const path = require('path');
+const path = require('node:path');
 
 // Determine connection settings
 const databaseUrl = process.env.DATABASE_URL;
 
 let sequelize;
 
-if (databaseUrl) {
+// Only use remote DB if explicitly in production, otherwise use local SQLite to avoid connection errors during dev
+if (databaseUrl && process.env.NODE_ENV === 'production') {
   // Postgres (Supabase/Railway/Production)
   sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
@@ -53,10 +54,24 @@ db.User = sequelize.define('User', {
 db.Checkin = sequelize.define('Checkin', {
   userId: { type: DataTypes.INTEGER },
   companyCode: { type: DataTypes.STRING },
-  stress: { type: DataTypes.REAL },
-  sleep: { type: DataTypes.REAL },
-  workload: { type: DataTypes.REAL },
-  coffee: { type: DataTypes.REAL },
+  // 1. Recovery / Energy
+  energy: { type: DataTypes.INTEGER }, // 0-100 (Required)
+  sleepHours: { type: DataTypes.REAL }, // 0-12
+  sleepQuality: { type: DataTypes.INTEGER }, // 1-5
+  breaks: { type: DataTypes.INTEGER }, // Minutes
+  middayEnergy: { type: DataTypes.INTEGER }, // 0-100
+  // 2. Stress / Pressure
+  stress: { type: DataTypes.INTEGER }, // 0-100 (Required)
+  workload: { type: DataTypes.INTEGER }, // 1-5
+  anxiety: { type: DataTypes.INTEGER }, // 1-5
+  // 3. Engagement / Motivation
+  engagement: { type: DataTypes.INTEGER }, // 0-100
+  mood: { type: DataTypes.INTEGER }, // 1-5
+  motivation: { type: DataTypes.INTEGER }, // 1-5
+  // 4. Collaboration / Social & 5. External
+  peerSupport: { type: DataTypes.INTEGER }, // 1-5
+  managementSupport: { type: DataTypes.INTEGER }, // 1-5
+  commuteStress: { type: DataTypes.INTEGER }, // 1-5
   note: { type: DataTypes.TEXT }
 }, { tableName: 'checkins' });
 
@@ -73,5 +88,20 @@ db.Team = sequelize.define('Team', {
   name: { type: DataTypes.STRING },
   companyCode: { type: DataTypes.STRING }
 }, { tableName: 'Teams' });
+
+// Survey Model
+db.Survey = sequelize.define('Survey', {
+  companyCode: { type: DataTypes.STRING, allowNull: false },
+  name: { type: DataTypes.STRING, allowNull: false },
+  questions: { type: DataTypes.JSON, allowNull: false }, // e.g., [{id: 'q1', text: '...', type: 'scale'}]
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: false }
+}, { tableName: 'surveys' });
+
+// SurveyResponse Model
+db.SurveyResponse = sequelize.define('SurveyResponse', {
+  surveyId: { type: DataTypes.INTEGER, allowNull: false },
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  answers: { type: DataTypes.JSON, allowNull: false } // e.g., {q1: 5, q2: 'text answer'}
+}, { tableName: 'survey_responses' });
 
 module.exports = db;

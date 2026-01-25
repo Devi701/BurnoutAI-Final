@@ -11,14 +11,14 @@ const PROJECT_ID = '109705'; // Found in PostHog Project Settings
 //    Select Scope: "Project" -> Your Project -> Check "Read" AND "Write"
 //    (If you can only select one, try adding the Project scope twice: once for Read, once for Write)
 const PERSONAL_API_KEY = 'phx_3bKZPhGsOY64EXCZQ17SjWLJnHyjTRyWfG9PApfuydR6DKT'; // Create in Account Settings
-const INTERNAL_EMAILS = [
+const INTERNAL_EMAILS = new Set([
   'test1@gmail.com',
   'test2@gmail.com',
   'test3@gmail.com',
   'test4@gmail.com',
   'test5@gmail.com',
   'maheshwariv919@gmail.com'
-];
+]);
 
 async function deleteInternalEvents() {
   console.log('Starting PostHog Cleanup...');
@@ -32,8 +32,7 @@ async function deleteInternalEvents() {
     );
 
     const internalPersons = personsResponse.data.results.filter(p => {
-      const email = p.properties.email;
-      return INTERNAL_EMAILS.includes(email);
+      return INTERNAL_EMAILS.has(p.properties.email);
     });
 
     console.log(`Found ${internalPersons.length} internal persons.`);

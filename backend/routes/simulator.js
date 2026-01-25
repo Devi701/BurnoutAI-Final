@@ -11,7 +11,7 @@ try {
   if (process.env.POSTHOG_KEY) {
     posthog = new PostHog(process.env.POSTHOG_KEY, { host: 'https://eu.posthog.com' });
   }
-} catch (e) { console.log('PostHog not configured in simulator.'); }
+} catch (e) { console.error('PostHog not configured in simulator:', e.message); }
 
 // Define ActionPlan model dynamically if db.sequelize is available
 // Note: In a full production app, this should be in /models/ActionPlan.js and imported in database.js
@@ -39,6 +39,93 @@ const SIMULATION_DAYS = 90;
 const SMOOTHING = 0.2; // Inertia factor: Burnout doesn't change instantly
 const NUM_SIMULATIONS = 50; // 2. Monte Carlo: Run multiple times to average noise
 
+function runSimulation(baselineFeatures, actions) {
+  const dailySums = new Array(SIMULATION_DAYS).fill(0);
+  const noise = () => (Math.random() * 1.0) - 0.5;
+
+  for (let sim = 0; sim < NUM_SIMULATIONS; sim++) {
+    let currentScore = Math.round((baselineFeatures.stress + (100 - baselineFeatures.energy)) / 2); 
+    let fatigueBank = 0;
+
+    for (let day = 1; day <= SIMULATION_DAYS; day++) {
+      let dailyStress = baselineFeatures.stress + (noise() * 5);
+      let dailyEnergy = baselineFeatures.energy + (noise() * 5);
+
+      const isWeekend = (day % 7 === 6) || (day % 7 === 0);
+      if (isWeekend) {
+        dailyStress *= 0.85;
+        dailyEnergy *= 1.1;
+      }
+
+      actions.forEach(action => {
+        const val = Number(action.value);
+        switch (action.type) {
+          case 'vacation_days': {
+            if (day <= val) {
+              const daysIntoVacation = day;
+              const relaxFactor = 0.4 + (0.3 * Math.exp(-0.5 * daysIntoVacation));
+              dailyStress *= relaxFactor; 
+            } else {
+              const daysSince = day - val;
+              if (daysSince <= 5) {
+                const recoveryFactor = daysSince / 5;
+                dailyStress = (dailyStress * 0.4) + (dailyStress * 0.6 * recoveryFactor);
+              }
+            }
+            break;
+          }
+          case 'sleep_hours':
+            dailyEnergy += (val - 7) * 5;
+            break;
+          case 'workload_reduction':
+            dailyStress *= (1 - (val / 100) * 0.5);
+            break;
+          case 'boundary_hour':
+            dailyStress -= ((22 - val) * 0.4);
+            break;
+          case 'movement_sessions': {
+            const reduction = 2.5 * (1 - Math.exp(-0.3 * val));
+            dailyStress -= reduction;
+            break;
+          }
+          case 'social_minutes': {
+            const socialReduction = 1.5 * (1 - Math.exp(-0.02 * val));
+            dailyStress -= socialReduction;
+            break;
+          }
+        }
+      });
+
+      if (dailyEnergy < 30) dailyStress += 5;
+      if (dailyStress > 80) dailyEnergy -= 5;
+
+      const boundaryAction = actions.find(a => a.type === 'boundary_hour');
+      if (boundaryAction && boundaryAction.value > 21) {
+        const penalty = (boundaryAction.value - 21) * 0.5;
+        dailyEnergy -= penalty * 5;
+      }
+
+      const dailyLoad = dailyStress / 10;
+      const dailyRecovery = (dailyEnergy / 10) + (isWeekend ? 2 : 0);
+
+      if (dailyLoad > dailyRecovery) {
+        fatigueBank += (dailyLoad - dailyRecovery) * 0.5;
+      } else {
+        fatigueBank = Math.max(0, fatigueBank - (dailyRecovery - dailyLoad) * 0.3);
+      }
+
+      dailyStress += Math.min(5, fatigueBank * 0.5);
+      dailyStress = Math.max(0, Math.min(100, dailyStress));
+      dailyEnergy = Math.max(0, Math.min(100, dailyEnergy));
+
+      const score = (dailyStress + (100 - dailyEnergy)) / 2;
+      currentScore = (currentScore * (1 - SMOOTHING)) + (score * SMOOTHING);
+      dailySums[day - 1] += currentScore;
+    }
+  }
+  return dailySums;
+}
+
 // POST /api/action-impact
 // Calculates how specific actions change burnout risk
 router.post('/', async (req, res) => {
@@ -46,7 +133,7 @@ router.post('/', async (req, res) => {
     const { userId, actions } = req.body;
 
     // Security: Prevent IDOR
-    if (req.user.id !== parseInt(userId, 10)) {
+    if (req.user.id !== Number.parseInt(userId, 10)) {
       return res.status(403).json({ error: 'Unauthorized.' });
     }
 
@@ -73,164 +160,28 @@ router.post('/', async (req, res) => {
 
     const sum = recentCheckins.reduce((acc, c) => ({
       stress: acc.stress + c.stress,
-      sleep: acc.sleep + c.sleep,
-      workload: acc.workload + c.workload,
-      coffee: acc.coffee + c.coffee
-    }), { stress: 0, sleep: 0, workload: 0, coffee: 0 });
+      energy: acc.energy + c.energy,
+    }), { stress: 0, energy: 0 });
 
     const count = recentCheckins.length;
     const baselineFeatures = {
       stress: sum.stress / count,
-      sleep: sum.sleep / count,
-      workload: sum.workload / count,
-      coffee: sum.coffee / count
+      energy: sum.energy / count,
     };
 
     // Get current baseline score
-    const baselinePred = await predictAndAdvise('daily', baselineFeatures);
-    const baselineScore = Math.round(baselinePred.score);
+    const baselineScore = Math.round((baselineFeatures.stress + (100 - baselineFeatures.energy)) / 2);
 
     // 3. Simulation Loop (Monte Carlo)
-    // We simulate 30 days multiple times and average the results
-    const dailySums = new Array(SIMULATION_DAYS).fill(0);
+    const dailySums = runSimulation(baselineFeatures, actions);
     
-    // Helper for random daily noise (variance +/- 0.5)
-    const noise = () => (Math.random() * 1.0) - 0.5;
-
-    for (let sim = 0; sim < NUM_SIMULATIONS; sim++) {
-      let currentScore = baselineScore; 
-      let fatigueBank = 0;
-
-      for (let day = 1; day <= SIMULATION_DAYS; day++) {
-        // 1. Start with baseline + natural daily variance
-        let dailyStress = baselineFeatures.stress + noise();
-        let dailySleep = baselineFeatures.sleep + noise();
-        let dailyWorkload = baselineFeatures.workload + noise();
-        let dailyCoffee = baselineFeatures.coffee; // Habits tend to be stable
-
-        // 2. Apply Weekend Effect (Cyclicality)
-        // Assume simulation starts tomorrow. Days 6, 7, 13, 14... are weekends.
-        const isWeekend = (day % 7 === 6) || (day % 7 === 0);
-        if (isWeekend) {
-          dailyWorkload *= 0.3; // Workload drops significantly
-          dailyStress *= 0.85;  // Natural recovery
-        }
-
-        // 3. Apply User Actions (Interventions)
-        actions.forEach(action => {
-          const val = Number(action.value);
-          switch (action.type) {
-            case 'vacation_days':
-              if (day <= val) {
-                // 3. Non-Linear Saturation (Sigmoid-like) for Vacation
-                // It takes time to unwind. Day 1 is less relaxing than Day 3.
-                // Multiplier drops from 0.7 to 0.4 over time
-                const daysIntoVacation = day;
-                const relaxFactor = 0.4 + (0.3 * Math.exp(-0.5 * daysIntoVacation));
-                dailyStress *= relaxFactor; 
-                dailyWorkload = 0;
-              } else {
-                // Post-vacation fade (return to normal over 5 days)
-                const daysSince = day - val;
-                if (daysSince <= 5) {
-                  const recoveryFactor = daysSince / 5; // 0 to 1
-                  // Linearly interpolate back to normal
-                  dailyStress = (dailyStress * 0.4) + (dailyStress * 0.6 * recoveryFactor);
-                  dailyWorkload = (dailyWorkload * recoveryFactor);
-                }
-              }
-              break;
-            case 'sleep_hours':
-              dailySleep = val; // Direct intervention
-              break;
-            case 'workload_reduction':
-              dailyWorkload *= (1 - val / 100);
-              break;
-            case 'boundary_hour':
-              // Earlier boundaries prevent evening stress spikes (e.g. 17:00 vs 22:00)
-              dailyStress -= ((22 - val) * 0.4);
-              break;
-            case 'movement_sessions':
-              // 3. Non-Linear Saturation (Sigmoid)
-              // Diminishing returns: Going from 0 to 3 sessions helps a lot; 6 to 7 helps little.
-              // Formula: MaxReduction * (1 - e^(-k * sessions))
-              const reduction = 2.5 * (1 - Math.exp(-0.3 * val));
-              dailyStress -= reduction;
-              break;
-            case 'social_minutes':
-              // Social Connection Buffering
-              // 30 mins = ~0.7 reduction, 60 mins = ~1.0 reduction (diminishing returns)
-              const socialReduction = 1.5 * (1 - Math.exp(-0.02 * val));
-              dailyStress -= socialReduction;
-              break;
-          }
-        });
-
-        // 4. Apply System Dynamics (Inter-dependencies) - The "Realistic" Layer
-        
-        // A. Sleep <-> Stress Feedback
-        if (dailySleep < 6) {
-          dailyStress += (6 - dailySleep) * 0.8; // Poor sleep increases stress sensitivity
-        }
-        if (dailyStress > 8) {
-          dailySleep -= 0.5; // High stress impacts sleep quality
-        }
-
-        // B. Coffee -> Sleep
-        if (dailyCoffee > 4) {
-          dailySleep -= (dailyCoffee - 4) * 0.4; // Too much coffee hurts sleep
-        }
-
-        // 4. Circadian Misalignment Penalty
-        // Working late degrades sleep quality (effective sleep hours)
-        const boundaryAction = actions.find(a => a.type === 'boundary_hour');
-        if (boundaryAction && boundaryAction.value > 21) {
-          // Penalty: Lose 0.5 effective hours for every hour past 9pm
-          const penalty = (boundaryAction.value - 21) * 0.5;
-          dailySleep = Math.max(0, dailySleep - penalty);
-        }
-
-        // C. Cumulative Fatigue (Burnout Debt)
-        // Calculate daily load vs recovery capacity
-        const dailyLoad = dailyStress + dailyWorkload;
-        const dailyRecovery = dailySleep + (isWeekend ? 5 : 2); // Weekends offer more natural recovery
-
-        if (dailyLoad > dailyRecovery) {
-          fatigueBank += (dailyLoad - dailyRecovery) * 0.5; // Add to debt
-        } else {
-          fatigueBank = Math.max(0, fatigueBank - (dailyRecovery - dailyLoad) * 0.3); // Pay down debt slowly
-        }
-
-        // If debt is high, it adds a "drag" on the stress score (harder to lower stress)
-        dailyStress += Math.min(5, fatigueBank * 0.5);
-
-        // Clamp values to realistic bounds
-        dailyStress = Math.max(1, Math.min(10, dailyStress));
-        dailySleep = Math.max(0, Math.min(12, dailySleep));
-        dailyWorkload = Math.max(1, Math.min(10, dailyWorkload));
-
-        const pred = await predictAndAdvise('daily', {
-          stress: dailyStress,
-          sleep: dailySleep,
-          workload: dailyWorkload,
-          coffee: dailyCoffee
-        });
-        
-        // Apply smoothing to show gradual change
-        currentScore = (currentScore * (1 - SMOOTHING)) + (pred.score * SMOOTHING);
-        
-        // Accumulate for Monte Carlo averaging
-        dailySums[day - 1] += currentScore;
-      }
-    }
-
     // Average the trends from all simulations
     const trend = dailySums.map((sum, index) => ({
       day: index + 1,
       score: Math.round(sum / NUM_SIMULATIONS)
     }));
 
-    const projectedScore = trend[trend.length - 1].score;
+    const projectedScore = trend.at(-1).score;
 
     // 5. Calculate Results
     const diff = projectedScore - baselineScore;

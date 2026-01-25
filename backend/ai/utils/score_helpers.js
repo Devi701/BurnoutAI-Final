@@ -37,7 +37,13 @@ function transform(obj = {}) {
   const out = {};
   Object.keys(obj).forEach(k => {
     const v = obj[k];
-    out[k] = typeof v === 'number' ? v : (v === '' || v == null ? 0 : Number(v) || 0);
+    if (typeof v === 'number') {
+      out[k] = v;
+    } else if (v === '' || v == null) {
+      out[k] = 0;
+    } else {
+      out[k] = Number(v) || 0;
+    }
   });
   // add derived features if training pipeline used them, e.g. out['stressRatio'] = out.stress / Math.max(1,out.sleep);
   return out;

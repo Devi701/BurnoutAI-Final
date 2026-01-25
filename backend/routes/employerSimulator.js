@@ -44,18 +44,14 @@ router.post('/simulate', async (req, res) => {
       if (userCheckins.length > 0) {
         const sum = userCheckins.reduce((acc, c) => ({
           stress: acc.stress + c.stress,
-          sleep: acc.sleep + c.sleep,
-          workload: acc.workload + c.workload,
-          coffee: acc.coffee + (c.coffee || 0),
-          risk: acc.risk + (c.stress * 0.4 + c.workload * 0.3 + (10-c.sleep) * 0.3) * 10 // Approx risk 0-100
-        }), { stress: 0, sleep: 0, workload: 0, coffee: 0, risk: 0 });
+          energy: acc.energy + c.energy,
+          risk: acc.risk + (c.stress + (100 - c.energy)) / 2
+        }), { stress: 0, energy: 0, risk: 0 });
         
         const count = userCheckins.length;
         employeeBaselines.push({
           stress: sum.stress / count,
-          sleep: sum.sleep / count,
-          workload: sum.workload / count,
-          coffee: sum.coffee / count,
+          energy: sum.energy / count,
           risk: sum.risk / count
         });
       }
@@ -63,7 +59,7 @@ router.post('/simulate', async (req, res) => {
 
     // If no data, use industry defaults
     if (employeeBaselines.length === 0) {
-      employeeBaselines.push({ stress: 6, sleep: 6.5, workload: 7, coffee: 2, risk: 65 });
+      employeeBaselines.push({ stress: 60, energy: 40, risk: 60 });
     }
 
     console.time('MonteCarloSimulation');
@@ -92,7 +88,9 @@ router.post('/simulate', async (req, res) => {
         deltaPercent: deltaPercent.toFixed(1),
         timeToImpact: impactDay > -1 ? impactDay : null,
         volatility: volatility.toFixed(2),
-        trend: delta > 0 ? 'Improving' : delta < 0 ? 'Worsening' : 'Flat',
+        trend: delta > 0 ? 'Improving' 
+             : delta < 0 ? 'Worsening' 
+             : 'Flat',
         estimatedCost: Math.round(estimatedCost || 0),
         projectDeadline: plan.projectDeadline || null
       }

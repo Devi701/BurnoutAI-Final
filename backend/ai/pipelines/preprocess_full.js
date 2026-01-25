@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
-const parse = require('csv-parse/lib/sync');
-const stringify = require('csv-stringify/lib/sync');
+const fs = require('node:fs');
+const path = require('node:path');
+const { parse } = require('csv-parse/sync');
+const { stringify } = require('csv-stringify/sync');
 
 // Paths
 const dataFile = path.join(__dirname, '../datasets/stress data full processed.csv');
@@ -17,8 +17,8 @@ let records = parse(rawData, { columns: true, skip_empty_lines: true });
 records = records.map(row => {
   const newRow = {};
   for (let key in row) {
-    const val = parseFloat(row[key]);
-    newRow[key] = isNaN(val) ? 0 : val;
+    const val = Number.parseFloat(row[key]);
+    newRow[key] = Number.isNaN(val) ? 0 : val;
   }
   return newRow;
 });

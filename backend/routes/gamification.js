@@ -28,7 +28,7 @@ router.put('/settings', async (req, res) => {
     const { userId, optInLeaderboard } = req.body;
     
     // Security: Prevent IDOR
-    if (req.user.id !== parseInt(userId, 10)) {
+    if (req.user.id !== Number.parseInt(userId, 10)) {
       return res.status(403).json({ error: 'Unauthorized.' });
     }
 

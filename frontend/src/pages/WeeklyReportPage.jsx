@@ -49,7 +49,7 @@ export default function WeeklyReportPage() {
   if (loading) return <div className="container"><Navbar /><p style={{marginTop: '2rem'}}>Loading report...</p></div>;
   if (error) return <div className="container"><Navbar /><div className="card" style={{marginTop: '2rem', color: 'red'}}>{error}</div></div>;
 
-  if (report && report.privacyLocked) {
+  if (report?.privacyLocked) {
     return (
       <div className="container">
         <Navbar />
@@ -62,7 +62,7 @@ export default function WeeklyReportPage() {
     );
   }
 
-  if (!report || !report.datasets) {
+  if (!report?.datasets) {
     return (
       <div className="container">
         <Navbar />
@@ -76,14 +76,14 @@ export default function WeeklyReportPage() {
   // Helper to construct chart data with projections
   const getChartData = (label, metricKey, color) => {
     const actualData = report.datasets[metricKey] || [];
-    const projectedData = report.projections[metricKey] || [];
+    const projectedData = report.projections?.[metricKey] || [];
     const labels = report.labels || [];
     const projLabels = report.projectionLabels || [];
 
     // Connect the lines
     const lastActual = actualData[actualData.length - 1];
-    const paddedActual = [...actualData, ...Array(projectedData.length).fill(null)];
-    const paddedProjection = [...Array(actualData.length - 1).fill(null), lastActual, ...projectedData];
+    const paddedActual = [...actualData, ...new Array(projectedData.length).fill(null)];
+    const paddedProjection = [...new Array(actualData.length - 1).fill(null), lastActual, ...projectedData];
 
     return {
       labels: [...labels, ...projLabels],

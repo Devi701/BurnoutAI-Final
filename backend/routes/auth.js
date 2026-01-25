@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const nodemailer = require('nodemailer');
 const { Op } = require('sequelize');
 const db = require('../db/database'); // Assuming models are attached here
@@ -20,7 +20,7 @@ try {
   } else {
     console.log('⚠️ PostHog backend SDK not initialized (POSTHOG_KEY missing).');
   }
-} catch (e) { console.log('PostHog not configured or installed on backend.'); }
+} catch (e) { console.error('PostHog not configured or installed on backend:', e.message); }
 
 // Dummy hash for timing attack mitigation (pre-calculated)
 const DUMMY_HASH = '$argon2id$v=19$m=65536,t=3,p=1$fK5/5Q$dummyhashvalueforsecurity';
@@ -43,6 +43,24 @@ const loginLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
+async function resolveCompanyCode(role, companyCode) {
+  if (role === 'employer') {
+    if (companyCode) {
+      const existing = await db.User.findOne({ where: { companyCode: companyCode.toUpperCase() } });
+      if (!existing) throw new Error('Invalid Company Code.');
+      return companyCode.toUpperCase();
+    }
+    return crypto.randomBytes(3).toString('hex').toUpperCase();
+  } 
+  if (role === 'employee' && companyCode) {
+    const code = companyCode.toUpperCase();
+    const employer = await db.User.findOne({ where: { companyCode: code } });
+    if (!employer) throw new Error('Invalid Company Code.');
+    return code;
+  }
+  return companyCode ? companyCode.toUpperCase() : null;
+}
+
 const handleSignup = async (req, res) => {
   try {
     let { email, password, name, role, companyCode, referralCode } = req.body;
@@ -55,27 +73,7 @@ const handleSignup = async (req, res) => {
     if (!role) role = 'employee';
 
     // --- Role-Based Logic ---
-    if (role === 'employer') {
-      if (companyCode) {
-        // Allow joining an existing company as an additional employer/admin
-        companyCode = companyCode.toUpperCase();
-        const existing = await db.User.findOne({ where: { companyCode } });
-        if (!existing) throw new Error('Invalid Company Code.');
-      } else {
-        // Auto-generate Company Code for new employers
-        companyCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-      }
-    } else if (role === 'employee') {
-      // Company Code is optional for employees during signup
-      if (companyCode) {
-        companyCode = companyCode.toUpperCase();
-        // Verify company code exists if provided
-        const employer = await db.User.findOne({ where: { companyCode } });
-        if (!employer) {
-          throw new Error('Invalid Company Code.');
-        }
-      }
-    }
+    companyCode = await resolveCompanyCode(role, companyCode);
 
     // 1. Hash password (throws if length < 10)
     const hashedPassword = await hashPassword(password);
@@ -135,7 +133,7 @@ const handleSignup = async (req, res) => {
       return res.status(400).json({ error: 'Email is already registered.' });
     }
     if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ error: error.errors.map(e => e.message).join(', ') });
+      return res.status(400).json({ error: error.errors?.map(e => e.message).join(', ') });
     }
 
     res.status(400).json({ error: 'Registration failed: ' + error.message });
@@ -247,8 +245,8 @@ router.post('/forgot-password', async (req, res) => {
               `Or click: ${resetUrl}\n\n` +
               `If you did not request this, please ignore this email.\n`
       });
-    } catch (emailErr) {
-      console.error('Email send failed (expected in dev without SMTP):', emailErr.message);
+    } catch (error_) {
+      console.error('Email send failed (expected in dev without SMTP):', error_.message);
       // Log for development/testing purposes so you can still reset password
       console.log('---------------------------------------------------');
       console.log(`[DEV] Password Reset Link for ${user.email}:`);

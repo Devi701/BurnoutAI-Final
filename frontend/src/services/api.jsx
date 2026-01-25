@@ -2,7 +2,7 @@
 let BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 // AUTO-FIX: If running on custom domain, force production backend
-if (typeof window !== 'undefined' && window.location.hostname.includes('razoncomfort.com')) {
+if (typeof globalThis.window !== 'undefined' && globalThis.window.location.hostname.includes('razoncomfort.com')) {
   BASE = 'https://burnoutai-final.onrender.com';
 }
 
@@ -20,10 +20,15 @@ async function request(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...opts.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
-    headers,
-    ...opts,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      headers,
+      ...opts,
+    });
+  } catch (e) {
+    throw new Error(`Connection failed. Is the backend running at ${BASE}? ${e.message}`);
+  }
   
   // Try to parse JSON, but fallback to text if it fails (e.g. 404/500 HTML pages)
   let json;
@@ -194,4 +199,34 @@ export function simulateTeamImpact(payload) {
 
 export function simulateEmployerAction(payload) {
   return request('/api/employer-simulator/simulate', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function sendFeedback(payload) {
+  return request('/api/auth/pilot-feedback', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// --- Pulse Survey Endpoints ---
+
+export function createSurvey(payload) {
+  return request('/api/surveys', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function fetchSurveys(companyCode) {
+  return request(`/api/surveys?companyCode=${encodeURIComponent(companyCode)}`, { method: 'GET' });
+}
+
+export function activateSurvey(surveyId, isActive) {
+  return request(`/api/surveys/${surveyId}/activate`, { method: 'PUT', body: JSON.stringify({ isActive }) });
+}
+
+export function fetchActiveSurvey(companyCode) {
+  return request(`/api/surveys/active?companyCode=${encodeURIComponent(companyCode)}`, { method: 'GET' });
+}
+
+export function submitSurveyResponse(surveyId, payload) {
+  return request(`/api/surveys/${surveyId}/responses`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export function fetchSurveyResults(surveyId) {
+  return request(`/api/surveys/${surveyId}/results`, { method: 'GET' });
 }

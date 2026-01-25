@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const stringify = require('csv-stringify/lib/sync');
+const fs = require('node:fs');
+const path = require('node:path');
+const { stringify } = require('csv-stringify/sync');
 
 /**
  * Generates synthetic data for daily check-ins.
@@ -11,8 +11,8 @@ const OUTPUT_CSV = path.join(__dirname, '../datasets/daily_checkin_data.csv');
 const NUM_RECORDS = 2000;
 
 const featureConfig = {
-    stress:   { weight: 0.40, inverted: false }, // 0-10 scale
-    sleep:    { weight: 0.30, inverted: true },  // 0-12 scale
+    stress:   { weight: 0.4, inverted: false }, // 0-10 scale
+    sleep:    { weight: 0.3, inverted: true },  // 0-12 scale
     workload: { weight: 0.25, inverted: false }, // 0-10 scale
     coffee:   { weight: 0.05, inverted: false }, // 0-10 scale
 };
@@ -23,7 +23,7 @@ function generateDailyData() {
         const row = {};
         // Generate somewhat realistic base values
         row.stress = Math.floor(Math.random() * 11); // 0-10
-        row.sleep = parseFloat((Math.random() * 8 + 4).toFixed(1)); // 4-12 hours
+        row.sleep = Number.parseFloat((Math.random() * 8 + 4).toFixed(1)); // 4-12 hours
         row.workload = Math.floor(Math.random() * 11); // 0-10
         row.coffee = Math.floor(Math.random() * 6); // 0-5 cups
 

@@ -54,7 +54,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/assign', async (req, res) => {
   try {
     const { userId, teamId } = req.body;
-    const safeTeamId = (teamId === undefined || teamId === null) ? null : parseInt(teamId, 10);
+    const safeTeamId = (teamId === undefined || teamId === null) ? null : Number.parseInt(teamId, 10);
     const User = db.User || db.sequelize.models.User;
     await User.update({ teamId: safeTeamId }, { where: { id: userId } });
     res.json({ success: true });

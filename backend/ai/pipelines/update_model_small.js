@@ -1,33 +1,25 @@
-const fs = require('fs');
-const path = require('path');
-const { preprocessFeatures, trainModel } = require('../utils/data_helpers');
+const fs = require('node:fs');
+const path = require('node:path');
+const { parse } = require('csv-parse/sync');
+const { DecisionTreeRegression } = require('ml-cart');
 
 const dataFile = path.join(__dirname, '../datasets/stress_data_small_processed_clean.csv');
 const modelFile = path.join(__dirname, '../models/small_quiz_model.json');
 
 // Read and preprocess data
 const rawData = fs.readFileSync(dataFile, 'utf8');
-const preprocessedData = preprocessFeatures(rawData);
+const records = parse(rawData, { columns: true, skip_empty_lines: true });
 
-// Check if model already exists
-let model = {};
-if (fs.existsSync(modelFile)) {
-  try {
-    const existingModel = fs.readFileSync(modelFile, 'utf8');
-    model = JSON.parse(existingModel);
-    console.log('Existing model loaded. Updating...');
-  } catch (err) {
-    console.warn('Could not parse existing model, training a new one.');
-    model = {};
-  }
-}
+const featureColumns = Object.keys(records[0]).filter(c => c !== 'burnout_score');
+const targetColumn = 'burnout_score';
 
-// Train new model on preprocessed data
-const newModel = trainModel(preprocessedData);
+const X = records.map(r => featureColumns.map(f => Number.parseFloat(r[f]) || 0));
+const y = records.map(r => Number.parseFloat(r[targetColumn]) || 0);
 
-// Merge/update safely
-model = { ...model, ...newModel };
+// Train new model
+const tree = new DecisionTreeRegression({ maxDepth: 7 });
+tree.train(X, y);
 
 // Save updated model
-fs.writeFileSync(modelFile, JSON.stringify(model, null, 2));
+fs.writeFileSync(modelFile, JSON.stringify(tree.toJSON(), null, 2));
 console.log('Small quiz model updated safely.');

@@ -12,7 +12,7 @@ const API_BASE = `https://eu.posthog.com/api/projects/${PROJECT_ID}`;
 // Use trim() to remove accidental whitespace from copy-pasting
 const HEADERS = { headers: { Authorization: `Bearer ${PERSONAL_API_KEY.trim()}` } };
 
-async function createDashboard() {
+try {
   console.log('🔍 Initializing Dashboard Creation...');
 
   // 1. Verify Connection first
@@ -23,7 +23,7 @@ async function createDashboard() {
   } catch (error) {
     console.error('❌ API Key Invalid. Please generate a new Personal API Key with "Project" + "Write" scopes.');
     console.error(`   Server responded: ${error.response?.status} ${error.response?.statusText}`);
-    return;
+    process.exit(1);
   }
 
   try {
@@ -126,6 +126,6 @@ async function createDashboard() {
       console.error(error.message);
     }
   }
+} catch (e) {
+  console.error('Unexpected error:', e);
 }
-
-createDashboard();

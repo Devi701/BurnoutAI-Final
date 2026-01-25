@@ -5,6 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
 import Navbar from '../components/layout/Navbar';
 
+// Progress Bar Component
+const ProgressBar = ({ step }) => (
+  <div style={{ width: '100%', height: '6px', background: '#e2e8f0', position: 'fixed', top: 0, left: 0, zIndex: 1000 }}>
+    <div style={{ width: `${(step / 5) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
+  </div>
+);
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,18 +90,11 @@ export default function OnboardingPage() {
     }
   };
 
-  // Progress Bar Component
-  const ProgressBar = () => (
-    <div style={{ width: '100%', height: '6px', background: '#e2e8f0', position: 'fixed', top: 0, left: 0, zIndex: 1000 }}>
-      <div style={{ width: `${(step / 5) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
-    </div>
-  );
-
   // --- Step 1: Welcome & Tone Setting ---
   if (step === 1) {
     return (
       <>
-        <ProgressBar />
+        <ProgressBar step={step} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
@@ -119,7 +119,7 @@ export default function OnboardingPage() {
     const canContinue = consents.dataProcessing && consents.anonymity;
     return (
       <>
-        <ProgressBar />
+        <ProgressBar step={step} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
   if (step === 3) {
     return (
       <>
-        <ProgressBar />
+        <ProgressBar step={step} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -210,7 +210,7 @@ export default function OnboardingPage() {
   if (step === 4) {
     return (
     <>
-      <ProgressBar />
+      <ProgressBar step={step} />
       <Navbar />
       <div className="container" style={{ maxWidth: 500, marginTop: '3rem' }}>
         <div className="card">
@@ -225,8 +225,9 @@ export default function OnboardingPage() {
 
           <form onSubmit={handleSignup}>
             <div className="form-row">
-              <label>{role === 'employee' ? 'Display Name (or Nickname)' : 'Company Name'}</label>
+              <label htmlFor="name-input">{role === 'employee' ? 'Display Name (or Nickname)' : 'Company Name'}</label>
               <input 
+                id="name-input"
                 value={formData.name} 
                 onChange={e => setFormData({...formData, name: e.target.value})} 
                 required 
@@ -235,8 +236,9 @@ export default function OnboardingPage() {
             </div>
             
             <div className="form-row">
-              <label>Email Address</label>
+              <label htmlFor="email-input">Email Address</label>
               <input 
+                id="email-input"
                 type="email" 
                 value={formData.email} 
                 onChange={e => setFormData({...formData, email: e.target.value})} 
@@ -245,8 +247,9 @@ export default function OnboardingPage() {
             </div>
 
             <div className="form-row">
-              <label>Password</label>
+              <label htmlFor="password-input">Password</label>
               <input 
+                id="password-input"
                 type="password" 
                 value={formData.password} 
                 onChange={e => setFormData({...formData, password: e.target.value})} 
@@ -257,8 +260,9 @@ export default function OnboardingPage() {
 
             {role === 'employee' && (
               <div className="form-row">
-                <label>Company Code <span style={{fontWeight: 'normal', color: '#64748b'}}>(Optional - join later)</span></label>
+                <label htmlFor="code-input">Company Code <span style={{fontWeight: 'normal', color: '#64748b'}}>(Optional - join later)</span></label>
                 <input 
+                  id="code-input"
                   value={formData.companyCode} 
                   onChange={e => setFormData({...formData, companyCode: e.target.value})} 
                   placeholder="Enter code if you have one"
@@ -267,8 +271,9 @@ export default function OnboardingPage() {
             )}
 
             <div className="form-row">
-              <label>Referral Code <span style={{fontWeight: 'normal', color: '#64748b'}}>(Optional)</span></label>
+              <label htmlFor="referral-input">Referral Code <span style={{fontWeight: 'normal', color: '#64748b'}}>(Optional)</span></label>
               <input 
+                id="referral-input"
                 value={formData.referralCode} 
                 onChange={e => setFormData({...formData, referralCode: e.target.value})} 
                 placeholder="Enter referral code"
@@ -292,7 +297,7 @@ export default function OnboardingPage() {
   if (step === 5) {
     return (
       <>
-        <ProgressBar />
+        <ProgressBar step={step} />
         <Navbar />
         <div className="container" style={{ maxWidth: 500, marginTop: '3rem', textAlign: 'center' }}>
           <div className="card" style={{ borderTop: '5px solid #10b981', animation: 'fadeIn 0.5s' }}>

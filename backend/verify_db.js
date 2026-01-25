@@ -47,4 +47,4 @@ async function verifyDatabase() {
   }
 }
 
-verifyDatabase();
+try { await verifyDatabase(); } catch (e) { console.error(e); }

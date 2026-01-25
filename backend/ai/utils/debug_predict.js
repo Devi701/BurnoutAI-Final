@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 /**
  * Load model JSON and optional metadata (.meta.json).
@@ -15,7 +15,7 @@ function loadModelSync(modelPath) {
     try {
       meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
       if (!features && Array.isArray(meta.features)) features = meta.features;
-    } catch (e) { /* ignore parse errors */ }
+    } catch (e) { console.debug('Failed to load meta:', e); }
   }
   return { tree, features, meta };
 }
@@ -38,39 +38,52 @@ function rowToFeatureArray(obj = {}, features = []) {
  * Generic decision-tree regression predictor that works with ml-cart toJSON format.
  * Accepts tree (root object or full model JSON) and numeric feature array.
  */
+function getLeafValue(node) {
+  if (node.prediction !== undefined) return node.prediction;
+  if (node.value !== undefined) return node.value;
+  if (node.output !== undefined) return node.output;
+  return undefined;
+}
+
+function getSplitIndex(node) {
+  if (node.splitFeature !== undefined) return node.splitFeature;
+  if (node.feature !== undefined) return node.feature;
+  if (node.splitIndex !== undefined) return node.splitIndex;
+  return null;
+}
+
+function findFallbackLeafValue(node) {
+  const keys = Object.keys(node);
+  for (const k of keys) {
+    if (k.toLowerCase().includes('predict') || k.toLowerCase().includes('value')) {
+      const v = node[k];
+      if (typeof v === 'number') return v;
+    }
+  }
+  return 0;
+}
+
 function predictWithTree(tree, arr = []) {
   // tree may be the full model object with root property
   const root = tree.root || tree;
   function traverse(node) {
     if (!node) return 0;
-    // Leaf value keys: 'prediction', 'value', 'leaf', 'output'
-    if (typeof node.prediction !== 'undefined') return node.prediction;
-    if (typeof node.value !== 'undefined') return node.value;
-    if (typeof node.output !== 'undefined') return node.output;
-    // Some formats store 'left'/'right' children and split info
-    const left = node.left || node.l || node.children && node.children[0];
-    const right = node.right || node.r || node.children && node.children[1];
-    // possible split keys
-    const splitIdx = typeof node.splitFeature !== 'undefined' ? node.splitFeature
-                    : typeof node.feature !== 'undefined' ? node.feature
-                    : typeof node.splitIndex !== 'undefined' ? node.splitIndex
-                    : null;
+    
+    const leafVal = getLeafValue(node);
+    if (leafVal !== undefined) return leafVal;
+
+    const left = node.left || node.l || node.children?.[0];
+    const right = node.right || node.r || node.children?.[1];
+    
+    const splitIdx = getSplitIndex(node);
     const splitValue = node.splitValue ?? node.threshold ?? node.valueToCompare ?? null;
 
     if (splitIdx === null || splitValue === null) {
-      // unexpected node shape - attempt to return any numeric leaf-like prop
-      const keys = Object.keys(node);
-      for (const k of keys) {
-        if (k.toLowerCase().includes('predict') || k.toLowerCase().includes('value')) {
-          const v = node[k];
-          if (typeof v === 'number') return v;
-        }
-      }
-      return 0;
+      return findFallbackLeafValue(node);
     }
 
     const featureVal = arr[splitIdx];
-    if (typeof featureVal === 'undefined') return 0;
+    if (featureVal === undefined) return 0;
     // left comparison uses <= by convention
     if (featureVal <= splitValue) return traverse(left);
     return traverse(right);

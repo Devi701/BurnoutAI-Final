@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -16,9 +17,8 @@ import {
 import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
-import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, simulateEmployerAction } from '../services/api';
+import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, fetchSurveys, createSurvey, activateSurvey, fetchSurveyResults } from '../services/api';
 import { analytics } from '../services/analytics';
-import SimulatorTab from './SimulatorTab';
 import PilotEnrollmentPopup from '../components/PilotEnrollmentPopup';
 
 
@@ -36,12 +36,12 @@ ChartJS.register(
 );
 
 const generateLandscapeData = (report) => {
-  const gridResolution = 20; // 20x20 grid for high fidelity
-  const grid = Array(gridResolution).fill().map(() => Array(gridResolution).fill(0));
+  const gridResolution = 20;
+  const grid = new Array(gridResolution).fill().map(() => new Array(gridResolution).fill(0));
   
   if (!report || !report.riskDistribution) return grid;
 
-  const { low, moderate, high, critical } = report.riskDistribution;
+  const { low, moderate, high, critical } = report?.riskDistribution || {};
   
   // Helper to add random points in a zone with Gaussian-like distribution
   const addPoints = (count, xMin, xMax, yMin, yMax) => {
@@ -50,7 +50,7 @@ const generateLandscapeData = (report) => {
       const x = Math.floor(xMin + Math.random() * (xMax - xMin));
       const y = Math.floor(yMin + Math.random() * (yMax - yMin));
       
-      if (grid[y] && grid[y][x] !== undefined) {
+      if (grid[y]?.[x] !== undefined) {
         grid[y][x]++;
       }
     }
@@ -75,6 +75,10 @@ const generateLandscapeData = (report) => {
   return grid;
 };
 
+DensityLandscape.propTypes = {
+  report: PropTypes.object
+};
+
 const DensityLandscape = ({ report }) => {
   const gridData = useMemo(() => generateLandscapeData(report), [report]);
   const maxDensity = Math.max(...gridData.flat(), 1);
@@ -94,7 +98,7 @@ const DensityLandscape = ({ report }) => {
           </p>
         </div>
         <div style={{ textAlign: 'right', fontSize: '0.9rem', color: '#cbd5e1' }}>
-          <div>Total Employees: <strong>{report.employeeCount !== undefined ? report.employeeCount : 0}</strong></div>
+          <div>Total Employees: <strong>{report?.employeeCount ?? 0}</strong></div>
         </div>
       </div>
 
@@ -148,7 +152,7 @@ const DensityLandscape = ({ report }) => {
               const isHovered = hoveredCell && hoveredCell.x === x && hoveredCell.y === y;
 
               return (
-                <div key={`${x}-${y}`} 
+                <div key={`${x}-${y}`}
                   onMouseEnter={() => setHoveredCell({ x, y, count, risk: Math.round(riskFactor * 100), stress: Math.round(stressPct * 100), recovery: Math.round(recoveryPct * 100) })}
                   onMouseLeave={() => setHoveredCell(null)}
                   style={{
@@ -159,7 +163,6 @@ const DensityLandscape = ({ report }) => {
                     height: `${widthPct}%`,
                     transformStyle: 'preserve-3d',
                     zIndex: x + y, // Isometric depth sorting
-                    cursor: 'pointer'
                   }}
                 >
                   {/* Top Face */}
@@ -268,16 +271,13 @@ const DensityLandscape = ({ report }) => {
 
 export default function EmployerHome() {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'teams', 'insights', 'simulator'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'teams', 'insights', 'surveys', 'simulator'
   const [report, setReport] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [simPopulation, setSimPopulation] = useState([]);
   const [teamMetrics, setTeamMetrics] = useState([]);
-  const [employeesError, setEmployeesError] = useState('');
   const [loading, setLoading] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
-  const [chartType, setChartType] = useState('bar');
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamReport, setTeamReport] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
@@ -301,6 +301,13 @@ export default function EmployerHome() {
   const [simResults, setSimResults] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [simWeek, setSimWeek] = useState(0);
+
+  // Survey State
+  const [surveys, setSurveys] = useState([]);
+  const [isCreatingSurvey, setIsCreatingSurvey] = useState(false);
+  const [viewingSurvey, setViewingSurvey] = useState(null);
+  const [surveyResults, setSurveyResults] = useState(null);
+  const [surveyLoading, setSurveyLoading] = useState(false);
 
   const [savedSimulations, setSavedSimulations] = useState([]);
 
@@ -355,12 +362,13 @@ export default function EmployerHome() {
         fetchWeeklyReport(user.companyCode),
         fetchEmployees(user.companyCode),
         fetchTeams(user.companyCode),
-        fetchTeamMetrics(user.companyCode).catch(() => []) // Fail gracefully if endpoint not ready
-      ]).then(([reportResult, employeesResult, teamsResult, metricsResult]) => {
+        fetchTeamMetrics(user.companyCode).catch(() => []), // Fail gracefully if endpoint not ready
+        fetchSurveys(user.companyCode).catch(() => [])
+      ]).then(([reportResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
         if (!isMounted) return;
 
         // Handle Report
-        if (reportResult.status === 'fulfilled') {
+        if (reportResult.status === 'fulfilled' && reportResult.value) {
           setReport(reportResult.value);
           
           // Track Dashboard View
@@ -391,6 +399,11 @@ export default function EmployerHome() {
           setTeamMetrics(metricsResult.value || []);
         }
 
+        // Handle Surveys
+        if (surveysResult.status === 'fulfilled') {
+          setSurveys(surveysResult.value || []);
+        }
+
         setLoading(false);
       });
     } else if (user) {
@@ -408,12 +421,14 @@ export default function EmployerHome() {
       fetchWeeklyReport(user.companyCode),
       fetchEmployees(user.companyCode),
       fetchTeams(user.companyCode),
-      fetchTeamMetrics(user.companyCode).catch(() => [])
-    ]).then(([reportResult, employeesResult, teamsResult, metricsResult]) => {
+      fetchTeamMetrics(user.companyCode).catch(() => []),
+      fetchSurveys(user.companyCode).catch(() => [])
+    ]).then(([reportResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
       if (reportResult.status === 'fulfilled') setReport(reportResult.value);
       if (employeesResult.status === 'fulfilled') setEmployees(employeesResult.value);
       if (teamsResult.status === 'fulfilled') setTeams(teamsResult.value || []);
       if (metricsResult.status === 'fulfilled') setTeamMetrics(metricsResult.value || []);
+      if (surveysResult.status === 'fulfilled') setSurveys(surveysResult.value || []);
       setLoading(false);
     });
   };
@@ -485,7 +500,7 @@ export default function EmployerHome() {
   const onDrop = async (e, teamId) => {
     e.preventDefault();
     if (teamId === undefined) return;
-    const employeeId = parseInt(e.dataTransfer.getData('employeeId'), 10);
+    const employeeId = Number.parseInt(e.dataTransfer.getData('employeeId'), 10);
     if (!employeeId) return;
 
     // Optimistic Update
@@ -512,7 +527,7 @@ export default function EmployerHome() {
   };
 
   const copyCode = () => {
-    navigator.clipboard.writeText(user.companyCode);
+    globalThis.navigator.clipboard.writeText(user.companyCode);
     alert('Company code copied to clipboard!');
   };
 
@@ -531,55 +546,35 @@ export default function EmployerHome() {
     }
   };
 
-  // --- Chart Data Preparation ---
-  const getComparisonChartData = () => {
-    // Filter out teams with < 5 members for privacy
-    const validTeams = Array.isArray(teamMetrics) ? teamMetrics.filter(t => t.memberCount >= 5) : [];
-    
-    return {
-      labels: validTeams.map(t => t.name),
-      datasets: [
-        { 
-          label: 'Avg Stress', 
-          data: validTeams.map(t => t.avgStress), 
-          backgroundColor: '#ef4444', 
-          borderColor: '#ef4444',
-          borderWidth: 2,
-          borderRadius: 4,
-          tension: 0.4
-        },
-        { 
-          label: 'Avg Workload', 
-          data: validTeams.map(t => t.avgWorkload), 
-          backgroundColor: '#8b5cf6', 
-          borderColor: '#8b5cf6',
-          borderWidth: 2,
-          borderRadius: 4,
-          tension: 0.4
-        }
-      ]
-    };
+  const handleViewSurveyResults = async (survey) => {
+    setViewingSurvey(survey);
+    setSurveyLoading(true);
+    try {
+      const results = await fetchSurveyResults(survey.id);
+      setSurveyResults(results);
+    } catch (err) {
+      console.error("Failed to fetch survey results", err);
+      setSurveyResults(null);
+    } finally {
+      setSurveyLoading(false);
+    }
   };
 
   const getDriverChartData = (source = report) => {
-    if (!source || !source.drivers || !source.drivers.distribution) return null;
+    if (!source?.drivers?.distribution) return null;
     const dist = source.drivers.distribution;
     return {
-      labels: ['Stress', 'Sleep Quality', 'Workload', 'Caffeine'],
+      labels: ['Stress Factors', 'Energy Drain'],
       datasets: [
         {
-          data: [dist.stress, dist.sleep, dist.workload, dist.coffee],
+          data: [dist.stress, dist.energy],
           backgroundColor: [
             'rgba(239, 68, 68, 0.8)',  // Red for Stress
-            'rgba(59, 130, 246, 0.8)', // Blue for Sleep
-            'rgba(168, 85, 247, 0.8)', // Purple for Workload
-            'rgba(120, 53, 15, 0.8)',  // Brown for Coffee
+            'rgba(16, 185, 129, 0.8)', // Green for Energy
           ],
           borderColor: [
             'rgba(239, 68, 68, 1)',
-            'rgba(59, 130, 246, 1)',
-            'rgba(168, 85, 247, 1)',
-            'rgba(120, 53, 15, 1)',
+            'rgba(16, 185, 129, 1)',
           ],
           borderWidth: 1,
         },
@@ -588,7 +583,7 @@ export default function EmployerHome() {
   };
 
   const getRiskDistChartData = (source = report) => {
-    if (!source || !source.riskDistribution) return null;
+    if (!source?.riskDistribution) return null;
     const dist = source.riskDistribution;
     return {
       labels: ['Low', 'Moderate', 'High', 'Critical'],
@@ -603,7 +598,7 @@ export default function EmployerHome() {
   };
 
   const getRadarChartData = (source = report, comparison = null) => {
-    if (!source || !source.datasets) return null;
+    if (!source?.datasets) return null;
 
     const calcAvg = (arr) => {
       const valid = arr.filter(v => v !== null);
@@ -611,22 +606,25 @@ export default function EmployerHome() {
       return (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1);
     };
 
+    // Normalize to 0-10 scale
+    const norm = (val, max) => (val / max) * 10;
+
     const datasets = [
       {
         label: comparison ? 'This Team' : 'Company Average',
-        data: [
-          calcAvg(source.datasets.stress),
-          calcAvg(source.datasets.sleep),
-          calcAvg(source.datasets.workload),
-          calcAvg(source.datasets.coffee)
-        ],
+        data: source ? [
+          norm(calcAvg(source.datasets.stress), 100),
+          norm(calcAvg(source.datasets.energy), 100),
+          norm(calcAvg(source.datasets.engagement), 100),
+          norm(calcAvg(source.datasets.sleepQuality), 5)
+        ] : [],
         backgroundColor: 'rgba(37, 99, 235, 0.2)',
         borderColor: '#2563eb',
         pointBackgroundColor: '#2563eb',
       },
       {
         label: 'Ideal Baseline',
-        data: [3, 8, 5, 1],
+        data: [2, 8, 8, 8], // Low stress, High energy/engagement/sleep
         backgroundColor: 'rgba(16, 185, 129, 0.2)',
         borderColor: '#10b981',
         pointBackgroundColor: '#10b981',
@@ -637,10 +635,10 @@ export default function EmployerHome() {
       datasets.push({
         label: 'Company Average',
         data: [
-          calcAvg(comparison.datasets.stress),
-          calcAvg(comparison.datasets.sleep),
-          calcAvg(comparison.datasets.workload),
-          calcAvg(comparison.datasets.coffee)
+          norm(calcAvg(comparison.datasets.stress), 100),
+          norm(calcAvg(comparison.datasets.energy), 100),
+          norm(calcAvg(comparison.datasets.engagement), 100),
+          norm(calcAvg(comparison.datasets.sleepQuality), 5)
         ],
         backgroundColor: 'rgba(100, 116, 139, 0.1)',
         borderColor: '#94a3b8',
@@ -650,13 +648,13 @@ export default function EmployerHome() {
     }
 
     return {
-      labels: ['Stress', 'Sleep', 'Workload', 'Coffee'],
+      labels: ['Stress', 'Energy', 'Engagement', 'Sleep Quality'],
       datasets: datasets
     };
   };
 
   const getTeamTrendChartData = (data) => {
-    if (!data || !data.datasets) return null;
+    if (!data?.datasets) return null;
     return {
       labels: data.labels,
       datasets: [
@@ -676,6 +674,50 @@ export default function EmployerHome() {
           tension: 0.4,
           borderDash: [5, 5]
         }
+      ]
+    };
+  };
+
+  const getEnergyTrendData = (source = report) => {
+    if (!source || !source.datasets) return null;
+    return {
+      labels: source.labels,
+      datasets: [
+        {
+          label: 'Energy Level',
+          data: source.datasets.energy,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Stress Level',
+          data: source.datasets.stress,
+          borderColor: '#ef4444',
+          backgroundColor: 'transparent',
+          borderDash: [5, 5],
+          tension: 0.4
+        }
+      ]
+    };
+  };
+
+  const getStackedRiskData = (source = report) => {
+    if (!source?.riskDistribution) return null;
+    const dist = source.riskDistribution;
+    const total = dist.low + dist.moderate + dist.high + dist.critical;
+    
+    // Normalize to percentages
+    const p = (val) => total > 0 ? (val / total) * 100 : 0;
+
+    return {
+      labels: ['Risk Composition'],
+      datasets: [
+        { label: 'Low', data: [p(dist.low)], backgroundColor: '#10b981' },
+        { label: 'Moderate', data: [p(dist.moderate)], backgroundColor: '#f59e0b' },
+        { label: 'High', data: [p(dist.high)], backgroundColor: '#f97316' },
+        { label: 'Critical', data: [p(dist.critical)], backgroundColor: '#ef4444' }
       ]
     };
   };
@@ -704,7 +746,7 @@ export default function EmployerHome() {
   };
 
   const getComparisonRiskData = () => {
-    if (!compareTeamIds || compareTeamIds.length === 0) return { labels: [], datasets: [] };
+    if (!compareTeamIds?.length) return { labels: [], datasets: [] };
     
     const labels = [];
     const low = [], moderate = [], high = [], critical = [];
@@ -792,23 +834,8 @@ export default function EmployerHome() {
     }
   };
 
-  const handleTeamClick = async (team) => {
-    if (team.memberCount < 5) return;
-    setSelectedTeam(team);
-    setTeamLoading(true);
-    try {
-      // Pass teamId as query param to existing report endpoint
-      const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${team.teamId}`);
-      setTeamReport(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setTeamLoading(false);
-    }
-  };
-
   const renderMetricTrend = (data, metricKey, color, label) => {
-    if (!data || !data.datasets || !data.datasets[metricKey]) return null;
+    if (!data?.datasets?.[metricKey]) return null;
     const chartData = {
       labels: data.labels,
       datasets: [{
@@ -852,7 +879,7 @@ export default function EmployerHome() {
 
         {/* Navigation Tabs */}
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #e2e8f0' }}>
-          {['overview', 'teams', 'insights', 'simulator'].map(tab => (
+          {['overview', 'teams', 'insights', 'surveys', 'simulator'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -867,7 +894,7 @@ export default function EmployerHome() {
                 textTransform: 'capitalize'
               }}
             >
-              {tab === 'teams' ? 'Team Management' : tab === 'insights' ? 'Team Insights' : tab === 'simulator' ? 'Action Simulator' : 'Overview'}
+              {tab === 'teams' ? 'Team Management' : tab === 'insights' ? 'Team Insights' : tab === 'surveys' ? 'Pulse Surveys' : tab === 'simulator' ? 'Action Simulator' : 'Overview'}
             </button>
           ))}
         </div>
@@ -1099,10 +1126,10 @@ export default function EmployerHome() {
                     {/* 2. Metric Trends (4 Small Cards) */}
                     <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
                       {[
-                        { key: 'stress', label: 'Stress Level', color: '#ef4444' },
-                        { key: 'sleep', label: 'Sleep Quality', color: '#3b82f6' },
-                        { key: 'workload', label: 'Workload', color: '#8b5cf6' },
-                        { key: 'coffee', label: 'Caffeine', color: '#78350f' }
+                        { key: 'stress', label: 'Stress', color: '#ef4444' },
+                        { key: 'energy', label: 'Energy', color: '#10b981' },
+                        { key: 'engagement', label: 'Engagement', color: '#3b82f6' },
+                        { key: 'sleepQuality', label: 'Sleep Quality', color: '#8b5cf6' }
                       ].map(m => {
                         const data = insightMode === 'team' ? insightTeamReport : report;
                         const lastVal = data?.datasets?.[m.key]?.slice(-1)[0] || 0;
@@ -1116,6 +1143,22 @@ export default function EmployerHome() {
                           </div>
                         );
                       })}
+                    </div>
+
+                    {/* 2.5 Energy vs Stress Trend (New) */}
+                    <div className="card" style={{ marginBottom: '2rem' }}>
+                      <h3>Team Vitality Trends</h3>
+                      <p className="small">Comparing Energy levels against Stress over time.</p>
+                      <div style={{ height: '300px' }}>
+                        {getEnergyTrendData(insightMode === 'team' ? insightTeamReport : report) ? (
+                          <Line 
+                            data={getEnergyTrendData(insightMode === 'team' ? insightTeamReport : report)} 
+                            options={cleanChartOptions} 
+                          />
+                        ) : (
+                          <p style={{ textAlign: 'center', paddingTop: '2rem', color: '#94a3b8' }}>No trend data available</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* 3. Detailed Graphs Row */}
@@ -1134,7 +1177,10 @@ export default function EmployerHome() {
                         <h3>Risk Distribution</h3>
                         <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
                           {getRiskDistChartData(insightMode === 'team' ? insightTeamReport : report) ? (
-                            <Doughnut data={getRiskDistChartData(insightMode === 'team' ? insightTeamReport : report)} options={{ plugins: { legend: { position: 'right' } }, cutout: '60%' }} />
+                            <Bar 
+                              data={getStackedRiskData(insightMode === 'team' ? insightTeamReport : report)} 
+                              options={{ ...cleanChartOptions, indexAxis: 'y', scales: { x: { stacked: true, max: 100 }, y: { stacked: true, display: false } } }} 
+                            />
                           ) : (
                             <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
                           )}
@@ -1254,7 +1300,7 @@ export default function EmployerHome() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
                           <div>
                             <h4 style={{ margin: 0 }}>{sim.plan.name}</h4>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(sim.date).toLocaleDateString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(sim.date || Date.now()).toLocaleDateString()}</div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{sim.results.metrics.deltaPercent}%</div>
@@ -1276,7 +1322,7 @@ export default function EmployerHome() {
                            <span>Time: <strong>{sim.results.metrics.timeToImpact || '12+'} wks</strong></span>
                         </div>
                         
-                        <button onClick={() => { const updated = savedSimulations.filter(s => s.id !== sim.id); setSavedSimulations(updated); localStorage.setItem('employer_saved_simulations', JSON.stringify(updated)); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }}>&times;</button>
+                        <button onClick={() => { const updated = savedSimulations.filter(s => s.id !== sim.id); setSavedSimulations(updated); localStorage.setItem('employer_saved_simulations', JSON.stringify(updated)); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }} aria-label="Delete simulation">&times;</button>
                       </div>
                     ))}
                   </div>
@@ -1286,23 +1332,73 @@ export default function EmployerHome() {
           </div>
         )}
 
+        {/* TAB 5: PULSE SURVEYS */}
+        {!loading && activeTab === 'surveys' && (
+          <div className="fade-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Pulse Surveys</h2>
+              <button className="quiz-button" onClick={() => setIsCreatingSurvey(true)}>+ Create New Survey</button>
+            </div>
+            <p className="small" style={{ marginBottom: '2rem' }}>
+              Create short, custom surveys to gather specific feedback. When activated, a survey will replace the standard daily check-in for all employees.
+            </p>
+
+            {surveys.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                <p>No surveys created yet. Click "Create New Survey" to start.</p>
+              </div>
+            ) : (
+              <div className="card">
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9' }}>
+                      <th style={{ padding: '0.5rem 1rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem 1rem' }}>State</th>
+                      <th style={{ padding: '0.5rem 1rem' }}>Questions</th>
+                      <th style={{ padding: '0.5rem 1rem' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {surveys.map(s => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '1rem', fontWeight: 'bold' }}>{s.name}</td>
+                        <td style={{ padding: '1rem' }}>
+                          {s.isActive ? (
+                            <span style={{ color: '#16a34a', background: '#f0fdf4', padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>● Active</span>
+                          ) : (
+                            <span style={{ color: '#64748b', background: '#f1f5f9', padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>Inactive</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem' }}>{s.questions.length}</td>
+                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            onClick={async () => {
+                              try {
+                                await activateSurvey(s.id, !s.isActive);
+                                handleRefresh(); // Refresh all data
+                              } catch (err) { alert(err.message); }
+                            }}
+                            style={{ fontSize: '0.8rem', padding: '4px 10px', background: s.isActive ? '#64748b' : '#2563eb' }}
+                          >
+                            {s.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button onClick={() => handleViewSurveyResults(s)} style={{ fontSize: '0.8rem', padding: '4px 10px', background: 'white', color: '#334155', border: '1px solid #cbd5e1' }}>Results</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB 4: ACTION SIMULATOR */}
         {!loading && activeTab === 'simulator' && (
-          <SimulatorTab 
-            user={user}
-            simPlan={simPlan}
-            setSimPlan={setSimPlan}
-            simResults={simResults}
-            setSimResults={setSimResults}
-            simLoading={simLoading}
-            setSimLoading={setSimLoading}
-            simWeek={simWeek}
-            setSimWeek={setSimWeek}
-            handleSaveSimulation={handleSaveSimulation}
-            toggleSimAction={toggleSimAction}
-            updateSimAction={updateSimAction}
-            cleanChartOptions={cleanChartOptions}
-          />
+          <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+            <h3>Simulator Module</h3>
+            <p>This feature is currently under development.</p>
+          </div>
         )}
 
         {/* Privacy Assurance Footer (Always Visible) */}
@@ -1375,3 +1471,115 @@ export default function EmployerHome() {
     </>
   );
 }
+
+SurveyCreator.propTypes = {
+  user: PropTypes.object.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired
+};
+
+const SurveyCreator = ({ user, onSave, onClose }) => {
+  const [name, setName] = useState('');
+  const [questions, setQuestions] = useState([{ id: 'q1', text: '', type: 'scale' }]);
+
+  const handleAddQuestion = () => {
+    setQuestions([...questions, { id: `q${Date.now()}`, text: '', type: 'scale' }]);
+  };
+
+  const handleQuestionChange = (id, text) => {
+    setQuestions(questions.map(q => q.id === id ? { ...q, text } : q));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const validQuestions = questions.filter(q => q.text.trim());
+    if (!name.trim() || validQuestions.length === 0) return;
+    
+    try {
+      await createSurvey({ companyCode: user.companyCode, name, questions: validQuestions });
+      onSave();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="card" style={{ width: '90%', maxWidth: '600px' }}>
+        <h2 style={{ marginTop: 0 }}>Create Pulse Survey</h2>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '1rem' }}>
+            <label htmlFor="survey-name" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Survey Name</label>
+            <input id="survey-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Q3 Team Satisfaction" required style={{ width: '100%', padding: '8px' }} />
+          </div>
+          
+          <div style={{ marginBottom: '1rem' }}>
+            <label id="questions-label" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Questions</label>
+            {questions.map((q, index) => (
+              <input 
+                key={q.id}
+                value={q.text}
+                onChange={e => handleQuestionChange(q.id, e.target.value)}
+                placeholder={`Question ${index + 1} (e.g., How manageable is your workload?)`}
+                style={{ width: '100%', padding: '8px', marginBottom: '0.5rem' }}
+                aria-labelledby="questions-label"
+              />
+            ))}
+            <button type="button" onClick={handleAddQuestion} style={{ fontSize: '0.8rem', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>+ Add another question</button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'end', gap: '1rem', marginTop: '2rem' }}>
+            <button type="button" onClick={onClose} style={{ background: '#64748b' }}>Cancel</button>
+            <button type="submit" className="quiz-button">Save Survey</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+SurveyResultsViewer.propTypes = {
+  survey: PropTypes.object.isRequired,
+  results: PropTypes.object,
+  loading: PropTypes.bool,
+  onClose: PropTypes.func.isRequired
+};
+
+const SurveyResultsViewer = ({ survey, results, loading, onClose }) => {
+  const getChartDataForQuestion = (qId) => {
+    const questionResults = results.answers.filter(a => a.questionId === qId);
+    const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    questionResults.forEach(r => {
+      if (counts[r.answer] !== undefined) counts[r.answer]++;
+    });
+    return {
+      labels: ['1', '2', '3', '4', '5'],
+      datasets: [{
+        label: 'Responses',
+        data: Object.values(counts),
+        backgroundColor: '#3b82f6'
+      }]
+    };
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="card" style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <button onClick={onClose} style={{ float: 'right', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
+        <h2 style={{ marginTop: 0 }}>{survey.name} Results</h2>
+        <p className="small">{results?.responseCount || 0} responses</p>
+        {loading && <p>Loading results...</p>}
+        {results && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '1rem' }}>
+            {survey.questions.map(q => (
+              <div key={q.id}>
+                <h4 style={{ marginBottom: '0.5rem' }}>{q.text}</h4>
+                <div style={{ height: '200px' }}><Bar data={getChartDataForQuestion(q.id)} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } } }} /></div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

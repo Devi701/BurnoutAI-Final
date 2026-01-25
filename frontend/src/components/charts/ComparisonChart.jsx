@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 
 export default function ComparisonChart({ a=0, b=0 }) {
   const max = Math.max(a,b,1);
@@ -12,3 +13,8 @@ export default function ComparisonChart({ a=0, b=0 }) {
     </div>
   );
 }
+
+ComparisonChart.propTypes = {
+  a: PropTypes.number,
+  b: PropTypes.number
+};

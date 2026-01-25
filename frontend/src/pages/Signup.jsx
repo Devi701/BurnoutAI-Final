@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
+import { signupEmployee, signupEmployer } from '../services/api';
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -22,21 +23,13 @@ export default function Signup() {
     setError('');
 
     try {
-      // Use specific endpoints based on role
-      const endpoint = formData.role === 'employer' 
-        ? '/api/auth/signup/employer' 
-        : '/api/auth/signup/employee';
-
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Signup failed');
+      if (formData.role === 'employer') {
+        // Exclude companyCode for employer signup
+        const { companyCode, ...employerData } = formData;
+        await signupEmployer(employerData);
+      } else {
+        // Employee signup
+        await signupEmployee(formData);
       }
 
       // Redirect to login after successful signup
@@ -56,33 +49,34 @@ export default function Signup() {
           
           <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>I am an:</label>
-              <select name="role" value={formData.role} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }}>
+              <label htmlFor="role-select" style={{ display: 'block', marginBottom: '0.5rem' }}>I am an:</label>
+              <select id="role-select" name="role" value={formData.role} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }}>
                 <option value="employee">Employee</option>
                 <option value="employer">Employer</option>
               </select>
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Full Name</label>
-              <input type="text" name="name" required value={formData.name} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <label htmlFor="name-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Full Name</label>
+              <input id="name-input" type="text" name="name" required value={formData.name} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Email Address</label>
-              <input type="email" name="email" required value={formData.email} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <label htmlFor="email-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Email Address</label>
+              <input id="email-input" type="email" name="email" required value={formData.email} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
 
             <div className="form-group" style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem' }}>Password</label>
-              <input type="password" name="password" required minLength="8" value={formData.password} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <label htmlFor="password-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Password</label>
+              <input id="password-input" type="password" name="password" required minLength="8" value={formData.password} onChange={handleChange} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
 
             {/* Only show Company Code input for Employees */}
             {formData.role === 'employee' && (
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem' }}>Company Code</label>
+                <label htmlFor="code-input" style={{ display: 'block', marginBottom: '0.5rem' }}>Company Code</label>
                 <input 
+                  id="code-input"
                   type="text" 
                   name="companyCode" 
                   required 

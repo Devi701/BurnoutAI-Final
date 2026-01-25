@@ -28,7 +28,7 @@ export default function PilotEnrollmentPopup() {
   const sendFeedback = async (responseType, comment = '') => {
     let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
     // AUTO-FIX: Force production backend if on custom domain
-    if (typeof window !== 'undefined' && window.location.hostname.includes('razoncomfort.com')) {
+    if (typeof globalThis.window !== 'undefined' && globalThis.window.location.hostname.includes('razoncomfort.com')) {
       API_URL = 'https://burnoutai-final.onrender.com';
     }
 

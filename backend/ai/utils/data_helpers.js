@@ -1,6 +1,6 @@
-const fs = require('fs');
-const parse = require('csv-parse/lib/sync'); // csv-parse v4
-const stringify = require('csv-stringify/lib/sync'); // csv-stringify v5
+const fs = require('node:fs');
+const { parse } = require('csv-parse/sync'); // csv-parse v4
+const { stringify } = require('csv-stringify/sync'); // csv-stringify v5
 
 // Parse CSV into array of objects
 function parseCSV(csvData) {
@@ -12,8 +12,8 @@ function preprocessFeatures(records, numericFields) {
   return records.map(row => {
     const newRow = {};
     numericFields.forEach(key => {
-      const val = parseFloat(row[key]);
-      newRow[key] = isNaN(val) ? 0 : val;
+      const val = Number.parseFloat(row[key]);
+      newRow[key] = Number.isNaN(val) ? 0 : val;
     });
     return newRow;
   });

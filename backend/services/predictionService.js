@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { DecisionTreeRegression } = require('ml-cart');
 const { generateTips } = require('./tipsService');
 
@@ -28,7 +28,7 @@ function loadModelAndMeta(modelPath) {
     const result = { model, features: meta.features };
     modelCache[modelPath] = result; // Save to cache
     return result;
-  } catch (e) { /* ignore */ }
+  } catch (e) { console.error('Model load error:', e.message); }
   return null;
 }
 

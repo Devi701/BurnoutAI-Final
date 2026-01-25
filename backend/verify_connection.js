@@ -1,12 +1,12 @@
 require('dotenv').config();
 const db = require('./db/database');
 
-(async () => {
+try {
   console.log('------------------------------------------------');
   console.log('🔍 Verifying Database Connection...');
   console.log('------------------------------------------------');
 
-  try {
+  
     // 1. Test Connection
     await db.sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
@@ -23,7 +23,7 @@ const db = require('./db/database');
         const userCount = await db.User.count();
         console.log(`👥 Users in DB: ${userCount}`);
       } catch (err) {
-        if (err.original && err.original.code === '42P01') { // Postgres code for undefined table
+        if (err.original?.code === '42P01') { // Postgres code for undefined table
           console.log('⚠️  Tables not found. You need to run the migration script.');
         } else throw err;
       }
@@ -37,4 +37,3 @@ const db = require('./db/database');
     console.log('------------------------------------------------');
     process.exit();
   }
-})();

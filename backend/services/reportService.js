@@ -42,38 +42,38 @@ async function getWeeklyReport(companyCode) {
   checkins.forEach(checkin => {
     const day = format(checkin.createdAt, 'yyyy-MM-dd');
     if (!dailyAverages[day]) {
-      dailyAverages[day] = { stress: [], sleep: [], workload: [], coffee: [], count: 0 };
+      dailyAverages[day] = { stress: [], energy: [], engagement: [], sleepQuality: [], count: 0 };
     }
     dailyAverages[day].stress.push(checkin.stress);
-    dailyAverages[day].sleep.push(checkin.sleep);
-    dailyAverages[day].workload.push(checkin.workload);
-    dailyAverages[day].coffee.push(checkin.coffee);
+    dailyAverages[day].energy.push(checkin.energy);
+    if (checkin.engagement) dailyAverages[day].engagement.push(checkin.engagement);
+    if (checkin.sleepQuality) dailyAverages[day].sleepQuality.push(checkin.sleepQuality);
     dailyAverages[day].count++;
   });
 
   // 5. Format the data for charting.
-  const sortedDays = Object.keys(dailyAverages).sort(); // Ensure chronological order for trend calculation
+  const sortedDays = Object.keys(dailyAverages).sort((a, b) => a.localeCompare(b)); // Ensure chronological order for trend calculation
   const labels = sortedDays.map(day => format(new Date(day), 'EEEE')); // 'Monday', 'Tuesday', etc.
   const datasets = {
     stress: [],
-    sleep: [],
-    workload: [],
-    coffee: [],
+    energy: [],
+    engagement: [],
+    sleepQuality: [],
   };
 
   for (const day of sortedDays) {
     datasets.stress.push(dailyAverages[day].stress.reduce((a, b) => a + b, 0) / dailyAverages[day].count);
-    datasets.sleep.push(dailyAverages[day].sleep.reduce((a, b) => a + b, 0) / dailyAverages[day].count);
-    datasets.workload.push(dailyAverages[day].workload.reduce((a, b) => a + b, 0) / dailyAverages[day].count);
-    datasets.coffee.push(dailyAverages[day].coffee.reduce((a, b) => a + b, 0) / dailyAverages[day].count);
+    datasets.energy.push(dailyAverages[day].energy.reduce((a, b) => a + b, 0) / dailyAverages[day].count);
+    datasets.engagement.push(dailyAverages[day].engagement.length ? dailyAverages[day].engagement.reduce((a, b) => a + b, 0) / dailyAverages[day].engagement.length : 0);
+    datasets.sleepQuality.push(dailyAverages[day].sleepQuality.length ? dailyAverages[day].sleepQuality.reduce((a, b) => a + b, 0) / dailyAverages[day].sleepQuality.length : 0);
   }
 
   // Calculate Team Status (Stress based)
   let teamStatus = null;
   if (datasets.stress.length >= 5) {
     teamStatus = { label: 'Stable', color: '#64748b' };
-    const latest = datasets.stress[datasets.stress.length - 1];
-    const previous = datasets.stress.slice(0, datasets.stress.length - 1);
+    const latest = datasets.stress.at(-1);
+    const previous = datasets.stress.slice(0, -1);
     const avgPrevious = previous.reduce((a, b) => a + b, 0) / previous.length;
     
     if (latest < avgPrevious - 0.5) {
@@ -87,12 +87,11 @@ async function getWeeklyReport(companyCode) {
   const projectionCount = 3;
   const projections = {
     stress: calculateTrend(datasets.stress, projectionCount),
-    sleep: calculateTrend(datasets.sleep, projectionCount),
-    workload: calculateTrend(datasets.workload, projectionCount),
-    coffee: calculateTrend(datasets.coffee, projectionCount),
+    energy: calculateTrend(datasets.energy, projectionCount),
+    engagement: calculateTrend(datasets.engagement, projectionCount),
   };
   
-  const lastDay = sortedDays.length > 0 ? new Date(sortedDays[sortedDays.length - 1]) : new Date();
+  const lastDay = sortedDays.length > 0 ? new Date(sortedDays.at(-1)) : new Date();
   const projectionLabels = Array.from({ length: projectionCount }, (_, i) => 
     format(addDays(lastDay, i + 1), 'EEEE')
   );
@@ -162,10 +161,10 @@ async function getWeeklyReport(companyCode) {
   const userRisks = {};
   checkins.forEach(c => {
     try {
-      const result = predictAndAdvise('daily', { stress: c.stress, sleep: c.sleep, workload: c.workload, coffee: c.coffee });
+      const result = { score: (c.stress + (100 - c.energy)) / 2 }; // Simplified risk
       if (!userRisks[c.userId]) userRisks[c.userId] = [];
       userRisks[c.userId].push(result.score);
-    } catch (e) { /* ignore calculation errors */ }
+    } catch (e) { console.error('Risk calc error:', e.message); }
   });
 
   const riskDistribution = { low: 0, moderate: 0, high: 0, critical: 0 };
@@ -208,15 +207,7 @@ async function getPersonalHistory(userId) {
 
   // Calculate risk score for each check-in to show progression
   const riskScores = checkins.map(c => {
-    try {
-      const result = predictAndAdvise('daily', {
-        stress: c.stress,
-        sleep: c.sleep,
-        workload: c.workload,
-        coffee: c.coffee
-      });
-      return result.score;
-    } catch (e) { return 0; }
+    return (c.stress + (100 - (c.energy || 50))) / 2;
   });
 
   // Calculate Personal Status
@@ -224,7 +215,7 @@ async function getPersonalHistory(userId) {
   if (riskScores.length >= 5) {
     personalStatus = { label: 'Stable', color: '#64748b' };
     const latest = riskScores[riskScores.length - 1];
-    const previous = riskScores.slice(Math.max(0, riskScores.length - 8), riskScores.length - 1);
+    const previous = riskScores.slice(Math.max(0, riskScores.length - 8), -1);
     const avgPrevious = previous.reduce((a, b) => a + b, 0) / previous.length;
 
     if (latest < avgPrevious - 5) {
@@ -239,9 +230,9 @@ async function getPersonalHistory(userId) {
   const datasets = {
     risk: riskScores,
     stress: checkins.map(c => c.stress),
-    sleep: checkins.map(c => c.sleep),
-    workload: checkins.map(c => c.workload),
-    coffee: checkins.map(c => c.coffee),
+    energy: checkins.map(c => c.energy),
+    engagement: checkins.map(c => c.engagement || 0),
+    sleepQuality: checkins.map(c => c.sleepQuality || 0),
   };
 
   // Calculate Projections
@@ -249,9 +240,7 @@ async function getPersonalHistory(userId) {
   const projections = {
     risk: calculateTrend(riskScores, projectionCount),
     stress: calculateTrend(datasets.stress, projectionCount),
-    sleep: calculateTrend(datasets.sleep, projectionCount),
-    workload: calculateTrend(datasets.workload, projectionCount),
-    coffee: calculateTrend(datasets.coffee, projectionCount),
+    energy: calculateTrend(datasets.energy, projectionCount),
   };
 
   const lastCheckinDate = checkins.length > 0 ? checkins[checkins.length - 1].createdAt : new Date();
@@ -296,7 +285,7 @@ function calculateTrend(values, periods = 3) {
 
   const lastVal = values[n - 1];
 
-  return Array.from({ length: periods }, (_, i) => {
+  return Array.from(new Array(periods), (_, i) => {
     // Project from the last actual value to ensure continuity
     const val = lastVal + slope * (i + 1);
     return Math.max(0, val); // Clamp to 0

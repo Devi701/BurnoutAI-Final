@@ -4,6 +4,29 @@ const { Op, DataTypes } = require('sequelize');
 const db = require('../db/database');
 const { predictAndAdvise } = require('../services/predictionService');
 
+// Helper: Pearson Correlation Coefficient
+const calculateCorrelation = (x, y) => {
+  const n = x.length;
+  if (n < 2) return 0;
+  const sumX = x.reduce((a, b) => a + b, 0);
+  const sumY = y.reduce((a, b) => a + b, 0);
+  const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
+  const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
+  const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
+
+  const numerator = (n * sumXY) - (sumX * sumY);
+  const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  
+  return denominator === 0 ? 0 : numerator / denominator;
+};
+
+// Helper: Exponential Moving Average
+const calcEMA = (arr) => {
+  if (arr.length === 0) return 0;
+  const k = 2 / (arr.length + 1);
+  return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
+};
+
 // GET /api/reports/personal/me
 // Returns personal history with NUANCED projections (Seasonality + Trend)
 router.get('/personal/me', async (req, res) => {
@@ -12,7 +35,7 @@ router.get('/personal/me', async (req, res) => {
     if (!userId) return res.status(400).json({ error: 'User ID required' });
 
     // Security: Prevent IDOR
-    if (req.user.id !== parseInt(userId, 10)) {
+    if (req.user.id !== Number.parseInt(userId, 10)) {
       return res.status(403).json({ error: 'Unauthorized access to this report.' });
     }
 
@@ -52,7 +75,7 @@ router.get('/personal/me', async (req, res) => {
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const last = new Date(sorted[sorted.length - 1].createdAt);
+      const last = new Date(sorted.at(-1).createdAt);
       last.setHours(0,0,0,0);
 
       if (last.getTime() === today.getTime() || last.getTime() === yesterday.getTime()) {
@@ -85,9 +108,8 @@ router.get('/personal/me', async (req, res) => {
     const dates = [];
     const riskData = [];
     const stressData = [];
-    const sleepData = [];
-    const workloadData = [];
-    const coffeeData = [];
+    const energyData = [];
+    const engagementData = [];
     const recentActivity = [];
 
     // Store processed points for analysis
@@ -100,14 +122,10 @@ router.get('/personal/me', async (req, res) => {
 
     for (const c of checkins) {
       // 1. Calculate State based on recent history (buffer)
-      let sleepSum = 0;
-      let sleepCount = 0;
       let volatilitySum = 0;
       let prevStressForVol = null;
 
       for (const h of recentHistoryBuffer) {
-        sleepSum += h.sleep;
-        sleepCount++;
         if (prevStressForVol !== null) {
           volatilitySum += Math.abs(h.stress - prevStressForVol);
         }
@@ -117,21 +135,19 @@ router.get('/personal/me', async (req, res) => {
       // 2. Prepare features for prediction (Apply State)
       const features = {
         stress: c.stress,
-        sleep: c.sleep,
-        workload: c.workload,
-        coffee: c.coffee
+        energy: c.energy,
+        sleepQuality: c.sleepQuality
       };
 
       let continuousAdjustment = 0;
 
       // A. Sleep Debt
-      const avgSleep = sleepCount > 0 ? sleepSum / sleepCount : 8;
-      if (avgSleep < 6) {
-        features.stress = Math.min(10, features.stress * 1.2);
+      if (c.sleepQuality && c.sleepQuality < 3) {
+        features.stress = Math.min(100, features.stress * 1.1);
       }
 
       // B. Cumulative Fatigue (Input Mod)
-      features.stress = Math.min(10, features.stress + (fatigueBank * 0.3));
+      features.stress = Math.min(100, features.stress + (fatigueBank * 2));
 
       // C. Cumulative Fatigue (Direct Penalty)
       continuousAdjustment += fatigueBank;
@@ -140,7 +156,7 @@ router.get('/personal/me', async (req, res) => {
       continuousAdjustment -= resilienceBank;
 
       // D. Volatility Penalty
-      const avgVolatility = sleepCount > 1 ? volatilitySum / (sleepCount - 1) : 0;
+      const avgVolatility = recentHistoryBuffer.length > 1 ? volatilitySum / (recentHistoryBuffer.length - 1) : 0;
       if (avgVolatility > 2) continuousAdjustment += avgVolatility;
 
       // E. Baseline Bias
@@ -150,9 +166,7 @@ router.get('/personal/me', async (req, res) => {
       }
 
       // Re-calculate score to ensure consistency across reports
-      const pred = await predictAndAdvise('daily', features);
-      
-      let finalScore = pred.score + continuousAdjustment;
+      let finalScore = (features.stress + (100 - (features.energy || 50))) / 2 + continuousAdjustment;
       finalScore = Math.min(100, Math.max(0, finalScore));
       
       const dateObj = new Date(c.createdAt);
@@ -162,17 +176,14 @@ router.get('/personal/me', async (req, res) => {
       dates.push(c.createdAt);
       riskData.push(Math.round(finalScore));
       stressData.push(c.stress);
-      sleepData.push(c.sleep);
-      workloadData.push(c.workload);
-      coffeeData.push(c.coffee);
+      energyData.push(c.energy);
+      engagementData.push(c.engagement || 0);
 
       historyPoints.push({
         date: c.createdAt,
         score: finalScore,
         stress: c.stress,
-        sleep: c.sleep,
-        workload: c.workload,
-        coffee: c.coffee,
+        energy: c.energy,
         dayOfWeek: dateObj.getDay() // 0 (Sun) - 6 (Sat)
       });
 
@@ -186,8 +197,8 @@ router.get('/personal/me', async (req, res) => {
       // 3. Update State for NEXT iteration (using raw c)
       const dayDate = new Date(c.createdAt);
       const isWeekend = dayDate.getDay() === 0 || dayDate.getDay() === 6;
-      const dailyLoad = c.stress + c.workload;
-      const dailyRecovery = c.sleep + (isWeekend ? 4 : 2);
+      const dailyLoad = c.stress / 10;
+      const dailyRecovery = (c.energy / 10) + (isWeekend ? 2 : 0);
 
       if (dailyLoad > dailyRecovery) {
         fatigueBank += (dailyLoad - dailyRecovery) * 0.5;
@@ -286,8 +297,7 @@ router.get('/personal/me', async (req, res) => {
 
           // 3. Clamping
           val = Math.max(0, val); // Ensure non-negative
-          if (key === 'sleep') val = Math.min(24, val);
-          else if (key !== 'coffee') val = Math.min(10, val); // Stress/Workload max 10
+          val = Math.min(100, val); // Stress/Energy max 100
 
           projectedValues.push(val);
 
@@ -299,8 +309,7 @@ router.get('/personal/me', async (req, res) => {
           // Clamp bounds
           u = Math.max(0, u);
           l = Math.max(0, l);
-          if (key === 'sleep') u = Math.min(24, u);
-          else if (key !== 'coffee') u = Math.min(10, u);
+          u = Math.min(100, u);
 
           upper.push(Math.round(u * 10) / 10);
           lower.push(Math.round(l * 10) / 10);
@@ -318,9 +327,7 @@ router.get('/personal/me', async (req, res) => {
     };
 
     const projStressData = projectMetric('stress');
-    const projSleepData = projectMetric('sleep');
-    const projWorkloadData = projectMetric('workload');
-    const projCoffeeData = projectMetric('coffee');
+    const projEnergyData = projectMetric('energy');
 
     const projectedRisk = [];
     const riskUpper = [];
@@ -358,13 +365,10 @@ router.get('/personal/me', async (req, res) => {
 
       const features = {
         stress: projStressData.values[i],
-        sleep: projSleepData.values[i],
-        workload: projWorkloadData.values[i],
-        coffee: projCoffeeData.values[i]
+        energy: projEnergyData.values[i],
       };
       
-      const pred = await predictAndAdvise('daily', features);
-      const score = Math.round(pred.score);
+      const score = Math.round((features.stress + (100 - features.energy)) / 2);
       projectedRisk.push(score);
 
       // Confidence Interval Calculation: Uncertainty increases by 20% of StdDev each day
@@ -406,45 +410,33 @@ router.get('/personal/me', async (req, res) => {
       const relevantPoints = historyPoints.slice(-30);
       const vecRisk = relevantPoints.map(p => p.score);
       const vecStress = relevantPoints.map(p => p.stress);
-      const vecSleep = relevantPoints.map(p => p.sleep);
-      const vecWork = relevantPoints.map(p => p.workload);
-      const vecCoffee = relevantPoints.map(p => p.coffee);
+      const vecEnergy = relevantPoints.map(p => p.energy);
 
       // A. Calculate Correlations (User-specific sensitivity)
       const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
-      const corrSleep = Math.abs(calculateCorrelation(vecSleep, vecRisk));
-      const corrWork = Math.abs(calculateCorrelation(vecWork, vecRisk));
-      const corrCoffee = Math.abs(calculateCorrelation(vecCoffee, vecRisk));
+      const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
 
       // B. Define Base Weights (Domain Knowledge / Biological Importance)
-      const baseWeights = { stress: 0.35, sleep: 0.35, workload: 0.20, coffee: 0.10 };
+      const baseWeights = { stress: 0.6, energy: 0.4 };
 
       // C. Calculate Current Severity (EMA of last 7 days)
       const recentStress = calcEMA(vecStress.slice(-7));
-      const recentSleep = calcEMA(vecSleep.slice(-7));
-      const recentWork = calcEMA(vecWork.slice(-7));
-      const recentCoffee = calcEMA(vecCoffee.slice(-7));
+      const recentEnergy = calcEMA(vecEnergy.slice(-7));
 
       // D. Calculate Deviation from Optimal (Normalized 0-1)
-      const devStress = Math.max(0, (recentStress - 1) / 9); // 1..10 -> 0..1
-      const devWork = Math.max(0, (recentWork - 1) / 9);     // 1..10 -> 0..1
-      const devSleep = Math.max(0, (8 - recentSleep) / 8);   // 8..0 -> 0..1 (Less sleep is worse)
-      const devCoffee = Math.min(1, recentCoffee / 5);       // 0..5+ -> 0..1
+      const devStress = Math.max(0, recentStress / 100); 
+      const devEnergy = Math.max(0, (100 - recentEnergy) / 100);
 
       // E. Compute Final Impact Scores
       const impactStress = devStress * baseWeights.stress * (1 + corrStress);
-      const impactSleep = devSleep * baseWeights.sleep * (1 + corrSleep);
-      const impactWork = devWork * baseWeights.workload * (1 + corrWork);
-      const impactCoffee = devCoffee * baseWeights.coffee * (1 + corrCoffee);
+      const impactEnergy = devEnergy * baseWeights.energy * (1 + corrEnergy);
 
-      const totalImpact = impactStress + impactSleep + impactWork + impactCoffee;
+      const totalImpact = impactStress + impactEnergy;
 
       if (totalImpact > 0.05) { // Threshold to avoid noise when everything is good
         const factors = [
           { name: 'High Stress', score: impactStress },
-          { name: 'Poor Sleep', score: impactSleep },
-          { name: 'Heavy Workload', score: impactWork },
-          { name: 'Caffeine Intake', score: impactCoffee }
+          { name: 'Low Energy', score: impactEnergy },
         ];
         
         factors.sort((a, b) => b.score - a.score);
@@ -462,21 +454,16 @@ router.get('/personal/me', async (req, res) => {
       datasets: {
         risk: riskData,
         stress: stressData,
-        sleep: sleepData,
-        workload: workloadData,
-        coffee: coffeeData
+        energy: energyData,
+        engagement: engagementData
       },
       projections: {
         risk: projectedRisk,
         riskConfidence: { upper: riskUpper, lower: riskLower, volatility: riskStdDev },
         stress: projStressData.values,
         stressConfidence: projStressData.confidence,
-        sleep: projSleepData.values,
-        sleepConfidence: projSleepData.confidence,
-        workload: projWorkloadData.values,
-        workloadConfidence: projWorkloadData.confidence,
-        coffee: projCoffeeData.values,
-        coffeeConfidence: projCoffeeData.confidence
+        energy: projEnergyData.values,
+        energyConfidence: projEnergyData.confidence,
       },
       projectionLabels,
       recentActivity: recentActivity.slice(0, 5),
@@ -535,14 +522,14 @@ router.get('/teams', async (req, res) => {
       const employees = allEmployees.filter(e => e.teamId == team.id);
 
       let totalStress = 0;
-      let totalWorkload = 0;
+      let totalEnergy = 0;
       let count = 0;
 
       for (const emp of employees) {
         const checkin = checkinMap.get(emp.id);
         if (checkin) {
           totalStress += Number(checkin.stress || 0);
-          totalWorkload += Number(checkin.workload || 0);
+          totalEnergy += Number(checkin.energy || 0);
           count++;
         }
       }
@@ -552,7 +539,7 @@ router.get('/teams', async (req, res) => {
         name: team.name,
         memberCount: employees.length,
         avgStress: count > 0 ? (totalStress / count).toFixed(1) : 0,
-        avgWorkload: count > 0 ? (totalWorkload / count).toFixed(1) : 0,
+        avgEnergy: count > 0 ? (totalEnergy / count).toFixed(1) : 0,
         predictedImprovement: count > 0 ? 15 : 0 // Placeholder heuristic
       });
     }
@@ -621,7 +608,7 @@ router.get('/:companyCode', async (req, res) => {
 
     // 3. Aggregate Data & Advanced Attribution
     const riskDistribution = { low: 0, moderate: 0, high: 0, critical: 0 };
-    const teamImpacts = { stress: 0, sleep: 0, workload: 0, coffee: 0 };
+    const teamImpacts = { stress: 0, energy: 0 };
     
     // Calculate Team Adherence
     let totalTrackedItems = 0;
@@ -643,88 +630,58 @@ router.get('/:companyCode', async (req, res) => {
     
     const teamAdherence = totalTrackedItems > 0 ? Math.round((totalCompletedItems / totalTrackedItems) * 100) : 0;
 
-    // Helpers for attribution (duplicated to keep route self-contained)
-    const calculateCorrelation = (x, y) => {
-      const n = x.length;
-      if (n < 2) return 0;
-      const sumX = x.reduce((a, b) => a + b, 0);
-      const sumY = y.reduce((a, b) => a + b, 0);
-      const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
-      const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
-      const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
-      const numerator = (n * sumXY) - (sumX * sumY);
-      const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-      return denominator === 0 ? 0 : numerator / denominator;
-    };
-    const calcEMA = (arr) => {
-      if (arr.length === 0) return 0;
-      const k = 2 / (arr.length + 1);
-      return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
-    };
-    
     // Calculate current risk for each employee to populate distribution
+    const empCheckins = checkins; // Assuming checkins are already fetched for all employees
+
     for (const empId of employeeIds) {
-      const empCheckins = checkins.filter(c => c.userId === empId);
-      if (empCheckins.length > 0) {
-        // A. Risk Distribution
-        const last = empCheckins[empCheckins.length - 1];
-        const pred = await predictAndAdvise('daily', last); // Re-calc
-        const score = pred.score;
-        
-        if (score < 30) riskDistribution.low++;
-        else if (score < 60) riskDistribution.moderate++;
-        else if (score < 80) riskDistribution.high++;
-        else riskDistribution.critical++;
+      const employeeCheckins = checkins.filter(c => c.userId === empId);
+      
+      if (employeeCheckins.length > 0) {
+          // A. Risk Distribution
+          const last = employeeCheckins[employeeCheckins.length - 1];
+          const score = (last.stress + (100 - last.energy)) / 2;
+          
+          if (score < 30) riskDistribution.low++;
+          else if (score < 60) riskDistribution.moderate++;
+          else if (score < 80) riskDistribution.high++;
+          else riskDistribution.critical++;
 
-        // B. Advanced Attribution (Primary Signal)
-        if (empCheckins.length >= 2) {
-          const relevantPoints = empCheckins.slice(-30);
-          const vecRisk = [];
-          for (const c of relevantPoints) {
-            const p = await predictAndAdvise('daily', { stress: c.stress, sleep: c.sleep, workload: c.workload, coffee: c.coffee });
-            vecRisk.push(p.score);
+          // B. Advanced Attribution (Primary Signal)
+          if (employeeCheckins.length >= 2) {
+            const relevantPoints = employeeCheckins.slice(-30);
+            const vecRisk = [];
+            for (const c of relevantPoints) {
+              vecRisk.push((c.stress + (100 - c.energy)) / 2);
+            }
+            const vecStress = relevantPoints.map(p => p.stress);
+            const vecEnergy = relevantPoints.map(p => p.energy);
+
+            const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
+            const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
+
+            const baseWeights = { stress: 0.6, energy: 0.4 };
+
+            const recentStress = calcEMA(vecStress.slice(-7));
+            const recentEnergy = calcEMA(vecEnergy.slice(-7));
+
+            const devStress = Math.max(0, recentStress / 100);
+            const devEnergy = Math.max(0, (100 - recentEnergy) / 100);
+
+            teamImpacts.stress += devStress * baseWeights.stress * (1 + corrStress);
+            teamImpacts.energy += devEnergy * baseWeights.energy * (1 + corrEnergy);
           }
-          const vecStress = relevantPoints.map(p => p.stress);
-          const vecSleep = relevantPoints.map(p => p.sleep);
-          const vecWork = relevantPoints.map(p => p.workload);
-          const vecCoffee = relevantPoints.map(p => p.coffee);
-
-          const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
-          const corrSleep = Math.abs(calculateCorrelation(vecSleep, vecRisk));
-          const corrWork = Math.abs(calculateCorrelation(vecWork, vecRisk));
-          const corrCoffee = Math.abs(calculateCorrelation(vecCoffee, vecRisk));
-
-          const baseWeights = { stress: 0.35, sleep: 0.35, workload: 0.20, coffee: 0.10 };
-
-          const recentStress = calcEMA(vecStress.slice(-7));
-          const recentSleep = calcEMA(vecSleep.slice(-7));
-          const recentWork = calcEMA(vecWork.slice(-7));
-          const recentCoffee = calcEMA(vecCoffee.slice(-7));
-
-          const devStress = Math.max(0, (recentStress - 1) / 9);
-          const devWork = Math.max(0, (recentWork - 1) / 9);
-          const devSleep = Math.max(0, (8 - recentSleep) / 8);
-          const devCoffee = Math.min(1, recentCoffee / 5);
-
-          teamImpacts.stress += devStress * baseWeights.stress * (1 + corrStress);
-          teamImpacts.sleep += devSleep * baseWeights.sleep * (1 + corrSleep);
-          teamImpacts.workload += devWork * baseWeights.workload * (1 + corrWork);
-          teamImpacts.coffee += devCoffee * baseWeights.coffee * (1 + corrCoffee);
-        }
       }
     }
 
     // Determine Top Team Factor
-    const totalTeamImpact = teamImpacts.stress + teamImpacts.sleep + teamImpacts.workload + teamImpacts.coffee;
+    const totalTeamImpact = teamImpacts.stress + teamImpacts.energy;
     let teamTopFactor = 'Balanced';
     let contributionPercent = 0;
 
     if (totalTeamImpact > 0.05) {
       const factors = [
         { name: 'High Stress', score: teamImpacts.stress },
-        { name: 'Poor Sleep', score: teamImpacts.sleep },
-        { name: 'Heavy Workload', score: teamImpacts.workload },
-        { name: 'Caffeine Intake', score: teamImpacts.coffee }
+        { name: 'Low Energy', score: teamImpacts.energy },
       ];
       factors.sort((a, b) => b.score - a.score);
       teamTopFactor = factors[0].name;
@@ -732,7 +689,7 @@ router.get('/:companyCode', async (req, res) => {
     }
 
     // Aggregate Daily Trends (Last 7 Days)
-    const aggregatedData = { stress: [], sleep: [], workload: [], coffee: [] };
+    const aggregatedData = { stress: [], energy: [] };
     const labels = [];
     const today = new Date();
     
@@ -746,15 +703,11 @@ router.get('/:companyCode', async (req, res) => {
       
       if (dailyCheckins.length > 0) {
         const avg = (key) => dailyCheckins.reduce((s, c) => s + c[key], 0) / dailyCheckins.length;
-        aggregatedData.stress.push(parseFloat(avg('stress').toFixed(1)));
-        aggregatedData.sleep.push(parseFloat(avg('sleep').toFixed(1)));
-        aggregatedData.workload.push(parseFloat(avg('workload').toFixed(1)));
-        aggregatedData.coffee.push(parseFloat(avg('coffee').toFixed(1)));
+        aggregatedData.stress.push(Number.parseFloat(avg('stress').toFixed(1)));
+        aggregatedData.energy.push(Number.parseFloat(avg('energy').toFixed(1)));
       } else {
         aggregatedData.stress.push(null);
-        aggregatedData.sleep.push(null);
-        aggregatedData.workload.push(null);
-        aggregatedData.coffee.push(null);
+        aggregatedData.energy.push(null);
       }
     }
     
@@ -763,7 +716,7 @@ router.get('/:companyCode', async (req, res) => {
       totalCheckins: checkins.length,
       riskDistribution,
       datasets: aggregatedData,
-      projections: { stress: [3, 3, 3], sleep: [8, 8, 8], workload: [4, 4, 4], coffee: [1, 1, 1] },
+      projections: { stress: [50, 50, 50], energy: [50, 50, 50] },
       labels,
       projectionLabels: ['Mon', 'Tue', 'Wed'],
       teamStatus: { label: 'Stable', color: '#10b981' },

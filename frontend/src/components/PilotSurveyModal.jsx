@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import { submitSurvey } from '../services/api';
 import { analytics } from '../services/analytics';
 
@@ -61,11 +62,11 @@ export default function PilotSurveyModal({ userId, companyCode, activeDays, onCl
   };
 
   const handleDismiss = async () => {
-    if (window.confirm("Dismiss this survey? It won't appear again.")) {
+    if (globalThis.confirm("Dismiss this survey? It won't appear again.")) {
       try {
         await submitSurvey({ userId, dismissed: true });
         onClose();
-      } catch (e) { onClose(); }
+      } catch (e) { console.error(e); onClose(); }
     }
   };
 
@@ -164,6 +165,9 @@ export default function PilotSurveyModal({ userId, companyCode, activeDays, onCl
   );
 }
 
+Label.propTypes = { children: PropTypes.node.isRequired };
+Select.propTypes = { value: PropTypes.string.isRequired, onChange: PropTypes.func.isRequired, options: PropTypes.array.isRequired };
+
 const Label = ({ children }) => <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#334155', marginBottom: '-0.5rem' }}>{children}</label>;
 
 const Select = ({ value, onChange, options }) => (
@@ -187,4 +191,11 @@ const overlayStyle = {
 
 const modalStyle = {
   backgroundColor: 'white', padding: '2rem', borderRadius: '8px', width: '90%', maxWidth: '500px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+};
+
+PilotSurveyModal.propTypes = {
+  userId: PropTypes.number.isRequired,
+  companyCode: PropTypes.string,
+  activeDays: PropTypes.number.isRequired,
+  onClose: PropTypes.func.isRequired
 };

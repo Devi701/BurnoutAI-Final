@@ -38,6 +38,66 @@ const chartOptions = {
   }
 };
 
+const BurnoutHeatmap = ({ data }) => {
+  if (!data || !data.dates) return null;
+
+  const dateMap = new Map();
+  data.dates.forEach((d, i) => {
+    const dateStr = new Date(d).toISOString().split('T')[0];
+    const score = data.datasets.risk[i];
+    dateMap.set(dateStr, score);
+  });
+
+  const today = new Date();
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 120); // Last 4 months
+  // Align to previous Sunday to ensure grid starts correctly (Row 1 = Sunday)
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+
+  const cells = [];
+  let current = new Date(startDate);
+  while (current <= today) {
+    const dateStr = current.toISOString().split('T')[0];
+    const score = dateMap.get(dateStr);
+    
+    let color = '#f1f5f9'; // Empty cell (slate-100)
+    let title = `${new Date(dateStr).toLocaleDateString()}: No Check-in`;
+    
+    if (score !== undefined && score !== null) {
+      title = `${new Date(dateStr).toLocaleDateString()}: Risk Score ${Math.round(score)}`;
+      if (score < 30) color = '#10b981'; // Green
+      else if (score < 60) color = '#f59e0b'; // Yellow
+      else if (score < 80) color = '#f97316'; // Orange
+      else color = '#ef4444'; // Red
+    }
+
+    cells.push({ date: dateStr, color, title });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return (
+    <div className="card" style={{ marginBottom: '2rem', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 style={{ margin: 0 }}>Consistency Heatmap</h3>
+        <span className="small" style={{ color: '#64748b' }}>Last 4 Months</span>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateRows: 'repeat(7, 14px)', gridAutoFlow: 'column', gap: '4px', width: 'max-content', paddingBottom: '5px' }}>
+        {cells.map(cell => (
+          <div key={cell.date} title={cell.title} style={{ width: '14px', height: '14px', backgroundColor: cell.color, borderRadius: '3px' }} />
+        ))}
+      </div>
+      
+      <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem', fontSize: '0.8rem', color: '#64748b', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{width:12, height:12, borderRadius:3, background:'#f1f5f9'}}></span> No Data</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{width:12, height:12, borderRadius:3, background:'#10b981'}}></span> Low Risk</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{width:12, height:12, borderRadius:3, background:'#f59e0b'}}></span> Moderate</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{width:12, height:12, borderRadius:3, background:'#ef4444'}}></span> High Risk</div>
+      </div>
+    </div>
+  );
+};
+
 export default function HistoryPage() {
   const { user } = useUser();
   const [data, setData] = useState(null);
@@ -96,7 +156,7 @@ export default function HistoryPage() {
 
   // Fetch tracking logs for the latest plan
   useEffect(() => {
-    if (plans.length > 0) {
+    if (plans?.length > 0) {
       const latest = plans[plans.length - 1];
       fetchPlanTracking(latest.id)
         .then(logs => setTrackingLogs(logs.reverse())) // Newest first
@@ -141,7 +201,6 @@ export default function HistoryPage() {
     };
   };
 
-  const latestPlan = plans.length > 0 ? plans[plans.length - 1] : null;
 
   const handlePlanSelect = (planId) => {
     setSelectedPlanIds(prev => {
@@ -159,18 +218,17 @@ export default function HistoryPage() {
     if (!data || !data.datasets) return;
 
     // Use full dates if available (from backend update), otherwise fallback to chart labels
-    const timeLabels = data.dates || data.labels;
+    const timeLabels = data.dates ?? data.labels;
     
-    const headers = ['Date', 'Risk Score', 'Stress Level', 'Sleep Hours', 'Workload', 'Coffee Consumption'];
+    const headers = ['Date', 'Risk Score', 'Energy Level', 'Stress Level', 'Engagement'];
     const rows = timeLabels.map((dateVal, index) => {
       const dateStr = data.dates ? new Date(dateVal).toLocaleDateString() : dateVal;
       return [
         `"${dateStr}"`,
         data.datasets.risk[index],
+        data.datasets.energy[index],
         data.datasets.stress[index],
-        data.datasets.sleep[index],
-        data.datasets.workload[index],
-        data.datasets.coffee[index]
+        data.datasets.engagement[index]
       ].join(',');
     });
 
@@ -182,7 +240,7 @@ export default function HistoryPage() {
     link.setAttribute('download', `wellness_history_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   };
 
   const comparePlans = plans.filter(p => selectedPlanIds.includes(p.id));
@@ -243,12 +301,12 @@ export default function HistoryPage() {
         {/* Date Filter */}
         <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: '500', color: '#334155' }}>From:</label>
-            <input type="date" value={filterStart} onChange={(e) => setFilterStart(e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <label htmlFor="filter-start" style={{ fontWeight: '500', color: '#334155' }}>From:</label>
+            <input id="filter-start" type="date" value={filterStart} onChange={(e) => setFilterStart(e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <label style={{ fontWeight: '500', color: '#334155' }}>To:</label>
-            <input type="date" value={filterEnd} onChange={(e) => setFilterEnd(e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <label htmlFor="filter-end" style={{ fontWeight: '500', color: '#334155' }}>To:</label>
+            <input id="filter-end" type="date" value={filterEnd} onChange={(e) => setFilterEnd(e.target.value)} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <button onClick={loadData} className="quiz-button" style={{ padding: '0.5rem 1.5rem', fontSize: '0.9rem', marginLeft: 'auto' }}>
             Filter
@@ -259,6 +317,9 @@ export default function HistoryPage() {
           {(filterStart || filterEnd) && <button onClick={() => { setFilterStart(''); setFilterEnd(''); setTimeout(loadData, 0); }} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>Clear</button>}
         </div>
         
+        {/* Calendar Heatmap */}
+        <BurnoutHeatmap data={data} />
+
         {/* Burnout Risk Chart */}
         <div className="card" style={{ marginBottom: '2rem' }}>
           <h3>Burnout Trends</h3>
@@ -374,7 +435,7 @@ export default function HistoryPage() {
                 {[...plans].reverse().map(plan => (
                   <div 
                     key={plan.id} 
-                    onClick={() => handlePlanSelect(plan.id)}
+                    onClick={() => handlePlanSelect(plan.id)} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && handlePlanSelect(plan.id)}
                     style={{
                       minWidth: '220px',
                       padding: '1rem',
@@ -418,8 +479,8 @@ export default function HistoryPage() {
                       
                       <h6 style={{ marginBottom: '0.5rem', color: '#475569' }}>Actions Taken:</h6>
                       <ul style={{ paddingLeft: '1.2rem', margin: 0, color: '#334155' }}>
-                        {plan.actions && plan.actions.map((action, i) => (
-                          <li key={i} style={{ marginBottom: '0.5rem' }}>
+                        {plan.actions?.map((action, i) => (
+                          <li key={`action-${i}`} style={{ marginBottom: '0.5rem' }}>
                             <strong>{formatActionType(action.type)}</strong>: {action.value}
                           </li>
                         ))}
@@ -433,7 +494,7 @@ export default function HistoryPage() {
         )}
 
         <div 
-          onClick={() => setIsMetricsExpanded(!isMetricsExpanded)}
+          onClick={() => setIsMetricsExpanded(!isMetricsExpanded)} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && setIsMetricsExpanded(!isMetricsExpanded)}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2rem', marginBottom: '1rem', cursor: 'pointer', userSelect: 'none' }}
         >
           <h3 style={{ margin: 0 }}>Detailed Metrics</h3>
@@ -441,33 +502,27 @@ export default function HistoryPage() {
         </div>
 
         {isMetricsExpanded && (
-          <>
             <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div className="card">
+                <h4>Energy Levels</h4>
+                <Line options={chartOptions} data={getChartData('Energy', 'energy', 'rgb(16, 185, 129)')} />
+              </div>
               <div className="card">
                 <h4>Stress Levels</h4>
                 <Line options={chartOptions} data={getChartData('Stress', 'stress', 'rgb(249, 115, 22)')} />
               </div>
               <div className="card">
-                <h4>Sleep Hours</h4>
-                <Line options={chartOptions} data={getChartData('Sleep', 'sleep', 'rgb(59, 130, 246)')} />
-              </div>
-              <div className="card">
-                <h4>Workload</h4>
-                <Line options={chartOptions} data={getChartData('Workload', 'workload', 'rgb(168, 85, 247)')} />
-              </div>
-              <div className="card">
-                <h4>Coffee Consumption</h4>
-                <Line options={chartOptions} data={getChartData('Coffee', 'coffee', 'rgb(120, 53, 15)')} />
+                <h4>Engagement / Focus</h4>
+                <Line options={chartOptions} data={getChartData('Engagement', 'engagement', 'rgb(59, 130, 246)')} />
               </div>
             </div>
-          </>
         )}
 
         {/* Action Adherence Log */}
         {trackingLogs.length > 0 && (
           <div className="card" style={{ marginTop: '2rem' }}>
             <div 
-              onClick={() => setIsTrackingLogExpanded(!isTrackingLogExpanded)}
+              onClick={() => setIsTrackingLogExpanded(!isTrackingLogExpanded)} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && setIsTrackingLogExpanded(!isTrackingLogExpanded)}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
             >
               <h3 style={{ margin: 0 }}>Action Adherence Log</h3>
@@ -491,7 +546,7 @@ export default function HistoryPage() {
                       return Object.entries(data).map(([action, details], idx) => (
                         <tr key={`${log.id}-${idx}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.5rem 0' }}>{new Date(log.date).toLocaleDateString()}</td>
-                          <td style={{ padding: '0.5rem 0', textTransform: 'capitalize' }}>{action.replace(/_/g, ' ')}</td>
+                          <td style={{ padding: '0.5rem 0', textTransform: 'capitalize' }}>{action.replaceAll('_', ' ')}</td>
                           <td style={{ padding: '0.5rem 0' }}>
                             {(details === true || details.completed) ? 
                               <span style={{ color: '#10b981', fontWeight: 'bold' }}>Completed</span> : 
@@ -515,7 +570,7 @@ export default function HistoryPage() {
         {data.recentActivity && data.recentActivity.length > 0 && (
           <div className="card" style={{ marginTop: '2rem' }}>
             <div 
-              onClick={() => setIsActivityLogExpanded(!isActivityLogExpanded)}
+              onClick={() => setIsActivityLogExpanded(!isActivityLogExpanded)} role="button" tabIndex="0" onKeyDown={(e) => e.key === 'Enter' && setIsActivityLogExpanded(!isActivityLogExpanded)}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}
             >
               <h3 style={{ margin: 0 }}>Recent Activity Log</h3>

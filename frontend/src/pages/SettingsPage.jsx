@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,12 +15,24 @@ const Section = ({ title, children }) => (
   </div>
 );
 
+Section.propTypes = {
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired
+};
+
 const Toggle = ({ label, checked, onChange, name }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0' }}>
     <span style={{ color: '#334155' }}>{label}</span>
-    <input type="checkbox" name={name} checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} />
+    <input type="checkbox" name={name} checked={checked} onChange={onChange} style={{ transform: 'scale(1.2)', cursor: 'pointer' }} aria-label={label} />
   </div>
 );
+
+Toggle.propTypes = {
+  label: PropTypes.string.isRequired,
+  checked: PropTypes.bool.isRequired,
+  onChange: PropTypes.func.isRequired,
+  name: PropTypes.string.isRequired
+};
 
 export default function SettingsPage() {
   const { user, setUser } = useUser();
@@ -90,7 +103,7 @@ export default function SettingsPage() {
   };
 
   const handleLeaveOrg = async () => {
-    if (!window.confirm("Are you sure you want to leave this organisation? You will lose access to team insights.")) return;
+    if (!globalThis.confirm("Are you sure you want to leave this organisation? You will lose access to team insights.")) return;
     try {
       await leaveCompany({ userId: user.id });
       setUser(prev => ({ ...prev, companyCode: null }));
@@ -103,7 +116,7 @@ export default function SettingsPage() {
   const handleJoinOrg = async (e) => {
     e.preventDefault();
     if (!joinCode) return;
-    if (!window.confirm(`Join organisation with code: ${joinCode}?`)) return;
+    if (!globalThis.confirm(`Join organisation with code: ${joinCode}?`)) return;
     
     try {
       await joinCompany({ userId: user.id, companyCode: joinCode });
@@ -116,7 +129,7 @@ export default function SettingsPage() {
   };
 
   const handleRegenerateCode = async () => {
-    if (!window.confirm("Regenerating the code will invalidate the old one. Continue?")) return;
+    if (!globalThis.confirm("Regenerating the code will invalidate the old one. Continue?")) return;
     try {
       const res = await regenerateCompanyCode({ userId: user.id });
       setUser(prev => ({ ...prev, companyCode: res.companyCode }));
@@ -129,7 +142,7 @@ export default function SettingsPage() {
   const handleDownloadData = async () => {
     try {
       const data = await fetchUserCheckins(user.id);
-      if (!data || !data.checkins || data.checkins.length === 0) return alert('No data to download.');
+      if (!data?.checkins?.length) return alert('No data to download.');
       
       const csvContent = "Date,Stress,Sleep,Workload,Coffee,Note\n" + 
         data.checkins.map(c => `${new Date(c.createdAt).toLocaleDateString()},${c.stress},${c.sleep},${c.workload},${c.coffee},"${c.note||''}"`).join("\n");
@@ -142,14 +155,14 @@ export default function SettingsPage() {
       link.click();
       analytics.capture('personal_data_exported');
     } catch (err) {
-      alert('Failed to download data.');
+      console.error(err); alert('Failed to download data.');
     }
   };
 
   const handleDeleteAccount = async () => {
-    const confirm1 = window.confirm("Are you sure you want to delete your account? This is permanent.");
+    const confirm1 = globalThis.confirm("Are you sure you want to delete your account? This is permanent.");
     if (!confirm1) return;
-    const confirm2 = window.confirm("Really? All your data will be lost forever.");
+    const confirm2 = globalThis.confirm("Really? All your data will be lost forever.");
     if (!confirm2) return;
 
     try {
@@ -196,7 +209,7 @@ export default function SettingsPage() {
   };
 
   const handleReset = async () => {
-    if (!window.confirm('Are you sure you want to delete all history? This cannot be undone.')) return;
+    if (!globalThis.confirm('Are you sure you want to delete all history? This cannot be undone.')) return;
     try {
       await resetHistory(user.id);
       alert('History reset successfully. You can now start fresh.');
@@ -244,12 +257,12 @@ export default function SettingsPage() {
         <Section title="Account Basics">
           <form onSubmit={handleUpdateProfile}>
             <div className="form-row">
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Full Name</label>
-              <input name="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <label htmlFor="name-input" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Full Name</label>
+              <input id="name-input" name="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
             <div className="form-row">
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Email Address</label>
-              <input name="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
+              <label htmlFor="email-input" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Email Address</label>
+              <input id="email-input" name="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="form-control" style={{ width: '100%', padding: '8px' }} />
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
               <button type="submit" className="quiz-button" disabled={loading} style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>Update Profile</button>
@@ -348,8 +361,9 @@ export default function SettingsPage() {
                 Update your organisation name and email in the <strong>Account Basics</strong> section above.
               </p>
               <div className="form-row">
-                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Industry Sector</label>
+                <label htmlFor="industry-select" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Industry Sector</label>
                 <select 
+                  id="industry-select"
                   name="industry"
                   className="form-control" 
                   style={{ width: '100%', padding: '8px' }}
@@ -368,9 +382,9 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#eff6ff', borderRadius: '4px' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', color: '#1e40af', fontWeight: 'bold' }}>Company Code</label>
+                <label htmlFor="company-code-display" style={{ display: 'block', marginBottom: '0.5rem', color: '#1e40af', fontWeight: 'bold' }}>Company Code</label>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.5rem', fontFamily: 'monospace' }}>{user.companyCode}</span>
+                  <span id="company-code-display" style={{ fontSize: '1.5rem', fontFamily: 'monospace' }}>{user.companyCode}</span>
                   <button onClick={handleRegenerateCode} style={{ fontSize: '0.8rem', padding: '4px 8px', cursor: 'pointer' }}>Regenerate</button>
                 </div>
               </div>
@@ -414,8 +428,9 @@ export default function SettingsPage() {
         {/* Shared Settings */}
         <Section title="Preferences">
           <div className="form-row">
-            <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Timezone</label>
+            <label htmlFor="timezone-select" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>Timezone</label>
             <select 
+              id="timezone-select"
               name="timezone"
               className="form-control" 
               style={{ width: '100%', padding: '8px' }}

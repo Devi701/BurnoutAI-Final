@@ -2,15 +2,16 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
-import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import EmployeeHome from './pages/EmployeeHome';
+import LandingPage from './pages/LandingPage';
 import EmployerHome from './pages/EmployerHome';
 import CheckinPage from './pages/CheckinPage';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import HistoryPage from './pages/HistoryPage';
 import SmallTest from './pages/SmallTest'; // Assuming SmallTest component exists
 import FullTest from './pages/FullTest';
+import Signup from './pages/Signup';
 import SignupEmployee from './pages/SignupEmployee';
 import SignupEmployer from './pages/SignupEmployer';
 import OnboardingPage from './pages/OnboardingPage';
@@ -18,6 +19,7 @@ import LifeSimulator from './pages/LifeSimulator';
 import NotFound from './pages/NotFound';
 import SettingsPage from './pages/SettingsPage';
 import GamificationHub from './pages/GamificationHub';
+import FeedbackPage from './pages/FeedbackPage';
 import './App.css';
 
 function AppContent() {
@@ -26,6 +28,7 @@ function AppContent() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/signup" element={<Signup />} />
       <Route path="/signup/employee" element={<SignupEmployee />} />
       <Route path="/signup/employer" element={<SignupEmployer />} />
       <Route path="/employee" element={<EmployeeHome />} />
@@ -38,6 +41,7 @@ function AppContent() {
       <Route path="/impact" element={<LifeSimulator />} />
       <Route path="/settings" element={<SettingsPage />} />
       <Route path="/gamification" element={<GamificationHub />} />
+      <Route path="/feedback" element={<FeedbackPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

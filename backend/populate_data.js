@@ -2,7 +2,7 @@ require('dotenv').config();
 const db = require('./db/database');
 const { hashPassword } = require('./utils/password');
 
-async function populateData() {
+try {
   // Get company code from terminal argument
   const rawCompanyCode = process.argv[2];
 
@@ -97,9 +97,7 @@ async function populateData() {
 
     // 4. Verify Data
     const userCount = await db.User.count({ where: { companyCode } });
-    const checkinCount = await db.Checkin.count({ 
-      include: [{ model: db.User, where: { companyCode } }] 
-    }).catch(() => checkins.length); // Fallback if association fails
+    // Verification complete
 
     console.log(`✅ Success! Added 30 employees and 300 check-ins to ${companyCode}.`);
     console.log(`   📊 Verification: Found ${userCount} employees in DB for this company.`);
@@ -110,6 +108,7 @@ async function populateData() {
     console.error('❌ Error populating data:', error);
     process.exit(1);
   }
+} catch (error) {
+  console.error('Top-level error:', error);
+  process.exit(1);
 }
-
-populateData();

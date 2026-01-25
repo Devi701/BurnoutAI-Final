@@ -1,12 +1,12 @@
 require('dotenv').config();
 const db = require('./db/database');
 
-(async () => {
+try {
   console.log('------------------------------------------------');
   console.log('🚀 Starting Database Migration...');
   console.log('------------------------------------------------');
 
-  try {
+  
     await db.sequelize.authenticate();
     console.log('✅ Connected to Database.');
 
@@ -15,10 +15,9 @@ const db = require('./db/database');
     
     console.log('✅ Migration successful! All tables have been created/updated.');
 
-  } catch (error) {
-    console.error('❌ Migration failed:', error.message);
-  } finally {
-    console.log('------------------------------------------------');
-    process.exit();
-  }
-})();
+} catch (error) {
+  console.error('❌ Migration failed:', error.message);
+} finally {
+  console.log('------------------------------------------------');
+  process.exit();
+}

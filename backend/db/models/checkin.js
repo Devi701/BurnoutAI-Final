@@ -1,4 +1,4 @@
-module.exports = (sequelize, DataTypes) => {
+module.exports = function defineCheckin(sequelize, DataTypes) {
   const Checkin = sequelize.define('Checkin', {
     stress: {
       type: DataTypes.FLOAT,

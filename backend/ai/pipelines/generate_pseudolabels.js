@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
-const parse = require('csv-parse/lib/sync');
-const stringify = require('csv-stringify/lib/sync');
+const fs = require('node:fs');
+const path = require('node:path');
+const { parse } = require('csv-parse/sync');
+const { stringify } = require('csv-stringify/sync');
 
 /**
  * This script generates pseudo-labels for a burnout score based on a weighted average of specific features.
@@ -18,7 +18,7 @@ const PSEUDO_LABEL_CONFIG = {
     ee_cols: { columns: ['emo1'], weight: 0.35, inverted: false },      // "I feel emotionally drained from my work."
     s_cols: { columns: ['cogn1'], weight: 0.25, inverted: false },       // "I have trouble concentrating at work."
     sfq_cols: { columns: ['ERI1'], weight: 0.15, inverted: true },      // "I receive the respect I deserve for my work."
-    wp_cols: { columns: ['wp1'], weight: 0.20, inverted: false },        // "I have too much work to do."
+    wp_cols: { columns: ['wp1'], weight: 0.2, inverted: false },        // "I have too much work to do."
     auton_cols: { columns: ['auton1'], weight: 0.05, inverted: true }   // "I have a lot of say in what happens on my job."
 };
 

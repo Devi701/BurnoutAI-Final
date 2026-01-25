@@ -15,7 +15,7 @@
     "gainThreshold": 0,
     "splitValue": 75,
     "splitColumn": 0,
-    "gain": 1166638.8025466176,
+    "gain": 1149548.0981686907,
     "numberSamples": 5000,
     "left": {
       "kind": "regression",
@@ -26,7 +26,7 @@
       "gainThreshold": 0,
       "splitValue": 75,
       "splitColumn": 1,
-      "gain": 706746.7726183736,
+      "gain": 683319.2877685373,
       "numberSamples": 4002,
       "left": {
         "kind": "regression",
@@ -37,7 +37,7 @@
         "gainThreshold": 0,
         "splitValue": 34.378909181886414,
         "splitColumn": 3,
-        "gain": 455025.15442127513,
+        "gain": 450116.93556770484,
         "numberSamples": 3223,
         "left": {
           "kind": "regression",
@@ -48,7 +48,7 @@
           "gainThreshold": 0,
           "splitValue": 34.37030545818728,
           "splitColumn": 0,
-          "gain": 133843.93584847808,
+          "gain": 137941.0748322137,
           "numberSamples": 1272,
           "left": {
             "kind": "regression",
@@ -59,7 +59,7 @@
             "gainThreshold": 0,
             "splitValue": 34.37969454181272,
             "splitColumn": 1,
-            "gain": 65492.975646088336,
+            "gain": 66648.89578519497,
             "numberSamples": 739,
             "left": {
               "kind": "regression",
@@ -68,9 +68,9 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
+              "splitValue": 83.33333333333333,
               "splitColumn": 2,
-              "gain": 36698.9049148114,
+              "gain": 36781.52560379533,
               "numberSamples": 470,
               "left": {
                 "kind": "regression",
@@ -80,9 +80,9 @@
                 "maxDepth": 7,
                 "gainThreshold": 0,
                 "splitValue": 12.5,
-                "splitColumn": 0,
-                "gain": 10678.97913859701,
-                "numberSamples": 125,
+                "splitColumn": 3,
+                "gain": 28154.10139555059,
+                "numberSamples": 361,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -90,11 +90,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 5619.935112529463,
-                  "numberSamples": 76,
-                  "distribution": 14.648267356737918
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 12856.848509444764,
+                  "numberSamples": 193,
+                  "distribution": 12.57445038898624
                 },
                 "right": {
                   "kind": "regression",
@@ -104,10 +104,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 12.5,
-                  "splitColumn": 3,
-                  "gain": 4202.781185306898,
-                  "numberSamples": 49,
-                  "distribution": 19.091220277748203
+                  "splitColumn": 1,
+                  "gain": 13456.059051401226,
+                  "numberSamples": 168,
+                  "distribution": 17.219275091140815
                 }
               },
               "right": {
@@ -117,10 +117,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 24296.419770555905,
-                "numberSamples": 345,
+                "splitValue": 12.5,
+                "splitColumn": 0,
+                "gain": 6083.564270325623,
+                "numberSamples": 109,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -129,10 +129,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 17542.994221367637,
-                  "numberSamples": 236,
-                  "distribution": 12.126543127607615
+                  "splitColumn": 1,
+                  "gain": 2803.076105696655,
+                  "numberSamples": 62,
+                  "distribution": 6.16305940183749
                 },
                 "right": {
                   "kind": "regression",
@@ -141,11 +141,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 3,
-                  "gain": 5637.155025085324,
-                  "numberSamples": 109,
-                  "distribution": 8.224267084748327
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 3149.732433311754,
+                  "numberSamples": 47,
+                  "distribution": 10.924558416341505
                 }
               }
             },
@@ -158,7 +158,7 @@
               "gainThreshold": 0,
               "splitValue": 49.99999999999999,
               "splitColumn": 2,
-              "gain": 22344.334437589092,
+              "gain": 23465.166601041077,
               "numberSamples": 269,
               "left": {
                 "kind": "regression",
@@ -169,7 +169,7 @@
                 "gainThreshold": 0,
                 "splitValue": 12.5,
                 "splitColumn": 0,
-                "gain": 4780.799476488164,
+                "gain": 4903.683094983422,
                 "numberSamples": 66,
                 "left": {
                   "kind": "regression",
@@ -178,11 +178,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
-                  "splitColumn": 1,
-                  "gain": 2553.1633254500275,
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 2141.8935599180304,
                   "numberSamples": 36,
-                  "distribution": 22.597612132419922
+                  "distribution": 22.623741659491984
                 },
                 "right": {
                   "kind": "regression",
@@ -193,9 +193,9 @@
                   "gainThreshold": 0,
                   "splitValue": 12.5,
                   "splitColumn": 3,
-                  "gain": 1744.7249958165285,
+                  "gain": 2054.4278234550748,
                   "numberSamples": 30,
-                  "distribution": 30.24798252925848
+                  "distribution": 29.94244042808971
                 }
               },
               "right": {
@@ -207,7 +207,7 @@
                 "gainThreshold": 0,
                 "splitValue": 12.5,
                 "splitColumn": 3,
-                "gain": 15574.030612273269,
+                "gain": 16559.056114410505,
                 "numberSamples": 203,
                 "left": {
                   "kind": "regression",
@@ -216,11 +216,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 8462.622315557628,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 8428.750005655977,
                   "numberSamples": 113,
-                  "distribution": 15.46982111421988
+                  "distribution": 16.292991539295468
                 },
                 "right": {
                   "kind": "regression",
@@ -231,9 +231,9 @@
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
                   "splitColumn": 2,
-                  "gain": 6313.26538956694,
+                  "gain": 6999.1220541987495,
                   "numberSamples": 90,
-                  "distribution": 20.00797416583536
+                  "distribution": 21.033712902396683
                 }
               }
             }
@@ -245,9 +245,9 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 49.99999999999999,
-            "splitColumn": 2,
-            "gain": 53924.130141908,
+            "splitValue": 12.5,
+            "splitColumn": 1,
+            "gain": 56052.4261426774,
             "numberSamples": 533,
             "left": {
               "kind": "regression",
@@ -256,10 +256,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 34.37969454181272,
-              "splitColumn": 1,
-              "gain": 10594.979042987963,
-              "numberSamples": 137,
+              "splitValue": 12.5,
+              "splitColumn": 3,
+              "gain": 12182.293736845128,
+              "numberSamples": 130,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -267,10 +267,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 49.99999999999999,
-                "splitColumn": 4,
-                "gain": 4496.950424296645,
-                "numberSamples": 64,
+                "splitValue": 83.33333333333333,
+                "splitColumn": 2,
+                "gain": 5961.507620260962,
+                "numberSamples": 72,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -278,11 +278,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 1137.690533073568,
-                  "numberSamples": 16,
-                  "distribution": 30.25885368374399
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 3657.021892661606,
+                  "numberSamples": 51,
+                  "distribution": 17.64223773048585
                 },
                 "right": {
                   "kind": "regression",
@@ -293,9 +293,9 @@
                   "gainThreshold": 0,
                   "splitValue": 46.87030545818728,
                   "splitColumn": 0,
-                  "gain": 3230.6613010217598,
-                  "numberSamples": 48,
-                  "distribution": 25.92889818177142
+                  "gain": 2011.975758323366,
+                  "numberSamples": 21,
+                  "distribution": 11.897190590794825
                 }
               },
               "right": {
@@ -305,10 +305,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 4,
-                "gain": 5003.871184499763,
-                "numberSamples": 73,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 5325.285963592856,
+                "numberSamples": 58,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -316,11 +316,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 3129.668366537494,
-                  "numberSamples": 48,
-                  "distribution": 38.17353465959887
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 1681.3353458704514,
+                  "numberSamples": 16,
+                  "distribution": 27.379746326045478
                 },
                 "right": {
                   "kind": "regression",
@@ -329,11 +329,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 1544.8524258468062,
-                  "numberSamples": 25,
-                  "distribution": 30.902026685354194
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 3051.927543867227,
+                  "numberSamples": 42,
+                  "distribution": 21.470782159156343
                 }
               }
             },
@@ -344,10 +344,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 12.5,
-              "splitColumn": 3,
-              "gain": 35977.14606528499,
-              "numberSamples": 396,
+              "splitValue": 49.99999999999999,
+              "splitColumn": 2,
+              "gain": 37661.57578105816,
+              "numberSamples": 403,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -355,10 +355,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 17024.472704040167,
-                "numberSamples": 187,
+                "splitValue": 12.5,
+                "splitColumn": 3,
+                "gain": 8621.982468552413,
+                "numberSamples": 105,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -366,11 +366,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 10995.889275706319,
-                  "numberSamples": 123,
-                  "distribution": 22.61277288642824
+                  "splitValue": 46.87030545818728,
+                  "splitColumn": 0,
+                  "gain": 3296.859332151481,
+                  "numberSamples": 45,
+                  "distribution": 29.90437865821443
                 },
                 "right": {
                   "kind": "regression",
@@ -381,9 +381,9 @@
                   "gainThreshold": 0,
                   "splitValue": 46.87969454181272,
                   "splitColumn": 1,
-                  "gain": 5026.411141622613,
-                  "numberSamples": 64,
-                  "distribution": 16.802415986455426
+                  "gain": 4467.808948816804,
+                  "numberSamples": 60,
+                  "distribution": 35.56840077098532
                 }
               },
               "right": {
@@ -393,10 +393,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 34.37969454181272,
-                "splitColumn": 1,
-                "gain": 16096.024254412561,
-                "numberSamples": 209,
+                "splitValue": 12.5,
+                "splitColumn": 3,
+                "gain": 25945.49749851076,
+                "numberSamples": 298,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -404,11 +404,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 7101.648039030737,
-                  "numberSamples": 96,
-                  "distribution": 24.745627730138963
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 9833.153829407423,
+                  "numberSamples": 131,
+                  "distribution": 22.35034298853042
                 },
                 "right": {
                   "kind": "regression",
@@ -417,11 +417,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 7696.894299105661,
-                  "numberSamples": 113,
-                  "distribution": 30.004531506518898
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 14168.672770985328,
+                  "numberSamples": 167,
+                  "distribution": 27.909975005096864
                 }
               }
             }
@@ -434,9 +434,9 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 75,
-          "splitColumn": 3,
-          "gain": 242206.4301605435,
+          "splitValue": 34.37030545818728,
+          "splitColumn": 0,
+          "gain": 243945.0249301475,
           "numberSamples": 1951,
           "left": {
             "kind": "regression",
@@ -445,10 +445,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 34.37030545818728,
-            "splitColumn": 0,
-            "gain": 135666.63828317975,
-            "numberSamples": 1313,
+            "splitValue": 75,
+            "splitColumn": 3,
+            "gain": 90720.72830724022,
+            "numberSamples": 861,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -456,9 +456,9 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
+              "splitValue": 83.33333333333333,
               "splitColumn": 2,
-              "gain": 52389.44801358535,
+              "gain": 51644.7674031748,
               "numberSamples": 545,
               "left": {
                 "kind": "regression",
@@ -467,10 +467,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 34.37969454181272,
-                "splitColumn": 1,
-                "gain": 9937.89983473962,
-                "numberSamples": 133,
+                "splitValue": 12.5,
+                "splitColumn": 0,
+                "gain": 36901.85538454559,
+                "numberSamples": 409,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -478,11 +478,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 4550.6019770680705,
-                  "numberSamples": 63,
-                  "distribution": 25.973285019347575
+                  "splitValue": 34.37969454181272,
+                  "splitColumn": 1,
+                  "gain": 15704.899942993015,
+                  "numberSamples": 181,
+                  "distribution": 21.725310239291108
                 },
                 "right": {
                   "kind": "regression",
@@ -491,11 +491,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
+                  "splitValue": 34.37969454181272,
                   "splitColumn": 1,
-                  "gain": 4694.1831111486,
-                  "numberSamples": 70,
-                  "distribution": 33.341804661369636
+                  "gain": 17748.47030048917,
+                  "numberSamples": 228,
+                  "distribution": 28.133546650089194
                 }
               },
               "right": {
@@ -507,8 +507,8 @@
                 "gainThreshold": 0,
                 "splitValue": 34.37969454181272,
                 "splitColumn": 1,
-                "gain": 37851.45904335955,
-                "numberSamples": 412,
+                "gain": 9508.569747673951,
+                "numberSamples": 136,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -518,9 +518,59 @@
                   "gainThreshold": 0,
                   "splitValue": 12.5,
                   "splitColumn": 0,
-                  "gain": 17244.03474726747,
-                  "numberSamples": 200,
-                  "distribution": 19.066996023420128
+                  "gain": 4002.9889562150975,
+                  "numberSamples": 66,
+                  "distribution": 14.763594397559851
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 0,
+                  "gain": 4569.981883144468,
+                  "numberSamples": 70,
+                  "distribution": 20.43028871067898
+                }
+              }
+            },
+            "right": {
+              "kind": "regression",
+              "gainFunction": "regression",
+              "splitFunction": "mean",
+              "minNumSamples": 3,
+              "maxDepth": 7,
+              "gainThreshold": 0,
+              "splitValue": 34.37969454181272,
+              "splitColumn": 1,
+              "gain": 29135.54125729364,
+              "numberSamples": 316,
+              "left": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 12.5,
+                "splitColumn": 0,
+                "gain": 16580.542338192787,
+                "numberSamples": 184,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 8547.836154280965,
+                  "numberSamples": 103,
+                  "distribution": 27.505728836685808
                 },
                 "right": {
                   "kind": "regression",
@@ -531,9 +581,147 @@
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
                   "splitColumn": 2,
-                  "gain": 18310.276779938125,
-                  "numberSamples": 212,
-                  "distribution": 24.282875159501483
+                  "gain": 7012.989225266689,
+                  "numberSamples": 81,
+                  "distribution": 32.14542684889208
+                }
+              },
+              "right": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 83.33333333333333,
+                "splitColumn": 2,
+                "gain": 10028.406500693724,
+                "numberSamples": 132,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 0,
+                  "gain": 6244.28224252429,
+                  "numberSamples": 88,
+                  "distribution": 39.20221588776081
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 0,
+                  "gain": 2906.8161743581195,
+                  "numberSamples": 44,
+                  "distribution": 31.931830903389052
+                }
+              }
+            }
+          },
+          "right": {
+            "kind": "regression",
+            "gainFunction": "regression",
+            "splitFunction": "mean",
+            "minNumSamples": 3,
+            "maxDepth": 7,
+            "gainThreshold": 0,
+            "splitValue": 75,
+            "splitColumn": 3,
+            "gain": 110842.3106241367,
+            "numberSamples": 1090,
+            "left": {
+              "kind": "regression",
+              "gainFunction": "regression",
+              "splitFunction": "mean",
+              "minNumSamples": 3,
+              "maxDepth": 7,
+              "gainThreshold": 0,
+              "splitValue": 83.33333333333333,
+              "splitColumn": 2,
+              "gain": 70959.55941070153,
+              "numberSamples": 768,
+              "left": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 34.37969454181272,
+                "splitColumn": 1,
+                "gain": 48517.39853174669,
+                "numberSamples": 583,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 1,
+                  "gain": 15670.176224653289,
+                  "numberSamples": 218,
+                  "distribution": 30.320886365837506
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 29648.231677966163,
+                  "numberSamples": 365,
+                  "distribution": 36.68314528127543
+                }
+              },
+              "right": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 12.5,
+                "splitColumn": 1,
+                "gain": 15605.158405795773,
+                "numberSamples": 185,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 2259.8122531092417,
+                  "numberSamples": 29,
+                  "distribution": 21.355161234414055
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 12701.817131448806,
+                  "numberSamples": 156,
+                  "distribution": 28.680918507271926
                 }
               }
             },
@@ -546,195 +734,7 @@
               "gainThreshold": 0,
               "splitValue": 83.33333333333333,
               "splitColumn": 2,
-              "gain": 69746.17234363273,
-              "numberSamples": 768,
-              "left": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 34.37969454181272,
-                "splitColumn": 1,
-                "gain": 49402.969786042784,
-                "numberSamples": 583,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 2,
-                  "gain": 17452.675475679454,
-                  "numberSamples": 218,
-                  "distribution": 30.843437377985147
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 2,
-                  "gain": 28958.76784744879,
-                  "numberSamples": 365,
-                  "distribution": 36.38099105342684
-                }
-              },
-              "right": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 34.37969454181272,
-                "splitColumn": 1,
-                "gain": 14219.391293300705,
-                "numberSamples": 185,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 5224.691004151303,
-                  "numberSamples": 68,
-                  "distribution": 23.03772463490236
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
-                  "splitColumn": 1,
-                  "gain": 8587.498798059432,
-                  "numberSamples": 117,
-                  "distribution": 29.751755293493318
-                }
-              }
-            }
-          },
-          "right": {
-            "kind": "regression",
-            "gainFunction": "regression",
-            "splitFunction": "mean",
-            "minNumSamples": 3,
-            "maxDepth": 7,
-            "gainThreshold": 0,
-            "splitValue": 34.37030545818728,
-            "splitColumn": 0,
-            "gain": 64688.68668938102,
-            "numberSamples": 638,
-            "left": {
-              "kind": "regression",
-              "gainFunction": "regression",
-              "splitFunction": "mean",
-              "minNumSamples": 3,
-              "maxDepth": 7,
-              "gainThreshold": 0,
-              "splitValue": 34.37969454181272,
-              "splitColumn": 1,
-              "gain": 29315.713047487297,
-              "numberSamples": 316,
-              "left": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 49.99999999999999,
-                "splitColumn": 2,
-                "gain": 15404.259759613587,
-                "numberSamples": 184,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 3105.3228067045175,
-                  "numberSamples": 45,
-                  "distribution": 35.74728729547993
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 10737.57257416843,
-                  "numberSamples": 139,
-                  "distribution": 28.887458874595854
-                }
-              },
-              "right": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 11068.097652327506,
-                "numberSamples": 132,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 7168.038927008482,
-                  "numberSamples": 88,
-                  "distribution": 39.620570586566885
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 2929.7873882878166,
-                  "numberSamples": 44,
-                  "distribution": 33.10922118025076
-                }
-              }
-            },
-            "right": {
-              "kind": "regression",
-              "gainFunction": "regression",
-              "splitFunction": "mean",
-              "minNumSamples": 3,
-              "maxDepth": 7,
-              "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
-              "splitColumn": 2,
-              "gain": 28682.996250178956,
+              "gain": 30441.748232404614,
               "numberSamples": 322,
               "left": {
                 "kind": "regression",
@@ -743,10 +743,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 46.87969454181272,
+                "splitValue": 34.37969454181272,
                 "splitColumn": 1,
-                "gain": 5255.156226368549,
-                "numberSamples": 80,
+                "gain": 21225.181043165292,
+                "numberSamples": 248,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -755,10 +755,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 3884.4972853149516,
-                  "numberSamples": 58,
-                  "distribution": 47.47382969715134
+                  "splitColumn": 2,
+                  "gain": 9693.59155193144,
+                  "numberSamples": 119,
+                  "distribution": 41.84255545274476
                 },
                 "right": {
                   "kind": "regression",
@@ -767,11 +767,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 885.35247776473,
-                  "numberSamples": 22,
-                  "distribution": 53.06205867093168
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 10337.401414788315,
+                  "numberSamples": 129,
+                  "distribution": 47.8241375027207
                 }
               },
               "right": {
@@ -783,8 +783,8 @@
                 "gainThreshold": 0,
                 "splitValue": 34.37969454181272,
                 "splitColumn": 1,
-                "gain": 20958.66472200464,
-                "numberSamples": 242,
+                "gain": 6392.5458187708955,
+                "numberSamples": 74,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -794,9 +794,9 @@
                   "gainThreshold": 0,
                   "splitValue": 46.87030545818728,
                   "splitColumn": 0,
-                  "gain": 8032.209857333584,
-                  "numberSamples": 106,
-                  "distribution": 38.65957849537743
+                  "gain": 1069.583444624785,
+                  "numberSamples": 22,
+                  "distribution": 33.28547666707921
                 },
                 "right": {
                   "kind": "regression",
@@ -805,11 +805,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 10666.635632064494,
-                  "numberSamples": 136,
-                  "distribution": 44.41182975593205
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 4526.2387206311805,
+                  "numberSamples": 52,
+                  "distribution": 39.563487043226125
                 }
               }
             }
@@ -825,7 +825,7 @@
         "gainThreshold": 0,
         "splitValue": 34.378909181886414,
         "splitColumn": 3,
-        "gain": 101105.1726003884,
+        "gain": 94479.57058962675,
         "numberSamples": 779,
         "left": {
           "kind": "regression",
@@ -836,7 +836,7 @@
           "gainThreshold": 0,
           "splitValue": 34.37030545818728,
           "splitColumn": 0,
-          "gain": 31188.89531430156,
+          "gain": 31329.44875210341,
           "numberSamples": 315,
           "left": {
             "kind": "regression",
@@ -847,7 +847,7 @@
             "gainThreshold": 0,
             "splitValue": 83.33333333333333,
             "splitColumn": 2,
-            "gain": 15591.413856592932,
+            "gain": 16958.67613171666,
             "numberSamples": 176,
             "left": {
               "kind": "regression",
@@ -858,7 +858,7 @@
               "gainThreshold": 0,
               "splitValue": 12.5,
               "splitColumn": 0,
-              "gain": 9991.343674282933,
+              "gain": 11023.718741713321,
               "numberSamples": 123,
               "left": {
                 "kind": "regression",
@@ -869,7 +869,7 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 2,
-                "gain": 4783.126526272052,
+                "gain": 5807.165406587987,
                 "numberSamples": 68,
                 "left": {
                   "kind": "regression",
@@ -878,11 +878,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 3,
-                  "gain": 966.0755122878941,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 797.6058697079504,
                   "numberSamples": 19,
-                  "distribution": 38.7310949093385
+                  "distribution": 40.684077490944624
                 },
                 "right": {
                   "kind": "regression",
@@ -891,11 +891,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
+                  "splitValue": 49.99999999999999,
                   "splitColumn": 4,
-                  "gain": 3062.136022979902,
+                  "gain": 4564.630969047864,
                   "numberSamples": 49,
-                  "distribution": 33.00921484382963
+                  "distribution": 32.88340110412437
                 }
               },
               "right": {
@@ -907,7 +907,7 @@
                 "gainThreshold": 0,
                 "splitValue": 12.5,
                 "splitColumn": 3,
-                "gain": 4422.723316609754,
+                "gain": 3589.917002097742,
                 "numberSamples": 55,
                 "left": {
                   "kind": "regression",
@@ -917,10 +917,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 2152.9951011394605,
+                  "splitColumn": 2,
+                  "gain": 1803.7443197964276,
                   "numberSamples": 26,
-                  "distribution": 37.699330272314526
+                  "distribution": 38.522403873909255
                 },
                 "right": {
                   "kind": "regression",
@@ -929,11 +929,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 1981.6295692832764,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 1611.397644619506,
                   "numberSamples": 29,
-                  "distribution": 42.659185813532574
+                  "distribution": 46.13047910098362
                 }
               }
             },
@@ -945,8 +945,8 @@
               "maxDepth": 7,
               "gainThreshold": 0,
               "splitValue": 12.5,
-              "splitColumn": 0,
-              "gain": 3740.909269229189,
+              "splitColumn": 3,
+              "gain": 3879.651059993753,
               "numberSamples": 53,
               "left": {
                 "kind": "regression",
@@ -955,9 +955,9 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
+                "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 1715.3186677323079,
+                "gain": 1451.4613328752748,
                 "numberSamples": 27,
                 "left": {
                   "kind": "regression",
@@ -966,11 +966,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 1163.5689761054623,
-                  "numberSamples": 22,
-                  "distribution": 24.968441922162807
+                  "splitValue": 12.5,
+                  "splitColumn": 0,
+                  "gain": 350.8943548251678,
+                  "numberSamples": 4,
+                  "distribution": 25.86993430883438
                 },
                 "right": {
                   "kind": "regression",
@@ -980,10 +980,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 12.5,
-                  "splitColumn": 3,
-                  "gain": 252.19316672544107,
-                  "numberSamples": 5,
-                  "distribution": 29.405040894311092
+                  "splitColumn": 0,
+                  "gain": 1098.775304114234,
+                  "numberSamples": 23,
+                  "distribution": 27.487014140787434
                 }
               },
               "right": {
@@ -994,8 +994,8 @@
                 "maxDepth": 7,
                 "gainThreshold": 0,
                 "splitValue": 12.5,
-                "splitColumn": 3,
-                "gain": 1567.137394567681,
+                "splitColumn": 0,
+                "gain": 2320.7663423991885,
                 "numberSamples": 26,
                 "left": {
                   "kind": "regression",
@@ -1004,11 +1004,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
+                  "splitValue": 49.99999999999999,
                   "splitColumn": 4,
-                  "gain": 417.367524965743,
+                  "gain": 1133.1158451627734,
                   "numberSamples": 11,
-                  "distribution": 29.4357530934533
+                  "distribution": 30.17453696092002
                 },
                 "right": {
                   "kind": "regression",
@@ -1019,9 +1019,9 @@
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
                   "splitColumn": 4,
-                  "gain": 954.4256418528687,
+                  "gain": 1186.9517193639397,
                   "numberSamples": 15,
-                  "distribution": 37.15617069244186
+                  "distribution": 34.11449777619579
                 }
               }
             }
@@ -1035,7 +1035,7 @@
             "gainThreshold": 0,
             "splitValue": 83.33333333333333,
             "splitColumn": 2,
-            "gain": 11537.872625682669,
+            "gain": 10852.01461149868,
             "numberSamples": 139,
             "left": {
               "kind": "regression",
@@ -1044,9 +1044,9 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 12.5,
-              "splitColumn": 3,
-              "gain": 7668.142485878987,
+              "splitValue": 83.33333333333333,
+              "splitColumn": 4,
+              "gain": 8021.447393403577,
               "numberSamples": 96,
               "left": {
                 "kind": "regression",
@@ -1057,8 +1057,8 @@
                 "gainThreshold": 0,
                 "splitValue": 46.87030545818728,
                 "splitColumn": 0,
-                "gain": 3724.139002026358,
-                "numberSamples": 46,
+                "gain": 5270.3153547191105,
+                "numberSamples": 69,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1068,9 +1068,9 @@
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
                   "splitColumn": 4,
-                  "gain": 1425.3046437392222,
-                  "numberSamples": 18,
-                  "distribution": 46.89297533492332
+                  "gain": 2631.6544899696437,
+                  "numberSamples": 28,
+                  "distribution": 46.906443233963294
                 },
                 "right": {
                   "kind": "regression",
@@ -1081,9 +1081,9 @@
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
                   "splitColumn": 2,
-                  "gain": 2168.8598726522523,
-                  "numberSamples": 28,
-                  "distribution": 43.94173699381646
+                  "gain": 2566.596911154111,
+                  "numberSamples": 41,
+                  "distribution": 48.870178706533984
                 }
               },
               "right": {
@@ -1095,8 +1095,8 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 2,
-                "gain": 3542.9367632018607,
-                "numberSamples": 50,
+                "gain": 2260.008042680558,
+                "numberSamples": 27,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1104,11 +1104,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 1231.335065098248,
-                  "numberSamples": 20,
-                  "distribution": 52.51917796979783
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 695.6717351436026,
+                  "numberSamples": 12,
+                  "distribution": 47.42827410190531
                 },
                 "right": {
                   "kind": "regression",
@@ -1117,11 +1117,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 2071.0079170217828,
-                  "numberSamples": 30,
-                  "distribution": 47.472417269953965
+                  "splitValue": 46.87030545818728,
+                  "splitColumn": 0,
+                  "gain": 734.3882107797647,
+                  "numberSamples": 15,
+                  "distribution": 39.42547938881821
                 }
               }
             },
@@ -1132,9 +1132,9 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 46.87030545818728,
-              "splitColumn": 0,
-              "gain": 3277.8838989007695,
+              "splitValue": 83.33333333333333,
+              "splitColumn": 4,
+              "gain": 2207.9337694187475,
               "numberSamples": 43,
               "left": {
                 "kind": "regression",
@@ -1143,10 +1143,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 4,
-                "gain": 754.7067944015026,
-                "numberSamples": 20,
+                "splitValue": 12.5,
+                "splitColumn": 3,
+                "gain": 1880.2849931874707,
+                "numberSamples": 39,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1154,11 +1154,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 3,
-                  "gain": 684.0770397477474,
-                  "numberSamples": 17,
-                  "distribution": 36.025842945271044
+                  "splitValue": 46.87030545818728,
+                  "splitColumn": 0,
+                  "gain": 370.03766173427266,
+                  "numberSamples": 13,
+                  "distribution": 37.85161864384271
                 },
                 "right": {
                   "kind": "regression",
@@ -1167,7 +1167,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 44.20126965477954
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 1413.589609745765,
+                  "numberSamples": 26,
+                  "distribution": 42.56751679909476
                 }
               },
               "right": {
@@ -1179,8 +1183,8 @@
                 "gainThreshold": 0,
                 "splitValue": 12.5,
                 "splitColumn": 3,
-                "gain": 1924.0445277451634,
-                "numberSamples": 23,
+                "gain": 9.972037308313723,
+                "numberSamples": 4,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1188,11 +1192,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 930.38200533776,
-                  "numberSamples": 10,
-                  "distribution": 35.804416480443464
+                  "distribution": 49.965080665530536
                 },
                 "right": {
                   "kind": "regression",
@@ -1201,11 +1201,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 922.5838901018468,
-                  "numberSamples": 13,
-                  "distribution": 44.51339677707854
+                  "distribution": 37.058611381736156
                 }
               }
             }
@@ -1218,9 +1214,9 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 34.37030545818728,
-          "splitColumn": 0,
-          "gain": 53475.330342190195,
+          "splitValue": 75,
+          "splitColumn": 3,
+          "gain": 49126.149843037085,
           "numberSamples": 464,
           "left": {
             "kind": "regression",
@@ -1229,10 +1225,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 75,
-            "splitColumn": 3,
-            "gain": 23468.30456008842,
-            "numberSamples": 221,
+            "splitValue": 34.37030545818728,
+            "splitColumn": 0,
+            "gain": 26054.851322311908,
+            "numberSamples": 295,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -1242,7 +1238,7 @@
               "gainThreshold": 0,
               "splitValue": 49.99999999999999,
               "splitColumn": 2,
-              "gain": 11510.954168787375,
+              "gain": 10574.724496234414,
               "numberSamples": 132,
               "left": {
                 "kind": "regression",
@@ -1253,7 +1249,7 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 2555.121701390516,
+                "gain": 2824.12833733976,
                 "numberSamples": 41,
                 "left": {
                   "kind": "regression",
@@ -1262,11 +1258,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 0,
-                  "gain": 817.63920876543,
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 943.2044811484168,
                   "numberSamples": 16,
-                  "distribution": 53.55698791372868
+                  "distribution": 52.070158043380346
                 },
                 "right": {
                   "kind": "regression",
@@ -1275,11 +1271,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 1219.4606668547558,
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 1508.2113503212347,
                   "numberSamples": 25,
-                  "distribution": 49.58020806637026
+                  "distribution": 47.11028024806131
                 }
               },
               "right": {
@@ -1291,7 +1287,7 @@
                 "gainThreshold": 0,
                 "splitValue": 12.5,
                 "splitColumn": 0,
-                "gain": 8491.332172092072,
+                "gain": 6805.877261149831,
                 "numberSamples": 91,
                 "left": {
                   "kind": "regression",
@@ -1302,9 +1298,9 @@
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
                   "splitColumn": 4,
-                  "gain": 2871.2282750308314,
+                  "gain": 2610.109491754177,
                   "numberSamples": 34,
-                  "distribution": 38.58151472225207
+                  "distribution": 39.258014294004646
                 },
                 "right": {
                   "kind": "regression",
@@ -1313,11 +1309,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 4977.99529335702,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 3599.64001850696,
                   "numberSamples": 57,
-                  "distribution": 42.39806995423849
+                  "distribution": 45.010434498684454
                 }
               }
             },
@@ -1328,10 +1324,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
+              "splitValue": 83.33333333333333,
               "splitColumn": 2,
-              "gain": 7819.838856926159,
-              "numberSamples": 89,
+              "gain": 13002.670203891317,
+              "numberSamples": 163,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -1339,10 +1335,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 4,
-                "gain": 1484.3271710064982,
-                "numberSamples": 21,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 9140.640291275202,
+                "numberSamples": 121,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1352,9 +1348,9 @@
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
                   "splitColumn": 4,
-                  "gain": 1354.6265341172161,
-                  "numberSamples": 18,
-                  "distribution": 58.94232731761477
+                  "gain": 2733.7768246863066,
+                  "numberSamples": 40,
+                  "distribution": 57.675557744836794
                 },
                 "right": {
                   "kind": "regression",
@@ -1363,7 +1359,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 65.47446337164074
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 5868.390904252474,
+                  "numberSamples": 81,
+                  "distribution": 52.66385415409702
                 }
               },
               "right": {
@@ -1373,10 +1373,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 12.5,
+                "splitValue": 46.87030545818728,
                 "splitColumn": 0,
-                "gain": 5327.594182240683,
-                "numberSamples": 68,
+                "gain": 3114.162823760491,
+                "numberSamples": 42,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1384,11 +1384,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 2208.830395959407,
-                  "numberSamples": 32,
-                  "distribution": 47.30141542613642
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 1628.070651103928,
+                  "numberSamples": 23,
+                  "distribution": 46.411380791610554
                 },
                 "right": {
                   "kind": "regression",
@@ -1397,11 +1397,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 2784.396718105995,
-                  "numberSamples": 36,
-                  "distribution": 54.582803750006015
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 1238.7189876743842,
+                  "numberSamples": 19,
+                  "distribution": 49.10170557769791
                 }
               }
             }
@@ -1413,10 +1413,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 75,
-            "splitColumn": 3,
-            "gain": 20952.53823756892,
-            "numberSamples": 243,
+            "splitValue": 34.37030545818728,
+            "splitColumn": 0,
+            "gain": 14644.188606815518,
+            "numberSamples": 169,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -1424,10 +1424,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
+              "splitValue": 83.33333333333333,
               "splitColumn": 2,
-              "gain": 11308.31514593415,
-              "numberSamples": 163,
+              "gain": 5675.0849527798955,
+              "numberSamples": 89,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -1435,10 +1435,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
+                "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 1898.1343390363309,
-                "numberSamples": 40,
+                "gain": 3720.4587040472725,
+                "numberSamples": 62,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1446,11 +1446,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 1483.9237294162222,
-                  "numberSamples": 32,
-                  "distribution": 57.60500151511859
+                  "splitValue": 12.5,
+                  "splitColumn": 0,
+                  "gain": 393.8274896598021,
+                  "numberSamples": 10,
+                  "distribution": 59.18578671919181
                 },
                 "right": {
                   "kind": "regression",
@@ -1459,11 +1459,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 282.5647115684671,
-                  "numberSamples": 8,
-                  "distribution": 60.74502631245707
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 3050.852270648489,
+                  "numberSamples": 52,
+                  "distribution": 54.32003825485772
                 }
               },
               "right": {
@@ -1473,10 +1473,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 9108.412111106984,
-                "numberSamples": 123,
+                "splitValue": 12.5,
+                "splitColumn": 0,
+                "gain": 1269.433165409386,
+                "numberSamples": 27,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1484,11 +1484,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 6461.304500376228,
-                  "numberSamples": 81,
-                  "distribution": 52.90581117910555
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 688.5240111367199,
+                  "numberSamples": 14,
+                  "distribution": 43.387780171795725
                 },
                 "right": {
                   "kind": "regression",
@@ -1497,11 +1497,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 2406.0181308841525,
-                  "numberSamples": 42,
-                  "distribution": 49.96829062502185
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 509.6705205633,
+                  "numberSamples": 13,
+                  "distribution": 51.88433934933913
                 }
               }
             },
@@ -1514,7 +1514,7 @@
               "gainThreshold": 0,
               "splitValue": 49.99999999999999,
               "splitColumn": 2,
-              "gain": 7585.489458670061,
+              "gain": 7067.147304186805,
               "numberSamples": 80,
               "left": {
                 "kind": "regression",
@@ -1523,9 +1523,9 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
+                "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 1226.4885261978557,
+                "gain": 781.9790578676186,
                 "numberSamples": 17,
                 "left": {
                   "kind": "regression",
@@ -1534,11 +1534,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 887.9190185625775,
-                  "numberSamples": 13,
-                  "distribution": 73.3641267254059
+                  "distribution": 59.30617200540676
                 },
                 "right": {
                   "kind": "regression",
@@ -1547,11 +1543,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87030545818728,
-                  "splitColumn": 0,
-                  "gain": 51.23548557579221,
-                  "numberSamples": 4,
-                  "distribution": 55.04241583996509
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 670.4711198877591,
+                  "numberSamples": 14,
+                  "distribution": 70.61741173643334
                 }
               },
               "right": {
@@ -1563,7 +1559,7 @@
                 "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
                 "splitColumn": 2,
-                "gain": 4980.122284528817,
+                "gain": 5518.427210230177,
                 "numberSamples": 63,
                 "left": {
                   "kind": "regression",
@@ -1572,11 +1568,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 3423.7967111770654,
+                  "splitValue": 46.87030545818728,
+                  "splitColumn": 0,
+                  "gain": 4068.4297045768126,
                   "numberSamples": 46,
-                  "distribution": 62.52583833093626
+                  "distribution": 62.47803794999404
                 },
                 "right": {
                   "kind": "regression",
@@ -1585,11 +1581,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
+                  "splitValue": 83.33333333333333,
                   "splitColumn": 4,
-                  "gain": 1389.4223801221874,
+                  "gain": 994.1272933205598,
                   "numberSamples": 17,
-                  "distribution": 57.2000261438397
+                  "distribution": 56.45267005926442
                 }
               }
             }
@@ -1606,7 +1602,7 @@
       "gainThreshold": 0,
       "splitValue": 75,
       "splitColumn": 1,
-      "gain": 144152.89931334666,
+      "gain": 145086.5281315062,
       "numberSamples": 998,
       "left": {
         "kind": "regression",
@@ -1615,9 +1611,9 @@
         "minNumSamples": 3,
         "maxDepth": 7,
         "gainThreshold": 0,
-        "splitValue": 75,
+        "splitValue": 34.378909181886414,
         "splitColumn": 3,
-        "gain": 92362.53539550999,
+        "gain": 93289.11300065696,
         "numberSamples": 778,
         "left": {
           "kind": "regression",
@@ -1626,10 +1622,10 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 34.37969454181272,
+          "splitValue": 12.5,
           "splitColumn": 1,
-          "gain": 65538.36861247533,
-          "numberSamples": 625,
+          "gain": 28644.032317122226,
+          "numberSamples": 321,
           "left": {
             "kind": "regression",
             "gainFunction": "regression",
@@ -1637,10 +1633,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 49.99999999999999,
-            "splitColumn": 2,
-            "gain": 31024.029452895542,
-            "numberSamples": 311,
+            "splitValue": 12.5,
+            "splitColumn": 3,
+            "gain": 7961.004340940688,
+            "numberSamples": 101,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -1648,10 +1644,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 34.378909181886414,
-              "splitColumn": 3,
-              "gain": 5144.456484256425,
-              "numberSamples": 76,
+              "splitValue": 83.33333333333333,
+              "splitColumn": 4,
+              "gain": 4176.476476960197,
+              "numberSamples": 57,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -1659,10 +1655,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 12.5,
-                "splitColumn": 3,
-                "gain": 2472.9775418039007,
-                "numberSamples": 43,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 4,
+                "gain": 2372.966376647034,
+                "numberSamples": 41,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1671,10 +1667,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 1132.9285730114138,
-                  "numberSamples": 23,
-                  "distribution": 49.82326672215172
+                  "splitColumn": 2,
+                  "gain": 904.6899179059247,
+                  "numberSamples": 13,
+                  "distribution": 38.689309587947385
                 },
                 "right": {
                   "kind": "regression",
@@ -1683,11 +1679,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 1158.4656213088163,
-                  "numberSamples": 20,
-                  "distribution": 53.91463386848038
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 1361.3227174099225,
+                  "numberSamples": 28,
+                  "distribution": 44.834667645563634
                 }
               },
               "right": {
@@ -1697,10 +1693,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 12.5,
-                "splitColumn": 1,
-                "gain": 2311.5568776988994,
-                "numberSamples": 33,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 1215.9108461176706,
+                "numberSamples": 16,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1708,11 +1704,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.878909181886414,
-                  "splitColumn": 3,
-                  "gain": 784.7464345664312,
-                  "numberSamples": 15,
-                  "distribution": 56.61402616872856
+                  "distribution": 44.84124900673195
                 },
                 "right": {
                   "kind": "regression",
@@ -1722,10 +1714,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 1237.3919914193548,
-                  "numberSamples": 18,
-                  "distribution": 61.3155118289848
+                  "splitColumn": 2,
+                  "gain": 938.0797584042816,
+                  "numberSamples": 13,
+                  "distribution": 34.667054137753034
                 }
               }
             },
@@ -1736,10 +1728,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 12.5,
-              "splitColumn": 3,
-              "gain": 22247.89476042162,
-              "numberSamples": 235,
+              "splitValue": 49.99999999999999,
+              "splitColumn": 4,
+              "gain": 3108.6737520214756,
+              "numberSamples": 44,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -1749,8 +1741,8 @@
                 "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
                 "splitColumn": 2,
-                "gain": 7055.554375432746,
-                "numberSamples": 78,
+                "gain": 528.4819066226212,
+                "numberSamples": 9,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1758,11 +1750,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 4725.4762038815215,
-                  "numberSamples": 61,
-                  "distribution": 43.656572367592624
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 523.9434722794028,
+                  "numberSamples": 7,
+                  "distribution": 42.95088503004525
                 },
                 "right": {
                   "kind": "regression",
@@ -1771,11 +1763,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 1662.291147721754,
-                  "numberSamples": 17,
-                  "distribution": 36.83180642751177
+                  "distribution": 38.133151934949396
                 }
               },
               "right": {
@@ -1786,9 +1774,9 @@
                 "maxDepth": 7,
                 "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 13269.764509513629,
-                "numberSamples": 157,
+                "splitColumn": 4,
+                "gain": 2520.3389745432664,
+                "numberSamples": 35,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1796,11 +1784,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.878909181886414,
-                  "splitColumn": 3,
-                  "gain": 7901.175335804188,
-                  "numberSamples": 103,
-                  "distribution": 51.31176656815297
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 2039.2035836512048,
+                  "numberSamples": 27,
+                  "distribution": 47.839437749383265
                 },
                 "right": {
                   "kind": "regression",
@@ -1809,11 +1797,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.878909181886414,
-                  "splitColumn": 3,
-                  "gain": 4804.252073574861,
-                  "numberSamples": 54,
-                  "distribution": 45.246326044227146
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 2,
+                  "gain": 268.80544002344277,
+                  "numberSamples": 8,
+                  "distribution": 45.87780947932429
                 }
               }
             }
@@ -1825,10 +1813,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 12.5,
-            "splitColumn": 3,
-            "gain": 27955.271861056077,
-            "numberSamples": 314,
+            "splitValue": 49.99999999999999,
+            "splitColumn": 2,
+            "gain": 17815.63167975483,
+            "numberSamples": 220,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -1836,10 +1824,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
-              "splitColumn": 2,
-              "gain": 4651.463655208776,
-              "numberSamples": 60,
+              "splitValue": 12.5,
+              "splitColumn": 3,
+              "gain": 5097.763099434231,
+              "numberSamples": 58,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -1849,8 +1837,8 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 792.4619158743235,
-                "numberSamples": 14,
+                "gain": 2086.580245789441,
+                "numberSamples": 26,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1858,11 +1846,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
+                  "splitValue": 34.37969454181272,
                   "splitColumn": 1,
-                  "gain": 134.9926765372382,
-                  "numberSamples": 6,
-                  "distribution": 62.11399342618456
+                  "gain": 630.1028946201877,
+                  "numberSamples": 8,
+                  "distribution": 54.453745501796845
                 },
                 "right": {
                   "kind": "regression",
@@ -1871,11 +1859,99 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
+                  "splitValue": 34.37969454181272,
                   "splitColumn": 1,
-                  "gain": 618.3199851716716,
-                  "numberSamples": 8,
-                  "distribution": 53.933206406387605
+                  "gain": 1356.7891076102535,
+                  "numberSamples": 18,
+                  "distribution": 51.05790560085513
+                }
+              },
+              "right": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 46.87969454181272,
+                "splitColumn": 1,
+                "gain": 2727.7725211552424,
+                "numberSamples": 32,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 1572.5085853622193,
+                  "numberSamples": 18,
+                  "distribution": 55.35477782979723
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 731.6598668101617,
+                  "numberSamples": 14,
+                  "distribution": 60.63477659103632
+                }
+              }
+            },
+            "right": {
+              "kind": "regression",
+              "gainFunction": "regression",
+              "splitFunction": "mean",
+              "minNumSamples": 3,
+              "maxDepth": 7,
+              "gainThreshold": 0,
+              "splitValue": 46.87969454181272,
+              "splitColumn": 1,
+              "gain": 11293.667459516077,
+              "numberSamples": 162,
+              "left": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 12.5,
+                "splitColumn": 3,
+                "gain": 6653.324557814089,
+                "numberSamples": 104,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 3023.3550003325877,
+                  "numberSamples": 49,
+                  "distribution": 43.79360622794813
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 2,
+                  "gain": 3442.9815415115636,
+                  "numberSamples": 55,
+                  "distribution": 48.23525797025093
                 }
               },
               "right": {
@@ -1887,8 +1963,8 @@
                 "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
                 "splitColumn": 2,
-                "gain": 3259.301581213593,
-                "numberSamples": 46,
+                "gain": 3566.0809877640495,
+                "numberSamples": 58,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -1896,99 +1972,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
-                  "splitColumn": 1,
-                  "gain": 2103.1180675642363,
-                  "numberSamples": 33,
-                  "distribution": 50.12619911515383
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 46.87969454181272,
-                  "splitColumn": 1,
-                  "gain": 916.4353750485949,
-                  "numberSamples": 13,
-                  "distribution": 43.82543601128607
-                }
-              }
-            },
-            "right": {
-              "kind": "regression",
-              "gainFunction": "regression",
-              "splitFunction": "mean",
-              "minNumSamples": 3,
-              "maxDepth": 7,
-              "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
-              "splitColumn": 2,
-              "gain": 20513.44624828918,
-              "numberSamples": 254,
-              "left": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 34.378909181886414,
-                "splitColumn": 3,
-                "gain": 3823.8015775399654,
-                "numberSamples": 63,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 1595.0957371301793,
-                  "numberSamples": 22,
-                  "distribution": 58.69904550705767
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 46.878909181886414,
+                  "splitValue": 12.5,
                   "splitColumn": 3,
-                  "gain": 1991.0066498200324,
-                  "numberSamples": 41,
-                  "distribution": 65.06733391052846
-                }
-              },
-              "right": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 46.878909181886414,
-                "splitColumn": 3,
-                "gain": 15466.591324296216,
-                "numberSamples": 191,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 9277.491942759905,
-                  "numberSamples": 121,
-                  "distribution": 55.11101878193603
+                  "gain": 1927.6326493048023,
+                  "numberSamples": 40,
+                  "distribution": 53.364017730485195
                 },
                 "right": {
                   "kind": "regression",
@@ -1997,11 +1985,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 5308.126885869019,
-                  "numberSamples": 70,
-                  "distribution": 58.91711908932344
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 1283.0534062407073,
+                  "numberSamples": 18,
+                  "distribution": 46.62936642715516
                 }
               }
             }
@@ -2014,10 +2002,10 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 49.99999999999999,
-          "splitColumn": 2,
-          "gain": 14295.443778465102,
-          "numberSamples": 153,
+          "splitValue": 75,
+          "splitColumn": 3,
+          "gain": 52258.5791643888,
+          "numberSamples": 457,
           "left": {
             "kind": "regression",
             "gainFunction": "regression",
@@ -2026,9 +2014,9 @@
             "maxDepth": 7,
             "gainThreshold": 0,
             "splitValue": 83.33333333333333,
-            "splitColumn": 4,
-            "gain": 2916.7017475756593,
-            "numberSamples": 40,
+            "splitColumn": 2,
+            "gain": 30435.52018609092,
+            "numberSamples": 304,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2036,10 +2024,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 49.99999999999999,
-              "splitColumn": 4,
-              "gain": 2024.999505972685,
-              "numberSamples": 28,
+              "splitValue": 34.37969454181272,
+              "splitColumn": 1,
+              "gain": 19096.765256337272,
+              "numberSamples": 220,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2047,10 +2035,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 46.87969454181272,
-                "splitColumn": 1,
-                "gain": 303.8365939398412,
-                "numberSamples": 7,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 7593.3958416708065,
+                "numberSamples": 89,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2058,11 +2046,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 34.37969454181272,
-                  "splitColumn": 1,
-                  "gain": 63.00642056376017,
-                  "numberSamples": 4,
-                  "distribution": 83.05694479358968
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 2208.2062562983465,
+                  "numberSamples": 33,
+                  "distribution": 58.6118096748135
                 },
                 "right": {
                   "kind": "regression",
@@ -2071,7 +2059,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 79.77539057168218
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 4510.55438926796,
+                  "numberSamples": 56,
+                  "distribution": 52.052148121169985
                 }
               },
               "right": {
@@ -2081,10 +2073,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 12.5,
-                "splitColumn": 1,
-                "gain": 1574.0954484790004,
-                "numberSamples": 21,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 10403.994529706291,
+                "numberSamples": 131,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2092,11 +2084,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 100,
-                  "splitColumn": 0,
-                  "gain": 313.7399538252288,
-                  "numberSamples": 4,
-                  "distribution": 70.43541328776665
+                  "splitValue": 46.87969454181272,
+                  "splitColumn": 1,
+                  "gain": 2169.2838748520626,
+                  "numberSamples": 41,
+                  "distribution": 63.94135335576632
                 },
                 "right": {
                   "kind": "regression",
@@ -2105,11 +2097,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 34.37969454181272,
-                  "splitColumn": 1,
-                  "gain": 1219.9028864206844,
-                  "numberSamples": 17,
-                  "distribution": 76.73754551637089
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 7941.420985170944,
+                  "numberSamples": 90,
+                  "distribution": 61.23760068107167
                 }
               }
             },
@@ -2120,10 +2112,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 46.87969454181272,
+              "splitValue": 34.37969454181272,
               "splitColumn": 1,
-              "gain": 671.3562932114451,
-              "numberSamples": 12,
+              "gain": 7184.935813731787,
+              "numberSamples": 84,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2131,10 +2123,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 34.37969454181272,
+                "splitValue": 12.5,
                 "splitColumn": 1,
-                "gain": 570.6342294090315,
-                "numberSamples": 9,
+                "gain": 2869.5420801907085,
+                "numberSamples": 36,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2142,11 +2134,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 560.8141641572813,
-                  "numberSamples": 7,
-                  "distribution": 69.41290411807637
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 951.5115451807477,
+                  "numberSamples": 17,
+                  "distribution": 43.45366416695855
                 },
                 "right": {
                   "kind": "regression",
@@ -2155,7 +2147,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 62.692997002008916
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 1700.9638610739667,
+                  "numberSamples": 19,
+                  "distribution": 49.00910327634485
                 }
               },
               "right": {
@@ -2165,7 +2161,36 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "distribution": 71.19458955435694
+                "splitValue": 46.878909181886414,
+                "splitColumn": 3,
+                "gain": 3651.789015570665,
+                "numberSamples": 48,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 1696.0079662633964,
+                  "numberSamples": 25,
+                  "distribution": 50.953295678404636
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 1846.1881427742596,
+                  "numberSamples": 23,
+                  "distribution": 56.63490638132963
+                }
               }
             }
           },
@@ -2176,10 +2201,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 34.37969454181272,
+            "splitValue": 12.5,
             "splitColumn": 1,
-            "gain": 9274.312985909692,
-            "numberSamples": 113,
+            "gain": 13706.697448335535,
+            "numberSamples": 153,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2187,10 +2212,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 83.33333333333333,
+              "splitValue": 49.99999999999999,
               "splitColumn": 2,
-              "gain": 4266.022422025568,
-              "numberSamples": 60,
+              "gain": 2285.756777194383,
+              "numberSamples": 39,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2200,8 +2225,8 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 3457.3292840094155,
-                "numberSamples": 42,
+                "gain": 237.93195165399877,
+                "numberSamples": 7,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2209,11 +2234,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 771.9202378605817,
-                  "numberSamples": 12,
-                  "distribution": 67.27538993028419
+                  "distribution": 70.25614842567597
                 },
                 "right": {
                   "kind": "regression",
@@ -2222,11 +2243,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 2649.1669463066605,
-                  "numberSamples": 30,
-                  "distribution": 62.43275255579791
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 168.9375161569904,
+                  "numberSamples": 6,
+                  "distribution": 60.36607697729428
                 }
               },
               "right": {
@@ -2237,9 +2258,9 @@
                 "maxDepth": 7,
                 "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
-                "splitColumn": 4,
-                "gain": 594.3843195439191,
-                "numberSamples": 18,
+                "splitColumn": 2,
+                "gain": 1922.4387249642964,
+                "numberSamples": 32,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2247,11 +2268,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 12.5,
-                  "splitColumn": 1,
-                  "gain": 523.0843117882647,
-                  "numberSamples": 16,
-                  "distribution": 54.283890850440315
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 1082.7016518055846,
+                  "numberSamples": 20,
+                  "distribution": 57.839076949832204
                 },
                 "right": {
                   "kind": "regression",
@@ -2260,7 +2281,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 51.548798589437496
+                  "splitValue": 49.99999999999999,
+                  "splitColumn": 4,
+                  "gain": 789.3703466358689,
+                  "numberSamples": 12,
+                  "distribution": 55.48547130860021
                 }
               }
             },
@@ -2271,10 +2296,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 46.87969454181272,
-              "splitColumn": 1,
-              "gain": 3729.1427902782557,
-              "numberSamples": 53,
+              "splitValue": 49.99999999999999,
+              "splitColumn": 2,
+              "gain": 10345.488762760682,
+              "numberSamples": 114,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2282,10 +2307,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 4,
-                "gain": 1605.5895676458656,
-                "numberSamples": 24,
+                "splitValue": 34.37969454181272,
+                "splitColumn": 1,
+                "gain": 2685.9860610135393,
+                "numberSamples": 33,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2293,11 +2318,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
+                  "splitValue": 83.33333333333333,
                   "splitColumn": 4,
-                  "gain": 1434.4613099565554,
-                  "numberSamples": 18,
-                  "distribution": 66.54933455249997
+                  "gain": 1077.0677161261035,
+                  "numberSamples": 14,
+                  "distribution": 68.30142194693703
                 },
                 "right": {
                   "kind": "regression",
@@ -2307,10 +2332,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 165.8435942076436,
-                  "numberSamples": 6,
-                  "distribution": 68.54997670298074
+                  "splitColumn": 4,
+                  "gain": 1297.394154785874,
+                  "numberSamples": 19,
+                  "distribution": 77.69848534686832
                 }
               },
               "right": {
@@ -2320,10 +2345,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 49.99999999999999,
-                "splitColumn": 4,
-                "gain": 1951.5486618582618,
-                "numberSamples": 29,
+                "splitValue": 83.33333333333333,
+                "splitColumn": 2,
+                "gain": 6582.364153320117,
+                "numberSamples": 81,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2332,10 +2357,10 @@
                   "maxDepth": 7,
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 366.08355437585305,
-                  "numberSamples": 5,
-                  "distribution": 74.23642003051523
+                  "splitColumn": 4,
+                  "gain": 4029.9926992020314,
+                  "numberSamples": 56,
+                  "distribution": 68.79289701174162
                 },
                 "right": {
                   "kind": "regression",
@@ -2344,11 +2369,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 2,
-                  "gain": 1555.8701006699384,
-                  "numberSamples": 24,
-                  "distribution": 68.13601225310249
+                  "splitValue": 34.37969454181272,
+                  "splitColumn": 1,
+                  "gain": 1935.49738293523,
+                  "numberSamples": 25,
+                  "distribution": 64.19528774343792
                 }
               }
             }
@@ -2364,7 +2389,7 @@
         "gainThreshold": 0,
         "splitValue": 75,
         "splitColumn": 3,
-        "gain": 20880.227283696488,
+        "gain": 20147.375702723595,
         "numberSamples": 220,
         "left": {
           "kind": "regression",
@@ -2373,9 +2398,9 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 12.5,
+          "splitValue": 34.378909181886414,
           "splitColumn": 3,
-          "gain": 15390.366720583494,
+          "gain": 14648.068813620412,
           "numberSamples": 181,
           "left": {
             "kind": "regression",
@@ -2384,10 +2409,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 49.99999999999999,
+            "splitValue": 83.33333333333333,
             "splitColumn": 2,
-            "gain": 2251.222063820639,
-            "numberSamples": 41,
+            "gain": 5893.72066222934,
+            "numberSamples": 90,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2395,10 +2420,98 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 83.33333333333333,
+              "splitValue": 49.99999999999999,
               "splitColumn": 4,
-              "gain": 779.607131102447,
-              "numberSamples": 13,
+              "gain": 3950.1622376141263,
+              "numberSamples": 72,
+              "left": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 2,
+                "gain": 398.6044929844581,
+                "numberSamples": 14,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 58.50451673929191,
+                  "numberSamples": 5,
+                  "distribution": 76.95183618525647
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 333.6907061694643,
+                  "numberSamples": 9,
+                  "distribution": 76.13656109812185
+                }
+              },
+              "right": {
+                "kind": "regression",
+                "gainFunction": "regression",
+                "splitFunction": "mean",
+                "minNumSamples": 3,
+                "maxDepth": 7,
+                "gainThreshold": 0,
+                "splitValue": 83.33333333333333,
+                "splitColumn": 4,
+                "gain": 3512.7319026243244,
+                "numberSamples": 58,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 2325.0827091824303,
+                  "numberSamples": 41,
+                  "distribution": 70.72620765425751
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 12.5,
+                  "splitColumn": 3,
+                  "gain": 942.5637911206478,
+                  "numberSamples": 17,
+                  "distribution": 68.97890610231269
+                }
+              }
+            },
+            "right": {
+              "kind": "regression",
+              "gainFunction": "regression",
+              "splitFunction": "mean",
+              "minNumSamples": 3,
+              "maxDepth": 7,
+              "gainThreshold": 0,
+              "splitValue": 12.5,
+              "splitColumn": 3,
+              "gain": 1184.2800176621813,
+              "numberSamples": 18,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2408,8 +2521,8 @@
                 "gainThreshold": 0,
                 "splitValue": 49.99999999999999,
                 "splitColumn": 4,
-                "gain": 657.1133172763762,
-                "numberSamples": 10,
+                "gain": 739.1959898162581,
+                "numberSamples": 11,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2417,7 +2530,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 72.42366502932165
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 331.63398929419753,
+                  "numberSamples": 4,
+                  "distribution": 62.5329896924886
                 },
                 "right": {
                   "kind": "regression",
@@ -2428,9 +2545,9 @@
                   "gainThreshold": 0,
                   "splitValue": 100,
                   "splitColumn": 0,
-                  "gain": 657.1133172763762,
-                  "numberSamples": 9,
-                  "distribution": 68.91641340087787
+                  "gain": 407.56200052206066,
+                  "numberSamples": 7,
+                  "distribution": 58.30460629199665
                 }
               },
               "right": {
@@ -2440,31 +2557,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "distribution": 66.57975773011994
-              }
-            },
-            "right": {
-              "kind": "regression",
-              "gainFunction": "regression",
-              "splitFunction": "mean",
-              "minNumSamples": 3,
-              "maxDepth": 7,
-              "gainThreshold": 0,
-              "splitValue": 83.33333333333333,
-              "splitColumn": 4,
-              "gain": 1453.6664892206043,
-              "numberSamples": 28,
-              "left": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
                 "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 936.8419743386598,
-                "numberSamples": 22,
+                "splitColumn": 4,
+                "gain": 241.8305128961985,
+                "numberSamples": 7,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2472,11 +2568,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 370.16511818107483,
-                  "numberSamples": 11,
-                  "distribution": 64.54412991827449
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 241.8305128961985,
+                  "numberSamples": 6,
+                  "distribution": 70.48102735848914
                 },
                 "right": {
                   "kind": "regression",
@@ -2485,25 +2581,8 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 49.99999999999999,
-                  "splitColumn": 4,
-                  "gain": 555.8032749300899,
-                  "numberSamples": 11,
-                  "distribution": 65.16473332238432
+                  "distribution": 56.915143053999984
                 }
-              },
-              "right": {
-                "kind": "regression",
-                "gainFunction": "regression",
-                "splitFunction": "mean",
-                "minNumSamples": 3,
-                "maxDepth": 7,
-                "gainThreshold": 0,
-                "splitValue": 100,
-                "splitColumn": 0,
-                "gain": 514.7061976633846,
-                "numberSamples": 6,
-                "distribution": 65.37596122438042
               }
             }
           },
@@ -2514,10 +2593,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 49.99999999999999,
+            "splitValue": 83.33333333333333,
             "splitColumn": 2,
-            "gain": 11416.914883095524,
-            "numberSamples": 140,
+            "gain": 6739.547597352894,
+            "numberSamples": 91,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2526,9 +2605,9 @@
               "maxDepth": 7,
               "gainThreshold": 0,
               "splitValue": 49.99999999999999,
-              "splitColumn": 4,
-              "gain": 2649.7564017056175,
-              "numberSamples": 31,
+              "splitColumn": 2,
+              "gain": 4495.511475670315,
+              "numberSamples": 63,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2536,10 +2615,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 46.878909181886414,
-                "splitColumn": 3,
-                "gain": 378.26480222294487,
-                "numberSamples": 7,
+                "splitValue": 83.33333333333333,
+                "splitColumn": 4,
+                "gain": 1292.5539220349574,
+                "numberSamples": 20,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2547,11 +2626,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 34.378909181886414,
+                  "splitValue": 46.878909181886414,
                   "splitColumn": 3,
-                  "gain": 345.50354787799705,
-                  "numberSamples": 6,
-                  "distribution": 86.87635465883538
+                  "gain": 1126.6565229019945,
+                  "numberSamples": 17,
+                  "distribution": 82.16437201469454
                 },
                 "right": {
                   "kind": "regression",
@@ -2560,7 +2639,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "distribution": 69.22187062041037
+                  "distribution": 74.75739744860104
                 }
               },
               "right": {
@@ -2570,10 +2649,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 34.378909181886414,
-                "splitColumn": 3,
-                "gain": 1779.4390503861057,
-                "numberSamples": 24,
+                "splitValue": 49.99999999999999,
+                "splitColumn": 4,
+                "gain": 2998.631987907013,
+                "numberSamples": 43,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2581,11 +2660,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 546.8950291528564,
+                  "splitValue": 46.878909181886414,
+                  "splitColumn": 3,
+                  "gain": 458.34955584027875,
                   "numberSamples": 7,
-                  "distribution": 75.68821106489747
+                  "distribution": 73.86206508277662
                 },
                 "right": {
                   "kind": "regression",
@@ -2596,9 +2675,9 @@
                   "gainThreshold": 0,
                   "splitValue": 46.878909181886414,
                   "splitColumn": 3,
-                  "gain": 1121.6276972795742,
-                  "numberSamples": 17,
-                  "distribution": 82.42300827816993
+                  "gain": 2521.2858212134315,
+                  "numberSamples": 36,
+                  "distribution": 77.17763772304724
                 }
               }
             },
@@ -2609,10 +2688,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 34.378909181886414,
-              "splitColumn": 3,
-              "gain": 8032.242339333943,
-              "numberSamples": 109,
+              "splitValue": 49.99999999999999,
+              "splitColumn": 4,
+              "gain": 1821.6114694789837,
+              "numberSamples": 28,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2620,10 +2699,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 2603.2895773206237,
-                "numberSamples": 38,
+                "splitValue": 46.878909181886414,
+                "splitColumn": 3,
+                "gain": 135.80142485799044,
+                "numberSamples": 8,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2631,11 +2710,7 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 2243.887522158811,
-                  "numberSamples": 31,
-                  "distribution": 70.19077972655957
+                  "distribution": 65.07357269068751
                 },
                 "right": {
                   "kind": "regression",
@@ -2644,11 +2719,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 83.33333333333333,
-                  "splitColumn": 4,
-                  "gain": 211.93270036072843,
-                  "numberSamples": 7,
-                  "distribution": 68.32233580487824
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 122.26846606569387,
+                  "numberSamples": 6,
+                  "distribution": 67.58004045422727
                 }
               },
               "right": {
@@ -2658,10 +2733,10 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 5123.742333659509,
-                "numberSamples": 71,
+                "splitValue": 46.878909181886414,
+                "splitColumn": 3,
+                "gain": 1654.062043733656,
+                "numberSamples": 20,
                 "left": {
                   "kind": "regression",
                   "gainFunction": "regression",
@@ -2669,11 +2744,11 @@
                   "minNumSamples": 3,
                   "maxDepth": 7,
                   "gainThreshold": 0,
-                  "splitValue": 46.878909181886414,
-                  "splitColumn": 3,
-                  "gain": 3251.9253952049326,
-                  "numberSamples": 43,
-                  "distribution": 76.59910270297138
+                  "splitValue": 83.33333333333333,
+                  "splitColumn": 4,
+                  "gain": 979.3275313149095,
+                  "numberSamples": 14,
+                  "distribution": 71.49153680864627
                 },
                 "right": {
                   "kind": "regression",
@@ -2684,9 +2759,9 @@
                   "gainThreshold": 0,
                   "splitValue": 83.33333333333333,
                   "splitColumn": 4,
-                  "gain": 1593.3505347128066,
-                  "numberSamples": 28,
-                  "distribution": 72.49755833333892
+                  "gain": 418.85027087047933,
+                  "numberSamples": 6,
+                  "distribution": 73.79703902192617
                 }
               }
             }
@@ -2699,9 +2774,9 @@
           "minNumSamples": 3,
           "maxDepth": 7,
           "gainThreshold": 0,
-          "splitValue": 49.99999999999999,
+          "splitValue": 83.33333333333333,
           "splitColumn": 2,
-          "gain": 2694.134065256448,
+          "gain": 3065.789349262367,
           "numberSamples": 39,
           "left": {
             "kind": "regression",
@@ -2710,10 +2785,10 @@
             "minNumSamples": 3,
             "maxDepth": 7,
             "gainThreshold": 0,
-            "splitValue": 49.99999999999999,
+            "splitValue": 66.66666666666666,
             "splitColumn": 4,
-            "gain": 251.38808580738294,
-            "numberSamples": 9,
+            "gain": 2220.3890927078296,
+            "numberSamples": 26,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2721,7 +2796,11 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "distribution": 90.06811066461707
+              "splitValue": 100,
+              "splitColumn": 0,
+              "gain": 283.1155176798861,
+              "numberSamples": 4,
+              "distribution": 92.60758115826152
             },
             "right": {
               "kind": "regression",
@@ -2730,10 +2809,10 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "splitValue": 83.33333333333333,
-              "splitColumn": 4,
-              "gain": 69.6635930042018,
-              "numberSamples": 6,
+              "splitValue": 49.99999999999999,
+              "splitColumn": 2,
+              "gain": 1892.8184642427045,
+              "numberSamples": 22,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2741,11 +2820,32 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 100,
-                "splitColumn": 0,
-                "gain": 50.882717770175255,
-                "numberSamples": 4,
-                "distribution": 92.21802503723232
+                "splitValue": 83.33333333333333,
+                "splitColumn": 4,
+                "gain": 324.6179099170048,
+                "numberSamples": 6,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 157.97794735428866,
+                  "numberSamples": 4,
+                  "distribution": 89.74674314362028
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "distribution": 86.86878538289064
+                }
               },
               "right": {
                 "kind": "regression",
@@ -2754,7 +2854,32 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "distribution": 93.42785071803641
+                "splitValue": 83.33333333333333,
+                "splitColumn": 4,
+                "gain": 1553.5235187420044,
+                "numberSamples": 16,
+                "left": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "splitValue": 100,
+                  "splitColumn": 0,
+                  "gain": 1290.583932780805,
+                  "numberSamples": 14,
+                  "distribution": 85.77573414850863
+                },
+                "right": {
+                  "kind": "regression",
+                  "gainFunction": "regression",
+                  "splitFunction": "mean",
+                  "minNumSamples": 3,
+                  "maxDepth": 7,
+                  "gainThreshold": 0,
+                  "distribution": 84.3347990512681
+                }
               }
             }
           },
@@ -2767,8 +2892,8 @@
             "gainThreshold": 0,
             "splitValue": 49.99999999999999,
             "splitColumn": 4,
-            "gain": 2237.18016269719,
-            "numberSamples": 30,
+            "gain": 701.0531756206498,
+            "numberSamples": 13,
             "left": {
               "kind": "regression",
               "gainFunction": "regression",
@@ -2776,7 +2901,7 @@
               "minNumSamples": 3,
               "maxDepth": 7,
               "gainThreshold": 0,
-              "distribution": 94.61036834009712
+              "distribution": 81.68401052673681
             },
             "right": {
               "kind": "regression",
@@ -2787,8 +2912,8 @@
               "gainThreshold": 0,
               "splitValue": 83.33333333333333,
               "splitColumn": 4,
-              "gain": 2038.6339626112015,
-              "numberSamples": 28,
+              "gain": 693.6848442789318,
+              "numberSamples": 12,
               "left": {
                 "kind": "regression",
                 "gainFunction": "regression",
@@ -2796,36 +2921,11 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 1775.6176383672614,
-                "numberSamples": 23,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 100,
-                  "splitColumn": 0,
-                  "gain": 1085.2521782402075,
-                  "numberSamples": 14,
-                  "distribution": 84.8627670623811
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "splitValue": 100,
-                  "splitColumn": 0,
-                  "gain": 690.3654601270539,
-                  "numberSamples": 9,
-                  "distribution": 80.82867388318878
-                }
+                "splitValue": 100,
+                "splitColumn": 0,
+                "gain": 627.0087290541474,
+                "numberSamples": 9,
+                "distribution": 77.88461180271224
               },
               "right": {
                 "kind": "regression",
@@ -2834,28 +2934,7 @@
                 "minNumSamples": 3,
                 "maxDepth": 7,
                 "gainThreshold": 0,
-                "splitValue": 83.33333333333333,
-                "splitColumn": 2,
-                "gain": 168.8385019021963,
-                "numberSamples": 5,
-                "left": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "distribution": 88.61044224012602
-                },
-                "right": {
-                  "kind": "regression",
-                  "gainFunction": "regression",
-                  "splitFunction": "mean",
-                  "minNumSamples": 3,
-                  "maxDepth": 7,
-                  "gainThreshold": 0,
-                  "distribution": 90.65680286417489
-                }
+                "distribution": 76.07496710563704
               }
             }
           }

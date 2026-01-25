@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
+import PropTypes from 'prop-types';
 
 const UserContext = createContext();
 
@@ -9,7 +10,7 @@ export function UserProvider({ children }) {
       const savedUser = localStorage.getItem('user');
       return savedUser ? JSON.parse(savedUser) : null;
     } catch (error) {
-      return null;
+      console.error(error); return null;
     }
   });
 
@@ -18,8 +19,10 @@ export function UserProvider({ children }) {
     setUserState(newUser);
   };
 
+  const value = useMemo(() => ({ user, setUser }), [user]);
+
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );
@@ -27,3 +30,6 @@ export function UserProvider({ children }) {
 
 export const useUser = () => useContext(UserContext);
 
+UserProvider.propTypes = {
+  children: PropTypes.node.isRequired
+};

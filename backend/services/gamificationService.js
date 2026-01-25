@@ -50,7 +50,7 @@ const UserChallenge = db.sequelize.define('UserChallenge', {
 });
 
 // Sync models (safe mode)
-db.sequelize.sync({ alter: true }).catch(err => console.error('Gamification Sync Error:', err));
+try { await db.sequelize.sync({ alter: true }); } catch (err) { console.error('Gamification Sync Error:', err); }
 
 // --- 2. Game Rules Engine ---
 
@@ -71,6 +71,31 @@ const GamificationService = {
   async initProfile(userId) {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     return await UserStats.create({ userId, referralCode: code });
+  },
+
+  async updateChallenges(userId, eventType, metadata, stats) {
+    const activeChallenges = await UserChallenge.findAll({ where: { userId, completed: false } });
+    for (const uc of activeChallenges) {
+      const challenge = await Challenge.findByPk(uc.challengeId);
+      if (!challenge) continue;
+
+      let newProgress = uc.progress;
+      if (challenge.metric === 'streak' && eventType === 'daily_checkin') {
+        newProgress = metadata.streak || uc.progress;
+      } else if (challenge.metric === 'checkin_count' && eventType === 'daily_checkin') {
+        newProgress += 1;
+      }
+
+      if (newProgress >= challenge.target) {
+        uc.progress = challenge.target;
+        uc.completed = true;
+        stats.score += challenge.scoreReward; // Award Challenge Score
+        await stats.save();
+      } else {
+        uc.progress = newProgress;
+      }
+      await uc.save();
+    }
   },
 
   // Process an event (The "Engine" Core)
@@ -113,28 +138,7 @@ const GamificationService = {
     }
 
     // 4. Update Active Challenges
-    const activeChallenges = await UserChallenge.findAll({ where: { userId, completed: false } });
-    for (const uc of activeChallenges) {
-      const challenge = await Challenge.findByPk(uc.challengeId);
-      if (!challenge) continue;
-
-      let newProgress = uc.progress;
-      if (challenge.metric === 'streak' && eventType === 'daily_checkin') {
-        newProgress = metadata.streak || uc.progress;
-      } else if (challenge.metric === 'checkin_count' && eventType === 'daily_checkin') {
-        newProgress += 1;
-      }
-
-      if (newProgress >= challenge.target) {
-        uc.progress = challenge.target;
-        uc.completed = true;
-        stats.score += challenge.scoreReward; // Award Challenge Score
-        await stats.save();
-      } else {
-        uc.progress = newProgress;
-      }
-      await uc.save();
-    }
+    await this.updateChallenges(userId, eventType, metadata, stats);
 
     return { 
       scoreGain, 

@@ -1,7 +1,7 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { DecisionTreeRegression } = require('ml-cart');
-const parse = require('csv-parse/lib/sync'); // Use CSV parser
+const { parse } = require('csv-parse/sync'); // Use CSV parser
 
 // Paths
 const dataFile = path.join(__dirname, '../datasets/stress_data_full_processed_clean.csv');
@@ -28,12 +28,12 @@ try {
 
   // Prepare X (features) and y (target), convert non-numeric to 0
   const X = records.map(r => featureCols.map(f => {
-    const val = parseFloat(r[f]);
-    return isNaN(val) ? 0 : val;
+    const val = Number.parseFloat(r[f]);
+    return Number.isNaN(val) ? 0 : val;
   }));
   const y = records.map(r => {
-    const val = parseFloat(r[targetCol]);
-    return isNaN(val) ? 0 : val;
+    const val = Number.parseFloat(r[targetCol]);
+    return Number.isNaN(val) ? 0 : val;
   });
 
   // compute feature means/std and target min/max for metadata (useful for normalization)
@@ -85,6 +85,6 @@ try {
   console.log('Full model trained and saved.');
   console.log('Metadata saved to', metaFile);
 } catch (err) {
-  console.error('Error training full model:', err && err.message ? err.message : err);
+  console.error('Error training full model:', err?.message ?? err);
   process.exit(1);
 }

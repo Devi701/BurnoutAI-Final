@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -265,7 +266,7 @@ export default function ActionImpact() {
                       },
                       {
                         label: 'Baseline',
-                        data: Array(result.trend.length).fill(result.baselineScore),
+                        data: new Array(result.trend.length).fill(result.baselineScore),
                         borderColor: '#94a3b8',
                         borderDash: [5, 5],
                         pointRadius: 0
@@ -296,10 +297,24 @@ export default function ActionImpact() {
   );
 }
 
+ActionCard.propTypes = {
+  title: PropTypes.string.isRequired,
+  desc: PropTypes.string.isRequired,
+  checked: PropTypes.bool.isRequired,
+  onToggle: PropTypes.func.isRequired,
+  children: PropTypes.node.isRequired,
+  recommended: PropTypes.bool,
+  driver: PropTypes.string
+};
+
 function ActionCard({ title, desc, checked, onToggle, children, recommended, driver }) {
+  let borderColor = '1px solid #e2e8f0';
+  if (recommended) borderColor = '2px solid #10b981';
+  else if (checked) borderColor = '2px solid #2563eb';
+
   return (
     <div style={{ 
-      border: recommended ? '2px solid #10b981' : (checked ? '2px solid #2563eb' : '1px solid #e2e8f0'), 
+      border: borderColor, 
       borderRadius: '8px', 
       padding: '1.5rem', 
       backgroundColor: checked ? '#eff6ff' : 'white',
