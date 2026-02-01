@@ -1,5 +1,6 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { usePostHog } from 'posthog-js/react';
 import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import LoginPage from './pages/LoginPage';
@@ -22,8 +23,23 @@ import GamificationHub from './pages/GamificationHub';
 import FeedbackPage from './pages/FeedbackPage';
 import './App.css';
 
+function PostHogPageView() {
+  const location = useLocation();
+  const posthog = usePostHog();
+  
+  useEffect(() => {
+    if (posthog) {
+      posthog.capture('$pageview');
+    }
+  }, [location, posthog]);
+  
+  return null;
+}
+
 function AppContent() {
   return (
+    <>
+      <PostHogPageView />
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -44,6 +60,7 @@ function AppContent() {
       <Route path="/feedback" element={<FeedbackPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </>
   );
 }
 

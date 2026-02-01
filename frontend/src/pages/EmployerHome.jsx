@@ -1468,13 +1468,58 @@ export default function EmployerHome() {
 
       {/* Pilot Enrollment Popup (Appears after 90s) */}
       <PilotEnrollmentPopup />
+
+      {/* MODALS */}
+      {isCreatingSurvey && (
+        <SurveyCreator 
+          user={user} 
+          teams={teams}
+          onSave={() => { setIsCreatingSurvey(false); handleRefresh(); }} 
+          onClose={() => setIsCreatingSurvey(false)} 
+        />
+      )}
+
+      {viewingSurvey && (
+        <SurveyResultsViewer 
+          survey={viewingSurvey} 
+          results={surveyResults} 
+          loading={surveyLoading} 
+          onClose={() => { setViewingSurvey(null); setSurveyResults(null); }} 
+        />
+      )}
     </>
   );
 }
 
-const SurveyCreator = ({ user, onSave, onClose }) => {
+const SurveyCreator = ({ user, teams = [], onSave, onClose }) => {
   const [name, setName] = useState('');
+  const [targetType, setTargetType] = useState('all');
+  const [selectedTeam, setSelectedTeam] = useState('');
   const [questions, setQuestions] = useState([{ id: 'q1', text: '', type: 'scale' }]);
+
+  const templates = [
+    {
+      name: 'Weekly Workload Check',
+      questions: [
+        'My workload was manageable this week.',
+        'I had enough time to complete my tasks.',
+        'I felt supported by my team when I needed help.',
+      ],
+    },
+    {
+      name: 'Team Morale Pulse',
+      questions: [
+        'I feel motivated at work.',
+        'I am proud of the work I do.',
+        'I feel connected to my colleagues.',
+      ],
+    },
+  ];
+
+  const applyTemplate = (template) => {
+    setName(template.name);
+    setQuestions(template.questions.map((q, i) => ({ id: `q${Date.now() + i}`, text: q, type: 'scale' })));
+  };
 
   const handleAddQuestion = () => {
     setQuestions([...questions, { id: `q${Date.now()}`, text: '', type: 'scale' }]);
@@ -1484,13 +1529,29 @@ const SurveyCreator = ({ user, onSave, onClose }) => {
     setQuestions(questions.map(q => q.id === id ? { ...q, text } : q));
   };
 
+  const handleRemoveQuestion = (id) => {
+    if (questions.length > 1) {
+      setQuestions(questions.filter(q => q.id !== id));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validQuestions = questions.filter(q => q.text.trim());
     if (!name.trim() || validQuestions.length === 0) return;
     
+    if (targetType === 'team' && !selectedTeam) {
+      alert('Please select a team.');
+      return;
+    }
+    
     try {
-      await createSurvey({ companyCode: user.companyCode, name, questions: validQuestions });
+      await createSurvey({ 
+        companyCode: user.companyCode, 
+        name, 
+        questions: validQuestions,
+        targetTeamId: targetType === 'team' ? selectedTeam : null
+      });
       onSave();
     } catch (err) {
       alert(err.message);
@@ -1498,10 +1559,65 @@ const SurveyCreator = ({ user, onSave, onClose }) => {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div className="card" style={{ width: '90%', maxWidth: '600px' }}>
-        <h2 style={{ marginTop: 0 }}>Create Pulse Survey</h2>
-        <form onSubmit={handleSubmit}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(4px)' }}>
+      <div className="card" style={{ width: '90%', maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+          <h2 style={{ margin: 0 }}>Create Pulse Survey</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+        </div>
+
+        <form id="survey-creator-form" onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 0.5rem' }}>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h4 style={{ marginTop: 0, marginBottom: '0.75rem', color: '#475569' }}>Start with a template (optional)</h4>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {templates.map(t => (
+                <button type="button" key={t.name} onClick={() => applyTemplate(t)} style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', padding: '6px 12px', borderRadius: '16px', fontSize: '0.85rem' }}>
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#334155' }}>Target Audience</label>
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="targetType" 
+                  value="all" 
+                  checked={targetType === 'all'} 
+                  onChange={() => setTargetType('all')} 
+                />
+                Full Company
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="targetType" 
+                  value="team" 
+                  checked={targetType === 'team'} 
+                  onChange={() => setTargetType('team')} 
+                />
+                Specific Team
+              </label>
+            </div>
+            
+            {targetType === 'team' && (
+              <div style={{ marginTop: '0.8rem' }}>
+                <select 
+                  value={selectedTeam} 
+                  onChange={e => setSelectedTeam(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #cbd5e1', background: 'white' }}
+                  required
+                >
+                  <option value="">-- Select Team --</option>
+                  {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="survey-name" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Survey Name</label>
             <input id="survey-name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g., Q3 Team Satisfaction" required style={{ width: '100%', padding: '8px' }} />
@@ -1510,23 +1626,29 @@ const SurveyCreator = ({ user, onSave, onClose }) => {
           <div style={{ marginBottom: '1rem' }}>
             <label id="questions-label" style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Questions</label>
             {questions.map((q, index) => (
-              <input 
-                key={q.id}
-                value={q.text}
-                onChange={e => handleQuestionChange(q.id, e.target.value)}
-                placeholder={`Question ${index + 1} (e.g., How manageable is your workload?)`}
-                style={{ width: '100%', padding: '8px', marginBottom: '0.5rem' }}
-                aria-labelledby="questions-label"
-              />
+              <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem', padding: '12px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <span style={{ fontWeight: 'bold', color: '#94a3b8', width: '24px' }}>{index + 1}.</span>
+                <input 
+                  value={q.text}
+                  onChange={e => handleQuestionChange(q.id, e.target.value)}
+                  placeholder="Type your question here..."
+                  style={{ flex: 1, padding: '4px', border: 'none', outline: 'none', fontSize: '1rem', background: 'transparent' }}
+                  aria-labelledby="questions-label"
+                  autoFocus={index === questions.length - 1 && !q.text && index > 0}
+                />
+                {questions.length > 1 && (
+                  <button type="button" onClick={() => handleRemoveQuestion(q.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove">&times;</button>
+                )}
+              </div>
             ))}
-            <button type="button" onClick={handleAddQuestion} style={{ fontSize: '0.8rem', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0 }}>+ Add another question</button>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'end', gap: '1rem', marginTop: '2rem' }}>
-            <button type="button" onClick={onClose} style={{ background: '#64748b' }}>Cancel</button>
-            <button type="submit" className="quiz-button">Save Survey</button>
+            <button type="button" onClick={handleAddQuestion} style={{ fontSize: '0.9rem', background: '#eff6ff', border: '1px dashed #2563eb', color: '#2563eb', cursor: 'pointer', padding: '8px 16px', borderRadius: '4px', width: '100%' }}>+ Add Question</button>
           </div>
         </form>
+
+        <div style={{ display: 'flex', justifyContent: 'end', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9' }}>
+          <button type="button" onClick={onClose} style={{ background: '#64748b' }}>Cancel</button>
+          <button type="submit" form="survey-creator-form" className="quiz-button">Save Survey</button>
+        </div>
       </div>
     </div>
   );
@@ -1534,6 +1656,7 @@ const SurveyCreator = ({ user, onSave, onClose }) => {
 
 SurveyCreator.propTypes = {
   user: PropTypes.object.isRequired,
+  teams: PropTypes.array,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired
 };

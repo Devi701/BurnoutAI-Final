@@ -80,6 +80,7 @@ async function inspectPredictions() {
   }
 }
 
+(async () => {
 // Top-level execution
   console.log('Model files exist:',
     fs.existsSync(smallModel), smallModel,
@@ -101,3 +102,4 @@ async function inspectPredictions() {
   await inspectPredictions();
 
   console.log('--- inspector done');
+})();

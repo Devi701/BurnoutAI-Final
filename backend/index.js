@@ -18,18 +18,22 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 // --- Route Imports ---
-const authRoutes = require('./routes/auth');
-const checkinRoutes = require('./routes/checkins');
-const predictRoutes = require('./routes/predict');
-const reportRoutes = require('./routes/reports');
-const simulatorRoutes = require('./routes/simulator');
-const employerSimulatorRoutes = require('./routes/employerSimulator');
-const { authenticateToken } = require('./middleware/authMiddleware');
+const authRoutes = require('./src/routes/auth');
+const checkinRoutes = require('./src/routes/checkins');
+const predictRoutes = require('./src/routes/predict');
+const reportRoutes = require('./src/routes/reports');
+const simulatorRoutes = require('./src/routes/simulator');
+const employerSimulatorRoutes = require('./src/routes/employerSimulator');
+const { authenticateToken } = require('./src/middleware/authMiddleware');
+const integrationsRoutes = require('./src/routes/integrations.routes');
+const jiraRoutes = require('./src/routes/jira_integration');
+const { startJiraSyncJob } = require('./src/jobs/jiraSync.job');
+
 
 // --- Database Initialization ---
 async function initializeDatabase() {
   try {
-    const db = require('./db/database');
+    const db = require('./src/config/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
       await db.sequelize.authenticate();
       const host = db.sequelize.config?.host ?? db.sequelize.options?.host ?? 'unknown';
@@ -118,7 +122,7 @@ async function main() {
   // Health Check Endpoint (Verifies DB Connection)
   app.get('/api/health', async (req, res) => {
     try {
-      const db = require('./db/database');
+      const db = require('./src/config/database');
       await db.sequelize.authenticate();
       const host = db.sequelize.config?.host || db.sequelize.options?.host || 'unknown';
       res.json({ status: 'ok', database: 'connected', dialect: db.sequelize.getDialect(), host });
@@ -133,8 +137,14 @@ async function main() {
   app.use('/api/reports', authenticateToken, reportRoutes);
   app.use('/api/action-impact', authenticateToken, simulatorRoutes);
   app.use('/api/employer-simulator', authenticateToken, employerSimulatorRoutes);
-  app.use('/api/teams', authenticateToken, require('./routes/teams'));
-  app.use('/api/gamification', authenticateToken, require('./routes/gamification'));
+  app.use('/api/teams', authenticateToken, require('./src/routes/teams'));
+  app.use('/api/gamification', authenticateToken, require('./src/routes/gamification'));
+  app.use('/api/surveys', authenticateToken, require('./src/routes/surveys'));
+  app.use('/api/integrations', integrationsRoutes);
+  app.use('/api/integrations/jira', jiraRoutes);
+
+  // --- Background Jobs ---
+  startJiraSyncJob();
 
   // --- Error Handling ---
   // 404 Not Found handler
@@ -162,8 +172,6 @@ async function main() {
   });
 }
 
-try {
-  await main();
-} catch (error) {
+main().catch(error => {
   console.error("Failed to start the server:", error);
-}
+});

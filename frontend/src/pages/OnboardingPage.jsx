@@ -1,29 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { signupEmployee, signupEmployer } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useUser } from '../context/UserContext';
 import Navbar from '../components/layout/Navbar';
 
 // Progress Bar Component
-const ProgressBar = ({ step }) => (
+const ProgressBar = ({ step, totalSteps }) => (
   <div style={{ width: '100%', height: '6px', background: '#e2e8f0', position: 'fixed', top: 0, left: 0, zIndex: 1000 }}>
-    <div style={{ width: `${(step / 5) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
+    <div style={{ width: `${(step / totalSteps) * 100}%`, height: '100%', background: '#2563eb', transition: 'width 0.3s ease' }}></div>
   </div>
 );
 
 ProgressBar.propTypes = {
   step: PropTypes.number.isRequired,
+  totalSteps: PropTypes.number.isRequired,
+};
+
+// --- Integration Components (copied from SettingsPage for onboarding context) ---
+const CalendarIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+  </svg>
+);
+
+const ChatIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+);
+
+const TasksIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+);
+
+const IntegrationItem = ({ name, slug, icon }) => {
+  // Replicate API base URL logic to construct the OAuth link
+  let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+  if (typeof globalThis.window !== 'undefined' && globalThis.window.location.hostname.includes('razoncomfort.com')) {
+    API_BASE_URL = 'https://burnoutai-final.onrender.com';
+  }
+  if (!API_BASE_URL.startsWith('http')) {
+    API_BASE_URL = `https://${API_BASE_URL}`;
+  }
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: 'white' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {icon}
+        <span style={{ fontWeight: 'bold', color: '#334155' }}>{name}</span>
+      </div>
+      <a 
+        href={`${API_BASE_URL}/api/integrations/connect/${slug}`} 
+        className="quiz-button" 
+        style={{ textDecoration: 'none', padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+      >
+        Connect
+      </a>
+    </div>
+  );
+};
+
+IntegrationItem.propTypes = {
+  name: PropTypes.string.isRequired,
+  slug: PropTypes.string.isRequired,
+  icon: PropTypes.node.isRequired,
 };
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login: setToken } = useAuth();
   const { setUser } = useUser();
 
-  const [step, setStep] = useState(1);
+  const totalSteps = 7;
+  const [step, setStep] = useState(() => {
+    const s = searchParams.get('step');
+    return s ? parseInt(s, 10) : 1;
+  });
   const [role, setRole] = useState(null); // 'employee' or 'employer'
   const [consents, setConsents] = useState({
     dataProcessing: false,
@@ -87,8 +144,12 @@ export default function OnboardingPage() {
       localStorage.setItem('authToken', resp.token);
       localStorage.setItem('user', JSON.stringify(resp.user));
 
-      // Move to Success/Gamification Step
-      setStep(5); 
+      // Move to Integrations Step for employees, or Success for employers
+      if (role === 'employee') {
+        setStep(5); // Google Calendar
+      } else {
+        setStep(7); // Employers skip integrations step
+      }
     } catch (err) {
       setError(err.message);
       setIsSubmitting(false);
@@ -99,7 +160,7 @@ export default function OnboardingPage() {
   if (step === 1) {
     return (
       <>
-        <ProgressBar step={step} />
+        <ProgressBar step={step} totalSteps={totalSteps} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
@@ -124,7 +185,7 @@ export default function OnboardingPage() {
     const canContinue = consents.dataProcessing && consents.anonymity;
     return (
       <>
-        <ProgressBar step={step} />
+        <ProgressBar step={step} totalSteps={totalSteps} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -176,7 +237,7 @@ export default function OnboardingPage() {
   if (step === 3) {
     return (
       <>
-        <ProgressBar step={step} />
+        <ProgressBar step={step} totalSteps={totalSteps} />
         <Navbar />
         <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
           <div className="card">
@@ -215,7 +276,7 @@ export default function OnboardingPage() {
   if (step === 4) {
     return (
     <>
-      <ProgressBar step={step} />
+      <ProgressBar step={step} totalSteps={totalSteps} />
       <Navbar />
       <div className="container" style={{ maxWidth: 500, marginTop: '3rem' }}>
         <div className="card">
@@ -298,11 +359,95 @@ export default function OnboardingPage() {
   );
   }
 
-  // --- Step 5: Success & Gamification Hook ---
+  // --- Step 5: Google Calendar Integration ---
   if (step === 5) {
+    // This step is only for employees. If an employer somehow lands here, skip.
+    if (role !== 'employee') {
+      setStep(7);
+      return null;
+    }
+
+    // Construct API URL for this specific step
+    let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    if (typeof globalThis.window !== 'undefined' && globalThis.window.location.hostname.includes('razoncomfort.com')) {
+      API_BASE_URL = 'https://burnoutai-final.onrender.com';
+    }
+    if (!API_BASE_URL.startsWith('http')) {
+      API_BASE_URL = `https://${API_BASE_URL}`;
+    }
+    const token = localStorage.getItem('authToken');
+    const connectUrl = `${API_BASE_URL}/api/integrations/connect/google?token=${token}&redirect=/onboarding?step=6`;
+
     return (
       <>
-        <ProgressBar step={step} />
+        <ProgressBar step={step} totalSteps={totalSteps} />
+        <Navbar />
+        <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <div style={{ marginBottom: '1.5rem', color: '#2563eb' }}>
+              <CalendarIcon />
+            </div>
+            <h2 style={{ marginBottom: '1rem' }}>Connect Google Calendar</h2>
+            <p style={{ fontSize: '1.1rem', color: '#334155', marginBottom: '2rem' }}>
+              Allow us to analyze your meeting load to improve burnout prediction accuracy by <strong style={{ color: '#10b981' }}>+15%</strong>.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <a href={connectUrl} className="quiz-button" style={{ textDecoration: 'none', display: 'block' }}>
+                Connect Calendar
+              </a>
+              <button onClick={() => setStep(6)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'underline' }}>
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // --- Step 6: Slack Integration ---
+  if (step === 6) {
+    // Placeholder URL - assuming Slack endpoint will be added later
+    // For now, "Connect" can just skip to next step or show an alert if endpoint missing
+    const handleSlackConnect = () => {
+      alert("Slack integration coming soon!");
+      setStep(7);
+    };
+
+    return (
+      <>
+        <ProgressBar step={step} totalSteps={totalSteps} />
+        <Navbar />
+        <div className="container" style={{ maxWidth: 600, marginTop: '3rem' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <div style={{ marginBottom: '1.5rem', color: '#4a154b' }}>
+              <ChatIcon />
+            </div>
+            <h2 style={{ marginBottom: '1rem' }}>Connect Slack</h2>
+            <p style={{ fontSize: '1.1rem', color: '#334155', marginBottom: '2rem' }}>
+              Analyze communication patterns and after-hours messages to boost accuracy by another <strong style={{ color: '#10b981' }}>+10%</strong>.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <button onClick={handleSlackConnect} className="quiz-button" style={{ backgroundColor: '#4a154b' }}>
+                Connect Slack
+              </button>
+              <button onClick={() => setStep(7)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.9rem', textDecoration: 'underline' }}>
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // --- Step 7: Success & Gamification Hook ---
+  if (step === 7) {
+    return (
+      <>
+        <ProgressBar step={step} totalSteps={totalSteps} />
         <Navbar />
         <div className="container" style={{ maxWidth: 500, marginTop: '3rem', textAlign: 'center' }}>
           <div className="card" style={{ borderTop: '5px solid #10b981', animation: 'fadeIn 0.5s' }}>

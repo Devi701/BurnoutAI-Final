@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "seed": "node seed_db.js",
-    "create-tables": "node create_tables.js"
+    "seed": "node src/scripts/seed_db.js",
+    "create-tables": "node src/scripts/create_tables.js"
   },
   "dependencies": {
     "argon2": "^0.40.1",
@@ -19,13 +19,12 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
+    "googleapis": "^170.1.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "ml-cart": "^2.0.0",
-    "node-fetch": "^3.3.2",
+    "node-cron": "^4.2.1",
     "nodemailer": "^6.9.13",
-    "pg": "^8.11.5",
-    "pg-hstore": "^2.3.4",
     "posthog-node": "^5.18.0",
     "sequelize": "^6.37.3",
     "sqlite3": "^5.1.7"
