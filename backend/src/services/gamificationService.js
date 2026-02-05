@@ -49,9 +49,6 @@ const UserChallenge = db.sequelize.define('UserChallenge', {
   completed: { type: DataTypes.BOOLEAN, defaultValue: false }
 });
 
-// Sync models (safe mode)
-db.sequelize.sync({ alter: true }).catch(err => console.error('Gamification Sync Error:', err));
-
 // --- 2. Game Rules Engine ---
 
 const LEVEL_Curve = (level) => 100 * Math.pow(level, 1.5); // Score needed for next level

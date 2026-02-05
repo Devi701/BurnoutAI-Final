@@ -106,11 +106,12 @@ db.SurveyResponse = sequelize.define('SurveyResponse', {
 
 // UserIntegration Model (For OAuth Tokens)
 db.UserIntegration = sequelize.define('UserIntegration', {
-  userId: { type: DataTypes.INTEGER, allowNull: false },
+  userId: { type: DataTypes.INTEGER, allowNull: false, unique: false },
   provider: { type: DataTypes.STRING, allowNull: false }, // e.g., 'google'
   accessToken: { type: DataTypes.TEXT, allowNull: false },
   refreshToken: { type: DataTypes.TEXT },
-  expiresAt: { type: DataTypes.DATE }
+  expiresAt: { type: DataTypes.DATE },
+  lastSyncedAt: { type: DataTypes.DATE }
 }, { 
   tableName: 'user_integrations',
   indexes: [{ unique: true, fields: ['userId', 'provider'] }]

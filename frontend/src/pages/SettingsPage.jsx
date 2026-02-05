@@ -19,7 +19,8 @@ const SettingsPage = () => {
     slack: false,
     trello: false,
     jira: false,
-    asana: false
+    asana: false,
+    google: false
   });
 
   const [formData, setFormData] = useState({
@@ -55,6 +56,22 @@ const SettingsPage = () => {
       API_BASE_URL = `https://${API_BASE_URL}`;
     }
     const token = localStorage.getItem('token');
+
+    if (service === 'google') {
+      window.location.href = `${API_BASE_URL}/api/integrations/google/auth?token=${token}`;
+      return;
+    }
+
+    if (service === 'slack') {
+      window.location.href = `${API_BASE_URL}/api/integrations/slack/auth?token=${token}`;
+      return;
+    }
+
+    if (service === 'trello') {
+      window.location.href = `${API_BASE_URL}/api/integrations/trello/auth?token=${token}`;
+      return;
+    }
+
     window.location.href = `${API_BASE_URL}/api/integrations/connect/${service}?token=${token}&redirect=/settings?integration_success=${service}`;
   };
 
@@ -151,7 +168,8 @@ const SettingsPage = () => {
                   <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-sm
                     ${service === 'slack' ? 'bg-[#4A154B]' : 
                       service === 'trello' ? 'bg-[#0079BF]' : 
-                      service === 'jira' ? 'bg-[#0052CC]' : 'bg-[#F06A6A]'}`}>
+                      service === 'jira' ? 'bg-[#0052CC]' : 
+                      service === 'google' ? 'bg-[#4285F4]' : 'bg-[#F06A6A]'}`}>
                     {service.charAt(0).toUpperCase()}
                   </div>
                   <div>

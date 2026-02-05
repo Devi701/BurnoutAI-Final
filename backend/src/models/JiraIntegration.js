@@ -25,6 +25,10 @@ const JiraIntegration = sequelize.define('JiraIntegration', {
   expiresAt: {
     type: DataTypes.DATE,
     allowNull: false
+  },
+  lastSyncedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 });
 

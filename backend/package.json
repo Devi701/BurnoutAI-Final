@@ -25,6 +25,8 @@
     "ml-cart": "^2.0.0",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.9.13",
+    "pg": "^8.18.0",
+    "pg-hstore": "^2.3.4",
     "posthog-node": "^5.18.0",
     "sequelize": "^6.37.3",
     "sqlite3": "^5.1.7"

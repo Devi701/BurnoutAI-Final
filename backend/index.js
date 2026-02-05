@@ -16,6 +16,7 @@ dns.lookup = (hostname, options, callback) => {
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 // --- Route Imports ---
 const authRoutes = require('./src/routes/auth');
@@ -27,7 +28,10 @@ const employerSimulatorRoutes = require('./src/routes/employerSimulator');
 const { authenticateToken } = require('./src/middleware/authMiddleware');
 const integrationsRoutes = require('./src/routes/integrations.routes');
 const jiraRoutes = require('./src/routes/jira_integration');
-const { startJiraSyncJob } = require('./src/jobs/jiraSync.job');
+const googleRoutes = require('./src/routes/google_integration');
+const slackRoutes = require('./src/routes/slack_integration');
+const trelloRoutes = require('./src/routes/trello_integration');
+const { startNightlySync } = require('./src/jobs/nightlySync.job');
 
 
 // --- Database Initialization ---
@@ -36,6 +40,8 @@ async function initializeDatabase() {
     const db = require('./src/config/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
       await db.sequelize.authenticate();
+      await db.sequelize.sync({ alter: true }); // Syncs DB schema with Models
+      console.log('✅ Database schema synced successfully.');
       const host = db.sequelize.config?.host ?? db.sequelize.options?.host ?? 'unknown';
       console.log(`Database connection has been established successfully to: ${host}`);
     } else if (typeof db === 'function') {
@@ -60,7 +66,10 @@ async function main() {
 
   // --- Core Middleware ---
   app.set('trust proxy', 1); // Trust Nginx reverse proxy
-  app.use(helmet({ hsts: false })); // Disable HSTS in Node, handled by Nginx
+  app.use(helmet({ 
+    // Enable HSTS in production to enforce HTTPS
+    hsts: process.env.NODE_ENV === 'production' 
+  }));
 
   // --- CORS Configuration for Production Security ---
   const whitelist = new Set([
@@ -68,8 +77,20 @@ async function main() {
     'https://www.razoncomfort.com',
     'https://razoncomfort.com',
     'https://burnout-ai-final.vercel.app',
-    'http://localhost:5173' // For local development
+    'http://localhost:5173', // For local development
+    'https://burnoutai-final.onrender.com' // Your Render Backend/Frontend
   ].filter(Boolean)); // Remove undefined values to prevent errors
+
+  // Dynamically allow the Slack Redirect URI origin (e.g., your ngrok URL)
+  if (process.env.SLACK_REDIRECT_URI) {
+    try {
+      const slackUrl = new URL(process.env.SLACK_REDIRECT_URI);
+      whitelist.add(slackUrl.origin);
+      console.log(`[CORS] Added allowed origin from SLACK_REDIRECT_URI: ${slackUrl.origin}`);
+    } catch (e) {
+      console.warn('[CORS] Invalid SLACK_REDIRECT_URI in env, could not add to whitelist.');
+    }
+  }
 
   const corsOptions = {
     origin: (origin, callback) => {
@@ -95,6 +116,16 @@ async function main() {
     console.log(`[API Request] ${req.method} ${req.originalUrl}`);
     next();
   });
+
+  // --- Global Rate Limiting ---
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per window (approx 1/sec avg)
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, please try again later.' }
+  });
+  app.use('/api/', globalLimiter);
 
   // --- API Routes ---
   app.get('/', (req, res) => {
@@ -142,9 +173,13 @@ async function main() {
   app.use('/api/surveys', authenticateToken, require('./src/routes/surveys'));
   app.use('/api/integrations', integrationsRoutes);
   app.use('/api/integrations/jira', jiraRoutes);
+  app.use('/api/integrations/google', googleRoutes);
+  app.use('/api/integrations/slack', slackRoutes);
+  // Trello routes are already imported as trelloRoutes at top, just ensuring usage
+  app.use('/api/integrations/trello', trelloRoutes);
 
   // --- Background Jobs ---
-  startJiraSyncJob();
+  startNightlySync();
 
   // --- Error Handling ---
   // 404 Not Found handler
@@ -169,6 +204,10 @@ async function main() {
     console.log('🔑 PILOT MAGIC LINK:');
     console.log(`${baseUrl}/api/auth/magic-link?key=burnout_pilot_2026`);
     console.log('-------------------------------------------------------');
+
+    if (process.env.SLACK_REDIRECT_URI) {
+      console.log(`ℹ️  Slack Redirect URI: ${process.env.SLACK_REDIRECT_URI}`);
+    }
   });
 }
 
