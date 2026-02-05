@@ -1,5 +1,6 @@
 const slackService = require('../services/slackService');
 const jwt = require('jsonwebtoken');
+const db = require('../config/database');
 
 const slackController = {
   // 1. Redirect User to Slack
@@ -59,6 +60,15 @@ const slackController = {
     } catch (error) {
       console.error('[Slack Callback] ❌ Error during token exchange:', error.message);
       
+      // Handle duplicate callback requests (Browser retries)
+      if (error.message.includes('invalid_code')) {
+        const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'slack' } });
+        if (existing) {
+          console.log(`[Slack Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
+          return res.redirect(`${frontendUrl}/settings?integration_success=slack`);
+        }
+      }
+
       // Only log details if it's an unexpected API error (not our own "Failed to connect" wrapper)
       if (error.message !== 'Failed to connect to Slack') {
         if (error.response) {

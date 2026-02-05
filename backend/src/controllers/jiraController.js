@@ -1,5 +1,6 @@
 const jiraService = require('../services/jiraService');
 const jwt = require('jsonwebtoken');
+const JiraIntegration = require('../models/JiraIntegration');
 
 const jiraController = {
   // 1. Redirect User to Jira
@@ -57,6 +58,16 @@ const jiraController = {
       res.redirect(`${frontendUrl}/settings?integration_success=jira`);
     } catch (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      
+      // Handle duplicate callback requests (Browser retries)
+      if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+        const existing = await JiraIntegration.findOne({ where: { userId } });
+        if (existing) {
+          console.log(`[Jira Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
+          return res.redirect(`${frontendUrl}/settings?integration_success=jira`);
+        }
+      }
+
       res.redirect(`${frontendUrl}/settings?integration_error=jira_failed`);
     }
   },

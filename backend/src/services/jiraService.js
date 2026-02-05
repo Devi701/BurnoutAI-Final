@@ -78,7 +78,7 @@ class JiraService {
       return integration;
     } catch (error) {
       console.error('Error exchanging Jira token:', error.response?.data || error.message);
-      throw new Error('Failed to connect to Jira');
+      throw error; // Propagate error so controller can handle 'invalid_grant'
     }
   }
 

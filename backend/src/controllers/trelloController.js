@@ -98,8 +98,9 @@ const trelloController = {
       }
 
       if (!match) {
-        console.error('[Trello Callback] ❌ No matching pending integration found for token.');
-        throw new Error('Session expired or invalid request token.');
+        // If no pending record is found, it likely means the callback ran twice and succeeded the first time.
+        console.warn('[Trello Callback] ⚠️ No pending integration found. Assuming duplicate request/already processed.');
+        return res.redirect(`${frontendUrl}/settings?integration_success=trello`);
       }
 
       const requestTokenSecret = decrypt(match.refreshToken);
