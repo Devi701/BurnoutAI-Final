@@ -70,7 +70,7 @@ class GoogleCalendarService {
       return integration;
     } catch (error) {
       console.error(`[Google Auth] ❌ Token exchange failed:`, error.message);
-      throw new Error('Failed to connect to Google Calendar');
+      throw error;
     }
   }
 

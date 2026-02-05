@@ -1,5 +1,6 @@
 const googleCalendarService = require('../services/googleCalendar');
 const jwt = require('jsonwebtoken');
+const db = require('../config/database');
 
 const googleCalendarController = {
   // 1. Redirect User to Google
@@ -78,6 +79,16 @@ const googleCalendarController = {
       res.redirect(`${frontendUrl}/settings?integration_success=google`);
     } catch (error) {
       console.error('[Google Callback] ❌ Error during token exchange:', error.response ? error.response.data : error.message);
+      
+      // Handle duplicate callback requests (Browser retries)
+      if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+        const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'google' } });
+        if (existing) {
+          console.log(`[Google Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
+          return res.redirect(`${frontendUrl}/settings?integration_success=google`);
+        }
+      }
+
       res.redirect(`${frontendUrl}/settings?integration_error=google_failed`);
     }
   },

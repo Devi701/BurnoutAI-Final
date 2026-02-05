@@ -69,13 +69,11 @@ const slackController = {
         }
       }
 
-      // Only log details if it's an unexpected API error (not our own "Failed to connect" wrapper)
-      if (error.message !== 'Failed to connect to Slack') {
-        if (error.response) {
-          console.error('[Slack Callback] API Response:', JSON.stringify(error.response.data, null, 2));
-        } else {
-          console.error('[Slack Callback] Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        }
+      // Log details for unexpected errors
+      if (error.response) {
+        console.error('[Slack Callback] API Response:', JSON.stringify(error.response.data, null, 2));
+      } else {
+        console.error('[Slack Callback] Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       }
       res.redirect(`${frontendUrl}/settings?integration_error=slack_failed`);
     }
