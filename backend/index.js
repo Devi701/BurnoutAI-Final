@@ -79,7 +79,10 @@ async function main() {
     'https://razoncomfort.com',
     'https://burnout-ai-final.vercel.app',
     'http://localhost:5173', // For local development
-    'https://burnoutai-final.onrender.com' // Your Render Backend/Frontend
+    'https://burnoutai-final.onrender.com', // Your Render Backend/Frontend
+    'https://burnoutai-final.onerender.com',
+    'https://burnout-ai-final-git-main-devi701s-projects.vercel.app',
+    'https://burnout-ai-final-612mq0h65-devi701s-projects.vercel.app'
   ].filter(Boolean)); // Remove undefined values to prevent errors
 
   // Dynamically allow the Slack Redirect URI origin (e.g., your ngrok URL)
