@@ -72,7 +72,13 @@ class SlackService {
       console.log(`[Slack Auth] ✅ Tokens saved. Integration ID: ${integration.id}`);
       return integration;
     } catch (error) {
-      console.error(`[Slack Auth] ❌ Token exchange failed:`, error.message);
+      // Downgrade log level for expected duplicate errors
+      if (error.message && error.message.includes('invalid_code')) {
+        console.warn(`[Slack Auth] ⚠️ Token exchange failed (likely duplicate request):`, error.message);
+      } else {
+        console.error(`[Slack Auth] ❌ Token exchange failed:`, error.message);
+      }
+      
       // Detailed validation logging
       if (error.errors) {
         error.errors.forEach(e => {

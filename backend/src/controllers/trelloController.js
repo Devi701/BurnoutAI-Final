@@ -69,11 +69,14 @@ const trelloController = {
     console.log('[Trello Callback] 📥 Received callback.');
     const { oauth_token, oauth_verifier } = req.query;
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (process.env.NODE_ENV === 'production') {
+      frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
+    }
     frontendUrl = frontendUrl.replace(/\/$/, '');
 
     if (!oauth_token || !oauth_verifier) {
       console.error('[Trello Callback] ❌ Missing token or verifier.');
-      return res.redirect(`${frontendUrl}/settings?integration_error=trello_missing_params`);
+      return res.redirect(`${frontendUrl}/employee?integration_error=trello_missing_params`);
     }
 
     try {
@@ -100,7 +103,7 @@ const trelloController = {
       if (!match) {
         // If no pending record is found, it likely means the callback ran twice and succeeded the first time.
         console.warn('[Trello Callback] ⚠️ No pending integration found. Assuming duplicate request/already processed.');
-        return res.redirect(`${frontendUrl}/settings?integration_success=trello`);
+        return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
       }
 
       const requestTokenSecret = decrypt(match.refreshToken);
@@ -131,15 +134,15 @@ const trelloController = {
         .then(c => console.log(`[Trello Verify] ✨ Initial sync complete. ${c} cards.`))
         .catch(e => console.error(`[Trello Verify] ❌ Sync failed:`, e.message));
 
-      console.log(`[Trello Callback] ✅ Redirecting to frontend: ${frontendUrl}/settings?integration_success=trello`);
-      res.redirect(`${frontendUrl}/settings?integration_success=trello`);
+      console.log(`[Trello Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=trello`);
+      res.redirect(`${frontendUrl}/employee?integration_success=trello`);
 
     } catch (error) {
       console.error('[Trello Callback] ❌ Error:', error.message);
       if (error.response) {
         console.error('[Trello Callback] API Response:', JSON.stringify(error.response.data, null, 2));
       }
-      res.redirect(`${frontendUrl}/settings?integration_error=trello_failed`);
+      res.redirect(`${frontendUrl}/employee?integration_error=trello_failed`);
     }
   }
 };
