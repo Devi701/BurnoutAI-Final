@@ -31,7 +31,7 @@ const trelloController = {
       if (!callbackUrl) {
         let baseUrl = process.env.SLACK_REDIRECT_URI 
           ? new URL(process.env.SLACK_REDIRECT_URI).origin 
-          : (process.env.FRONTEND_URL || 'http://localhost:4000');
+          : (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : 'http://localhost:4000');
         
         // If running on Render, ensure we use the backend URL
         if (process.env.RENDER_EXTERNAL_URL) {
@@ -73,9 +73,11 @@ const trelloController = {
 
     console.log('[Trello Callback] 📥 Received callback.');
     const { oauth_token, oauth_verifier } = req.query;
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (process.env.NODE_ENV === 'production') {
-      frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
+    
+    // Robust URL resolution
+    let frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : '';
+    if (!frontendUrl) {
+      frontendUrl = process.env.NODE_ENV === 'production' ? 'https://www.razoncomfort.com' : 'http://localhost:5173';
     }
     frontendUrl = frontendUrl.replace(/\/$/, '');
 

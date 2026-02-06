@@ -43,9 +43,11 @@ const jiraController = {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
     const { code, state } = req.query;
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (process.env.NODE_ENV === 'production') {
-      frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
+    
+    // Robust URL resolution
+    let frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : '';
+    if (!frontendUrl) {
+      frontendUrl = process.env.NODE_ENV === 'production' ? 'https://www.razoncomfort.com' : 'http://localhost:5173';
     }
     frontendUrl = frontendUrl.replace(/\/$/, '');
 
@@ -53,10 +55,6 @@ const jiraController = {
     if (state && processedStates.has(state)) {
       console.log(`[Jira Callback] ⚡ Fast dedup: State ${state} already processed.`);
       return res.redirect(`${frontendUrl}/employee?integration_success=jira&cached=true`);
-    }
-    if (state) {
-      processedStates.add(state);
-      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Security: Verify state
@@ -66,6 +64,12 @@ const jiraController = {
       userId = decoded.id;
     } catch (err) {
       return res.redirect(`${frontendUrl}/employee?integration_error=jira_csrf_error`);
+    }
+
+    // Add to processed states AFTER verification
+    if (state) {
+      processedStates.add(state);
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Deduplication: Check for pending state

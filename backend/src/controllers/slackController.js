@@ -44,9 +44,11 @@ const slackController = {
 
     console.log('[Slack Callback] 📥 Received callback from Slack.');
     const { code, state, error } = req.query;
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (process.env.NODE_ENV === 'production') {
-      frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
+    
+    // Robust URL resolution (Trim whitespace to prevent ERR_INVALID_REDIRECT)
+    let frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : '';
+    if (!frontendUrl) {
+      frontendUrl = process.env.NODE_ENV === 'production' ? 'https://www.razoncomfort.com' : 'http://localhost:5173';
     }
     frontendUrl = frontendUrl.replace(/\/$/, '');
 
@@ -54,10 +56,6 @@ const slackController = {
     if (state && processedStates.has(state)) {
       console.log(`[Slack Callback] ⚡ Fast dedup: State ${state} already processed.`);
       return res.redirect(`${frontendUrl}/employee?integration_success=slack&cached=true`);
-    }
-    if (state) {
-      processedStates.add(state);
-      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Security: Verify state
@@ -67,6 +65,12 @@ const slackController = {
       userId = decoded.id;
     } catch (err) {
       return res.redirect(`${frontendUrl}/employee?integration_error=slack_csrf_error`);
+    }
+
+    // Add to processed states AFTER verification to ensure we don't cache invalid tokens
+    if (state) {
+      processedStates.add(state);
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Deduplication: Check for pending state

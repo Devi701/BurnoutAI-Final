@@ -52,9 +52,11 @@ const googleCalendarController = {
 
     console.log('[Google Callback] 📥 Received callback from Google.');
     const { code, state, error } = req.query;
-    let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    if (process.env.NODE_ENV === 'production') {
-      frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
+    
+    // Robust URL resolution
+    let frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : '';
+    if (!frontendUrl) {
+      frontendUrl = process.env.NODE_ENV === 'production' ? 'https://www.razoncomfort.com' : 'http://localhost:5173';
     }
     frontendUrl = frontendUrl.replace(/\/$/, ''); // Remove trailing slash if present
 
@@ -62,11 +64,6 @@ const googleCalendarController = {
     if (state && processedStates.has(state)) {
       console.log(`[Google Callback] ⚡ Fast dedup: State ${state} already processed.`);
       return res.redirect(`${frontendUrl}/employee?integration_success=google&cached=true`);
-    }
-    if (state) {
-      processedStates.add(state);
-      // Clear from memory after 5 minutes
-      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Security: Verify the state parameter
@@ -79,6 +76,12 @@ const googleCalendarController = {
     } catch (err) {
       console.error(`[Google Callback] ❌ Security Error: Invalid state parameter (${err.message})`);
       return res.redirect(`${frontendUrl}/employee?integration_error=google_csrf_error`);
+    }
+
+    // Add to processed states AFTER verification
+    if (state) {
+      processedStates.add(state);
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
     }
 
     // Deduplication: Check for pending state
