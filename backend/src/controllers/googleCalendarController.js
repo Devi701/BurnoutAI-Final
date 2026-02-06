@@ -61,7 +61,7 @@ const googleCalendarController = {
     // In-Memory Deduplication (Fastest check)
     if (state && processedStates.has(state)) {
       console.log(`[Google Callback] ⚡ Fast dedup: State ${state} already processed.`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=google`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=google&cached=true`);
     }
     if (state) {
       processedStates.add(state);
@@ -89,7 +89,7 @@ const googleCalendarController = {
       const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'google' } });
       if (existing) {
         console.log(`[Google Callback] ⚠️ Duplicate callback detected (No pending state). User ${userId} already connected.`);
-        return res.redirect(`${frontendUrl}/employee?integration_success=google`);
+        return res.redirect(`${frontendUrl}/employee?integration_success=google&dedup=db`);
       }
       console.error('[Google Callback] ❌ Session expired or invalid state (No pending record).');
       return res.redirect(`${frontendUrl}/employee?integration_error=google_session_expired`);
@@ -131,7 +131,15 @@ const googleCalendarController = {
       });
     } catch (error) {
       console.error('[Google Callback] ❌ Error during token exchange:', error.response ? error.response.data : error.message);
-
+      
+      // Handle "invalid_grant" (Code reused/expired) gracefully
+      if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+        const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'google' } });
+        if (existing) {
+           console.log(`[Google Callback] ⚠️ Invalid Grant (likely duplicate). User ${userId} already connected.`);
+           return res.redirect(`${frontendUrl}/employee?integration_success=google&dedup=error`);
+        }
+      }
       return res.redirect(`${frontendUrl}/employee?integration_error=google_failed`);
     }
   },

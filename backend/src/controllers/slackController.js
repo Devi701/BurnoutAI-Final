@@ -53,7 +53,7 @@ const slackController = {
     // In-Memory Deduplication
     if (state && processedStates.has(state)) {
       console.log(`[Slack Callback] ⚡ Fast dedup: State ${state} already processed.`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=slack&cached=true`);
     }
     if (state) {
       processedStates.add(state);
@@ -77,7 +77,7 @@ const slackController = {
       const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'slack' } });
       if (existing) {
         console.log(`[Slack Callback] ⚠️ Duplicate callback detected (No pending state). User ${userId} already connected.`);
-        return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
+        return res.redirect(`${frontendUrl}/employee?integration_success=slack&dedup=db`);
       }
       console.error('[Slack Callback] ❌ Session expired or invalid state.');
       return res.redirect(`${frontendUrl}/employee?integration_error=slack_session_expired`);
@@ -115,11 +115,18 @@ const slackController = {
     } catch (error) {
       console.error('[Slack Callback] ❌ Error during token exchange:', error.message);
 
+      // Handle duplicate callback requests (Browser retries)
+      if (error.message && (error.message.includes('invalid_code') || error.message === 'Failed to connect to Slack')) {
+        const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'slack' } });
+        if (existing) {
+          console.log(`[Slack Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
+          return res.redirect(`${frontendUrl}/employee?integration_success=slack&dedup=error`);
+        }
+      }
+
       // Log details for unexpected errors
       if (error.response) {
         console.error('[Slack Callback] API Response:', JSON.stringify(error.response.data, null, 2));
-      } else {
-        console.error('[Slack Callback] Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       }
       return res.redirect(`${frontendUrl}/employee?integration_error=slack_failed`);
     }

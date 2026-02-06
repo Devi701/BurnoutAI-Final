@@ -87,7 +87,7 @@ const trelloController = {
     // In-Memory Deduplication (Using oauth_token as unique key)
     if (processedTokens.has(oauth_token)) {
       console.log(`[Trello Callback] ⚡ Fast dedup: Token ${oauth_token} already processed.`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=trello&cached=true`);
     }
     if (oauth_token) {
       processedTokens.add(oauth_token);
@@ -118,7 +118,7 @@ const trelloController = {
       if (!match) {
         // If no pending record is found, it likely means the callback ran twice and succeeded the first time.
         console.warn('[Trello Callback] ⚠️ No pending integration found. Assuming duplicate request/already processed.');
-        return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
+        return res.redirect(`${frontendUrl}/employee?integration_success=trello&dedup=db`);
       }
 
       const requestTokenSecret = decrypt(match.refreshToken);

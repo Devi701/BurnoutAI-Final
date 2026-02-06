@@ -52,7 +52,7 @@ const jiraController = {
     // In-Memory Deduplication
     if (state && processedStates.has(state)) {
       console.log(`[Jira Callback] ⚡ Fast dedup: State ${state} already processed.`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=jira&cached=true`);
     }
     if (state) {
       processedStates.add(state);
@@ -76,7 +76,7 @@ const jiraController = {
       const existing = await JiraIntegration.findOne({ where: { userId } });
       if (existing) {
         console.log(`[Jira Callback] ⚠️ Duplicate callback detected (No pending state). User ${userId} already connected.`);
-        return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
+        return res.redirect(`${frontendUrl}/employee?integration_success=jira&dedup=db`);
       }
       console.error('[Jira Callback] ❌ Session expired or invalid state.');
       return res.redirect(`${frontendUrl}/employee?integration_error=jira_session_expired`);
@@ -111,6 +111,15 @@ const jiraController = {
           .catch(err => console.error(`[Jira Verify] ❌ Sync verification failed:`, err.message));
       });
     } catch (error) {
+      // Handle duplicate callback requests (Browser retries)
+      if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {
+        const existing = await JiraIntegration.findOne({ where: { userId } });
+        if (existing) {
+          console.log(`[Jira Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
+          return res.redirect(`${frontendUrl}/employee?integration_success=jira&dedup=error`);
+        }
+      }
+      
       return res.redirect(`${frontendUrl}/employee?integration_error=jira_failed`);
     }
   },
