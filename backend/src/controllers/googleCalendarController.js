@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { encrypt, decrypt } = require('../utils/encryption');
 
+const processedStates = new Set(); // In-memory deduplication
+
 const googleCalendarController = {
   // 1. Redirect User to Google
   auth: async (req, res) => {
@@ -45,6 +47,9 @@ const googleCalendarController = {
 
   // 2. Callback: Handle return from Google
   callback: async (req, res) => {
+    // Prevent browser caching of the callback response
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
     console.log('[Google Callback] 📥 Received callback from Google.');
     const { code, state, error } = req.query;
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -52,6 +57,17 @@ const googleCalendarController = {
       frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
     }
     frontendUrl = frontendUrl.replace(/\/$/, ''); // Remove trailing slash if present
+
+    // In-Memory Deduplication (Fastest check)
+    if (state && processedStates.has(state)) {
+      console.log(`[Google Callback] ⚡ Fast dedup: State ${state} already processed.`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=google`);
+    }
+    if (state) {
+      processedStates.add(state);
+      // Clear from memory after 5 minutes
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
+    }
 
     // Security: Verify the state parameter
     let userId;
@@ -102,19 +118,21 @@ const googleCalendarController = {
       await pending.destroy();
       
       console.log(`\n[Google Verify] 🔗 Connection successful for User ${userId}.`);
-      console.log(`[Google Verify] 🚀 Triggering immediate sync...`);
-      
-      // Trigger sync in background
-      googleCalendarService.syncUserCalendar(userId)
-        .then((count) => console.log(`[Google Verify] ✨ Initial sync complete. Processed ${count} events.`))
-        .catch(err => console.error(`[Google Verify] ❌ Initial sync failed:`, err.message));
 
       console.log(`[Google Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=google`);
-      res.redirect(`${frontendUrl}/employee?integration_success=google`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=google`);
+
+      // Trigger sync in background AFTER response
+      setImmediate(() => {
+        console.log(`[Google Verify] 🚀 Triggering background sync...`);
+        googleCalendarService.syncUserCalendar(userId)
+          .then((count) => console.log(`[Google Verify] ✨ Initial sync complete. Processed ${count} events.`))
+          .catch(err => console.error(`[Google Verify] ❌ Initial sync failed:`, err.message));
+      });
     } catch (error) {
       console.error('[Google Callback] ❌ Error during token exchange:', error.response ? error.response.data : error.message);
 
-      res.redirect(`${frontendUrl}/employee?integration_error=google_failed`);
+      return res.redirect(`${frontendUrl}/employee?integration_error=google_failed`);
     }
   },
 
@@ -128,6 +146,31 @@ const googleCalendarController = {
       res.json({ status: 'success', count });
     } catch (error) {
       console.error(`[Google Sync] ❌ Manual sync failed for User ${userId}:`, error.message);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // 4. Get Status
+  getStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const integration = await db.UserIntegration.findOne({ where: { userId, provider: 'google' } });
+      res.json({ 
+        connected: !!integration, 
+        lastSyncedAt: integration ? integration.lastSyncedAt : null 
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // 5. Disconnect
+  disconnect: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      await db.UserIntegration.destroy({ where: { userId, provider: 'google' } });
+      res.json({ success: true, message: 'Disconnected from Google Calendar' });
+    } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }

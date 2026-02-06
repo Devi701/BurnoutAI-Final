@@ -3,6 +3,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 const { encrypt, decrypt } = require('../utils/encryption');
 
+const processedStates = new Set(); // In-memory deduplication
+
 const slackController = {
   // 1. Redirect User to Slack
   auth: async (req, res) => {
@@ -37,6 +39,9 @@ const slackController = {
 
   // 2. Callback: Handle return from Slack
   callback: async (req, res) => {
+    // Prevent browser caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
     console.log('[Slack Callback] 📥 Received callback from Slack.');
     const { code, state, error } = req.query;
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -44,6 +49,16 @@ const slackController = {
       frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
     }
     frontendUrl = frontendUrl.replace(/\/$/, '');
+
+    // In-Memory Deduplication
+    if (state && processedStates.has(state)) {
+      console.log(`[Slack Callback] ⚡ Fast dedup: State ${state} already processed.`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
+    }
+    if (state) {
+      processedStates.add(state);
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
+    }
 
     // Security: Verify state
     let userId;
@@ -86,12 +101,17 @@ const slackController = {
       await pending.destroy();
       
       console.log(`[Slack Verify] 🔗 Connection successful for User ${userId}.`);
-      console.log(`[Slack Verify] 🚀 Triggering immediate sync...`);
-      slackService.syncSlackData(userId)
-        .then((count) => console.log(`[Slack Verify] ✨ Initial sync complete. Processed ${count} messages.`))
-        .catch(err => console.error(`[Slack Verify] ❌ Initial sync failed:`, err.message));
 
-      res.redirect(`${frontendUrl}/employee?integration_success=slack`);
+      // Redirect FIRST to prevent timeout/duplicate requests
+      return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
+
+      // Trigger sync in background AFTER response is sent
+      setImmediate(() => {
+        console.log(`[Slack Verify] 🚀 Triggering background sync...`);
+        slackService.syncSlackData(userId)
+          .then((count) => console.log(`[Slack Verify] ✨ Initial sync complete. Processed ${count} messages.`))
+          .catch(err => console.error(`[Slack Verify] ❌ Initial sync failed:`, err.message));
+      });
     } catch (error) {
       console.error('[Slack Callback] ❌ Error during token exchange:', error.message);
 
@@ -101,13 +121,37 @@ const slackController = {
       } else {
         console.error('[Slack Callback] Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       }
-      res.redirect(`${frontendUrl}/employee?integration_error=slack_failed`);
+      return res.redirect(`${frontendUrl}/employee?integration_error=slack_failed`);
     }
   },
 
   // 3. Manual Sync
   sync: async (req, res) => {
-    // Implementation for manual sync trigger if needed
+    try {
+      const userId = req.user.id;
+      const count = await slackService.syncSlackData(userId);
+      res.json({ success: true, count });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  // 4. Get Status
+  getStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const integration = await db.UserIntegration.findOne({ where: { userId, provider: 'slack' } });
+      res.json({ connected: !!integration, lastSyncedAt: integration?.lastSyncedAt });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+  },
+
+  // 5. Disconnect
+  disconnect: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      await db.UserIntegration.destroy({ where: { userId, provider: 'slack' } });
+      res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: error.message }); }
   }
 };
 

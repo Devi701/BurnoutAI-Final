@@ -3,6 +3,8 @@ const db = require('../config/database');
 const jwt = require('jsonwebtoken');
 const { encrypt, decrypt } = require('../utils/encryption');
 
+const processedTokens = new Set(); // In-memory deduplication for Trello
+
 const trelloController = {
   // 1. Start Auth Flow
   auth: async (req, res) => {
@@ -66,6 +68,9 @@ const trelloController = {
 
   // 2. Callback
   callback: async (req, res) => {
+    // Prevent browser caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
     console.log('[Trello Callback] 📥 Received callback.');
     const { oauth_token, oauth_verifier } = req.query;
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -77,6 +82,16 @@ const trelloController = {
     if (!oauth_token || !oauth_verifier) {
       console.error('[Trello Callback] ❌ Missing token or verifier.');
       return res.redirect(`${frontendUrl}/employee?integration_error=trello_missing_params`);
+    }
+
+    // In-Memory Deduplication (Using oauth_token as unique key)
+    if (processedTokens.has(oauth_token)) {
+      console.log(`[Trello Callback] ⚡ Fast dedup: Token ${oauth_token} already processed.`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
+    }
+    if (oauth_token) {
+      processedTokens.add(oauth_token);
+      setTimeout(() => processedTokens.delete(oauth_token), 5 * 60 * 1000);
     }
 
     try {
@@ -127,24 +142,53 @@ const trelloController = {
       await match.destroy();
 
       console.log(`[Trello Verify] 🔗 Connection successful for User ${userId}.`);
-      console.log(`[Trello Verify] 🚀 Triggering immediate sync...`);
-      
-      // Trigger Sync
-      trelloService.syncTrelloData(userId)
-        .then(c => console.log(`[Trello Verify] ✨ Initial sync complete. ${c} cards.`))
-        .catch(e => console.error(`[Trello Verify] ❌ Sync failed:`, e.message));
 
       console.log(`[Trello Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=trello`);
-      res.redirect(`${frontendUrl}/employee?integration_success=trello`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
+
+      // Trigger Sync in background AFTER response
+      setImmediate(() => {
+        console.log(`[Trello Verify] 🚀 Triggering background sync...`);
+        trelloService.syncTrelloData(userId)
+          .then(c => console.log(`[Trello Verify] ✨ Initial sync complete. ${c} cards.`))
+          .catch(e => console.error(`[Trello Verify] ❌ Sync failed:`, e.message));
+      });
 
     } catch (error) {
       console.error('[Trello Callback] ❌ Error:', error.message);
       if (error.response) {
         console.error('[Trello Callback] API Response:', JSON.stringify(error.response.data, null, 2));
       }
-      res.redirect(`${frontendUrl}/employee?integration_error=trello_failed`);
+      return res.redirect(`${frontendUrl}/employee?integration_error=trello_failed`);
     }
-  }
+  },
+
+  // 3. Manual Sync
+  sync: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const count = await trelloService.syncTrelloData(userId);
+      res.json({ success: true, count });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+  },
+
+  // 4. Get Status
+  getStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const integration = await db.UserIntegration.findOne({ where: { userId, provider: 'trello' } });
+      res.json({ connected: !!integration, lastSyncedAt: integration?.lastSyncedAt });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+  },
+
+  // 5. Disconnect
+  disconnect: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      await db.UserIntegration.destroy({ where: { userId, provider: 'trello' } });
+      res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+    }
 };
 
 module.exports = trelloController;

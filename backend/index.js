@@ -32,6 +32,7 @@ const googleRoutes = require('./src/routes/google_integration');
 const slackRoutes = require('./src/routes/slack_integration');
 const trelloRoutes = require('./src/routes/trello_integration');
 const { startNightlySync } = require('./src/jobs/nightlySync.job');
+const { getSystemHealth } = require('./src/utils/cacheMonitor');
 
 
 // --- Database Initialization ---
@@ -160,6 +161,11 @@ async function main() {
     } catch (err) {
       res.status(500).json({ status: 'error', database: 'disconnected', error: err.message });
     }
+  });
+
+  // --- Monitoring Endpoint ---
+  app.get('/api/system/health', (req, res) => {
+    res.json(getSystemHealth());
   });
 
   app.use('/api/auth', authRoutes);

@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const { startOfWeek, endOfWeek, format, addDays } = require('date-fns');
 const { spawn } = require('child_process');
 const path = require('path');
+const cacheService = require('./cacheService');
 
 // Ensure models are loaded
 require('./jiraService');
@@ -16,6 +17,13 @@ const { analyzeBurnoutDrivers } = require('./analyticsService');
 const MINIMUM_EMPLOYEES_FOR_REPORT = 5;
 
 async function getWeeklyReport(companyCode) {
+  const cacheKey = `report:weekly:${companyCode}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    console.log(`[ReportService] Serving weekly report from cache for ${companyCode}`);
+    return cached;
+  }
+
   // 1. Find all users for the given company code.
   const usersInCompany = await db.User.findAll({
     where: { companyCode },
@@ -210,7 +218,7 @@ async function getWeeklyReport(companyCode) {
     else riskDistribution.low++;
   });
 
-  return { 
+  const reportData = { 
     labels, 
     datasets, 
     projections, 
@@ -224,6 +232,10 @@ async function getWeeklyReport(companyCode) {
     teamStatus, 
     riskDistribution 
   };
+
+  // Cache for 15 minutes (900 seconds)
+  cacheService.set(cacheKey, reportData, 900);
+  return reportData;
 }
 
 async function getPersonalHistory(userId) {
@@ -381,6 +393,13 @@ function calculateCorrelation(x, y) {
  * @returns {Promise<Object>} The analysis result containing stats and base64 graphs.
  */
 async function getComprehensiveReport(userId) {
+  const cacheKey = `report:comprehensive:${userId}`;
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    console.log(`[ReportService] Serving comprehensive report from cache for User ${userId}`);
+    return cached;
+  }
+
   try {
     // 1. Fetch Calendar Events
     // Accessing the model dynamically from the sequelize instance
@@ -455,7 +474,12 @@ async function getComprehensiveReport(userId) {
 
       pythonProcess.on('close', (code) => {
         if (code !== 0) return reject(new Error(`Python analysis failed: ${errorString}`));
-        try { resolve(JSON.parse(dataString)); } 
+        try { 
+          const result = JSON.parse(dataString);
+          // Cache for 1 hour (3600 seconds) as this is computationally expensive
+          cacheService.set(cacheKey, result, 3600);
+          resolve(result); 
+        } 
         catch (e) { reject(new Error(`Invalid JSON from Python: ${dataString}`)); }
       });
 

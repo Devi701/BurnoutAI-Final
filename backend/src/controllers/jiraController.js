@@ -3,6 +3,9 @@ const jwt = require('jsonwebtoken');
 const JiraIntegration = require('../models/JiraIntegration');
 const db = require('../config/database');
 const { encrypt, decrypt } = require('../utils/encryption');
+const cacheService = require('../services/cacheService');
+
+const processedStates = new Set(); // In-memory deduplication
 
 const jiraController = {
   // 1. Redirect User to Jira
@@ -36,12 +39,25 @@ const jiraController = {
 
   // 2. Callback: Handle return from Jira
   callback: async (req, res) => {
+    // Prevent browser caching
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+
     const { code, state } = req.query;
     let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     if (process.env.NODE_ENV === 'production') {
       frontendUrl = process.env.FRONTEND_URL || 'https://www.razoncomfort.com';
     }
     frontendUrl = frontendUrl.replace(/\/$/, '');
+
+    // In-Memory Deduplication
+    if (state && processedStates.has(state)) {
+      console.log(`[Jira Callback] ⚡ Fast dedup: State ${state} already processed.`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
+    }
+    if (state) {
+      processedStates.add(state);
+      setTimeout(() => processedStates.delete(state), 5 * 60 * 1000);
+    }
 
     // Security: Verify state
     let userId;
@@ -81,20 +97,21 @@ const jiraController = {
       await pending.destroy();
       
       console.log(`\n[Jira Verify] 🔗 Connection successful for User ${userId}.`);
-      console.log(`[Jira Verify] 🚀 Triggering immediate sync to verify data flow...`);
-      
-      // Trigger sync in background to verify fetching and storage
-      jiraService.syncJiraData(userId)
-        .then(() => {
-          console.log(`[Jira Verify] ✨ Sync verification complete. Check database for new records.`);
-          console.log(`[Jira Verify] 🗑️  To clean up test data (SQL): DELETE FROM "JiraIssues" WHERE "integrationId" IN (SELECT id FROM "JiraIntegrations" WHERE "userId"=${userId});`);
-        })
-        .catch(err => console.error(`[Jira Verify] ❌ Sync verification failed:`, err.message));
 
       // Redirect back to the frontend app
-      res.redirect(`${frontendUrl}/employee?integration_success=jira`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
+
+      // Trigger sync in background AFTER response
+      setImmediate(() => {
+        console.log(`[Jira Verify] 🚀 Triggering background sync...`);
+        jiraService.syncJiraData(userId)
+          .then(() => {
+            console.log(`[Jira Verify] ✨ Sync verification complete.`);
+          })
+          .catch(err => console.error(`[Jira Verify] ❌ Sync verification failed:`, err.message));
+      });
     } catch (error) {
-      res.redirect(`${frontendUrl}/employee?integration_error=jira_failed`);
+      return res.redirect(`${frontendUrl}/employee?integration_error=jira_failed`);
     }
   },
 
@@ -114,15 +131,42 @@ const jiraController = {
   getAnalysisData: async (req, res) => {
     try {
       const userId = req.user ? req.user.id : 1;
+      const cacheKey = `jira:analysis:${userId}`;
+      
+      const cached = cacheService.get(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
       const data = await jiraService.getDataForAnalysis(userId);
-      res.json({
+      const response = {
         source: 'jira',
         count: data.length,
         data: data
-      });
+      };
+      cacheService.set(cacheKey, response, 600); // Cache for 10 minutes
+      res.json(response);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
+  },
+
+  // 5. Get Status
+  getStatus: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const integration = await JiraIntegration.findOne({ where: { userId } });
+      res.json({ connected: !!integration, lastSyncedAt: integration?.lastSyncedAt });
+    } catch (error) { res.status(500).json({ error: error.message }); }
+  },
+
+  // 6. Disconnect
+  disconnect: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      await JiraIntegration.destroy({ where: { userId } });
+      res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: error.message }); }
   }
 };
 
