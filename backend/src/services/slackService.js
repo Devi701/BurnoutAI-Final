@@ -88,6 +88,7 @@ class SlackService {
         console.error(`   -> Error Details:`, JSON.stringify(error, Object.getOwnPropertyNames(error)));
       }
       throw error;
+      throw error; // Re-throw original error
     }
   }
 
