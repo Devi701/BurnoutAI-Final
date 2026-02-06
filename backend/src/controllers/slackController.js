@@ -61,7 +61,7 @@ const slackController = {
       console.error('[Slack Callback] ❌ Error during token exchange:', error.message);
       
       // Handle duplicate callback requests (Browser retries)
-      if (error.message.includes('invalid_code')) {
+      if (error.message.includes('invalid_code') || error.message === 'Failed to connect to Slack') {
         const existing = await db.UserIntegration.findOne({ where: { userId, provider: 'slack' } });
         if (existing) {
           console.log(`[Slack Callback] ⚠️ Duplicate callback detected for User ${userId}. Integration already exists. Ignoring error.`);
