@@ -3,9 +3,17 @@ const path = require('node:path');
 const { DecisionTreeRegression } = require('ml-cart');
 const { generateTips } = require('./tipsService');
 
-const SMALL_MODEL = path.join(__dirname, '../ai/models/small_quiz_model.json');
-const FULL_MODEL = path.join(__dirname, '../ai/models/full_model.json');
-const DAILY_MODEL = path.join(__dirname, '../ai/models/daily_model.json');
+function resolveModelPath(fileName) {
+  const candidates = [
+    path.join(__dirname, '../../ai/models', fileName), // backend/ai/models (current layout)
+    path.join(__dirname, '../ai/models', fileName) // backend/src/ai/models (legacy layout)
+  ];
+  return candidates.find(p => fs.existsSync(p)) || candidates[0];
+}
+
+const SMALL_MODEL = resolveModelPath('small_quiz_model.json');
+const FULL_MODEL = resolveModelPath('full_model.json');
+const DAILY_MODEL = resolveModelPath('daily_model.json');
 
 // Simple in-memory cache to prevent reading files on every prediction
 const modelCache = {};

@@ -118,16 +118,19 @@ async function main() {
   app.use(express.json()); // Parse incoming JSON requests
   app.use(express.urlencoded({ extended: false })); // Parse URL-encoded bodies
 
-  // --- Debugging: Log Incoming Requests ---
-  app.use((req, res, next) => {
-    console.log(`[API Request] ${req.method} ${req.originalUrl}`);
-    next();
-  });
+  // --- Debugging: Log Incoming Requests (opt-in in production) ---
+  const enableRequestLogs = process.env.ENABLE_REQUEST_LOGS === 'true' || process.env.NODE_ENV !== 'production';
+  if (enableRequestLogs) {
+    app.use((req, res, next) => {
+      console.log(`[API Request] ${req.method} ${req.originalUrl}`);
+      next();
+    });
+  }
 
   // --- Global Rate Limiting ---
   const globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per window (approx 1/sec avg)
+    max: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 20000),
     standardHeaders: true,
     legacyHeaders: false,
     message: { error: 'Too many requests, please try again later.' }

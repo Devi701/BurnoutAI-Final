@@ -37,10 +37,15 @@ const transporter = nodemailer.createTransport({
 // Rate Limiter for Login (Brute Force Protection)
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login requests per windowMs
+  max: Number(process.env.LOGIN_RATE_LIMIT_MAX || 60),
   message: { error: 'Too many login attempts from this IP, please try again after 15 minutes' },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    return email ? `${req.ip}:${email}` : req.ip;
+  }
 });
 
 async function resolveCompanyCode(role, companyCode) {

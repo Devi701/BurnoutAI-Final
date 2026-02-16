@@ -1,5 +1,21 @@
 const { parseISO, differenceInMinutes, startOfDay, format, addDays, isSameDay, getDay, getHours, isValid, isAfter, isBefore } = require('date-fns');
 
+function toValidDate(value) {
+    if (!value) return null;
+    if (value instanceof Date) return isValid(value) ? value : null;
+    if (typeof value === 'number') {
+        const d = new Date(value);
+        return isValid(d) ? d : null;
+    }
+    if (typeof value === 'string') {
+        const parsedIso = parseISO(value);
+        if (isValid(parsedIso)) return parsedIso;
+        const fallback = new Date(value);
+        return isValid(fallback) ? fallback : null;
+    }
+    return null;
+}
+
 // Helper: Calculate Pearson Correlation
 function calculateCorrelation(x, y) {
     if (x.length !== y.length || x.length < 2) return 0;
@@ -20,7 +36,7 @@ function calculateMeetingDensity(calendarEvents) {
     const grid = Array(7).fill(null).map(() => Array(24).fill(0));
     
     calendarEvents.forEach(e => {
-        const start = parseISO(e.startTime);
+        const start = toValidDate(e.startTime);
         if (isValid(start)) {
             const day = getDay(start);
             const hour = getHours(start);
@@ -37,8 +53,8 @@ function calculateFocusMetrics(calendarEvents) {
     // Group by date
     const eventsByDate = {};
     calendarEvents.forEach(e => {
-        const start = parseISO(e.startTime);
-        const end = parseISO(e.endTime);
+        const start = toValidDate(e.startTime);
+        const end = toValidDate(e.endTime);
         if (!isValid(start) || !isValid(end)) return;
         const dateKey = format(start, 'yyyy-MM-dd');
         if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
@@ -123,7 +139,7 @@ function calculateEnergyByHour(checkins) {
     
     checkins.forEach(c => {
         if (c.energy != null && c.createdAt) {
-            const date = parseISO(c.createdAt);
+            const date = toValidDate(c.createdAt);
             if (isValid(date)) {
                 const hour = getHours(date);
                 hourlyData[hour].push(c.energy);
@@ -152,15 +168,19 @@ function calculateEnergyByHour(checkins) {
 // Helper: Calculate Work In Progress (WIP)
 function calculateWIP(jiraIssues, dates) {
     return dates.map(dateStr => {
-        const date = parseISO(dateStr);
+        const date = toValidDate(dateStr);
+        if (!isValid(date)) {
+            return { date: dateStr, activeTickets: 0, pointsInProgress: 0, backlogCount: 0 };
+        }
         let activeTickets = 0;
         let pointsInProgress = 0;
         let backlogCount = 0;
 
         jiraIssues.forEach(issue => {
-            const created = parseISO(issue.created);
-            const resolved = issue.resolutionDate ? parseISO(issue.resolutionDate) : null;
+            const created = toValidDate(issue.created);
+            const resolved = issue.resolutionDate ? toValidDate(issue.resolutionDate) : null;
             const points = parseFloat(issue.storyPoints) || 0;
+            if (!isValid(created)) return;
 
             // Check if ticket existed on this date
             if (isBefore(created, addDays(date, 1))) {
@@ -191,7 +211,8 @@ function calculateDeadlineRisk(jiraIssues) {
     
     const completedRecently = jiraIssues.filter(i => {
         if (!i.resolutionDate) return false;
-        const d = parseISO(i.resolutionDate);
+        const d = toValidDate(i.resolutionDate);
+        if (!isValid(d)) return false;
         return isAfter(d, sixWeeksAgo) && isBefore(d, now);
     });
 
@@ -219,19 +240,23 @@ function calculateContextSwitchingScore(calendar, jira, checkins) {
     const dailyScores = {};
 
     // Normalize events
-    const meetings = calendar.map(e => ({
-        start: parseISO(e.startTime),
-        end: parseISO(e.endTime),
-        date: format(parseISO(e.startTime), 'yyyy-MM-dd')
-    })).filter(m => isValid(m.start) && isValid(m.end));
+    const meetings = calendar.map(e => {
+        const start = toValidDate(e.startTime);
+        const end = toValidDate(e.endTime);
+        if (!isValid(start) || !isValid(end)) return null;
+        return { start, end, date: format(start, 'yyyy-MM-dd') };
+    }).filter(Boolean);
 
     const activities = [];
     jira.forEach(j => {
-        if (j.created) activities.push({ time: parseISO(j.created), type: 'jira', date: format(parseISO(j.created), 'yyyy-MM-dd') });
-        if (j.updated) activities.push({ time: parseISO(j.updated), type: 'jira', date: format(parseISO(j.updated), 'yyyy-MM-dd') });
+        const created = toValidDate(j.created);
+        const updated = toValidDate(j.updated);
+        if (isValid(created)) activities.push({ time: created, type: 'jira', date: format(created, 'yyyy-MM-dd') });
+        if (isValid(updated)) activities.push({ time: updated, type: 'jira', date: format(updated, 'yyyy-MM-dd') });
     });
     checkins.forEach(c => {
-        if (c.createdAt) activities.push({ time: parseISO(c.createdAt), type: 'checkin', date: format(parseISO(c.createdAt), 'yyyy-MM-dd') });
+        const createdAt = toValidDate(c.createdAt);
+        if (isValid(createdAt)) activities.push({ time: createdAt, type: 'checkin', date: format(createdAt, 'yyyy-MM-dd') });
     });
 
     // Process by date
@@ -300,7 +325,7 @@ function analyze(data) {
     const dailyWellness = {}; // date -> { stress: [], energy: [], sleepQuality: [] }
     
     checkins.forEach(c => {
-        const d = parseISO(c.createdAt);
+        const d = toValidDate(c.createdAt);
         if (!isValid(d)) return;
         const dateKey = format(d, 'yyyy-MM-dd');
         if (!dailyWellness[dateKey]) dailyWellness[dateKey] = { stress: [], energy: [], sleepQuality: [] };

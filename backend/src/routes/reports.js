@@ -4,6 +4,7 @@ const { Op, DataTypes } = require('sequelize');
 const db = require('../config/database');
 const { predictAndAdvise } = require('../services/predictionService');
 const { analyze } = require('../services/comprehensiveReport');
+const cacheService = require('../services/cacheService');
 
 // Helper: Pearson Correlation Coefficient
 const calculateCorrelation = (x, y) => {
@@ -26,6 +27,14 @@ const calcEMA = (arr) => {
   if (arr.length === 0) return 0;
   const k = 2 / (arr.length + 1);
   return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
+};
+
+const REPORT_CACHE_TTL_SECONDS = Number(process.env.REPORT_CACHE_TTL_SECONDS || 45);
+
+const getReportCacheKey = (prefix, companyCode, teamId) => {
+  const normalizedCompany = (companyCode || '').toString().toUpperCase().trim();
+  const normalizedTeam = teamId == null || teamId === '' ? 'all' : String(teamId);
+  return `reports:${prefix}:${normalizedCompany}:${normalizedTeam}`;
 };
 
 // GET /api/reports/personal/me
@@ -463,27 +472,65 @@ router.get('/teams', async (req, res) => {
   try {
     const { companyCode } = req.query;
     if (!companyCode) return res.status(400).json({ error: 'Company code required' });
+    const normalizedCode = companyCode.toUpperCase().trim();
+    const cacheKey = getReportCacheKey('teams', normalizedCode, 'all');
+    const cached = cacheService.get(cacheKey);
+    if (cached) return res.json(cached);
 
     // Use Sequelize Model to avoid table casing issues
     const teams = await db.Team.findAll({
-      where: { companyCode: companyCode.toUpperCase().trim() }
+      where: { companyCode: normalizedCode },
+      attributes: ['id', 'name'],
+      raw: true
     });
 
     // Fetch all employees for the company to avoid N+1 queries and ensure consistency
     const allEmployees = await db.User.findAll({
       where: {
-        companyCode: companyCode.toUpperCase().trim(),
+        companyCode: normalizedCode,
         [Op.or]: [{ role: 'employee' }, { role: null }]
       },
-      attributes: ['id', 'teamId']
+      attributes: ['id', 'teamId'],
+      raw: true
     });
 
-    // Fetch all latest checkins for these employees in one query (Optimized)
     const employeeIds = allEmployees.map(e => e.id);
-    const latestCheckins = await db.Checkin.findAll({
+    if (employeeIds.length === 0) {
+      const emptyMetrics = teams.map(team => ({
+        teamId: team.id,
+        name: team.name,
+        memberCount: 0,
+        avgStress: 0,
+        avgEnergy: 0,
+        predictedImprovement: 0
+      }));
+      cacheService.set(cacheKey, emptyMetrics, REPORT_CACHE_TTL_SECONDS);
+      return res.json(emptyMetrics);
+    }
+
+    // Find latest checkin timestamp per user, then fetch only those rows.
+    const latestPerUser = await db.Checkin.findAll({
       where: { userId: { [Op.in]: employeeIds } },
-      order: [['createdAt', 'DESC']]
+      attributes: [
+        'userId',
+        [db.sequelize.fn('MAX', db.sequelize.col('createdAt')), 'latestCreatedAt']
+      ],
+      group: ['userId'],
+      raw: true
     });
+
+    const latestCheckins = latestPerUser.length
+      ? await db.Checkin.findAll({
+          where: {
+            [Op.or]: latestPerUser.map(row => ({
+              userId: row.userId,
+              createdAt: row.latestCreatedAt
+            }))
+          },
+          attributes: ['userId', 'stress', 'energy', 'createdAt'],
+          raw: true
+        })
+      : [];
 
     // Map latest checkin by userId
     const checkinMap = new Map();
@@ -522,6 +569,7 @@ router.get('/teams', async (req, res) => {
       });
     }
 
+    cacheService.set(cacheKey, metrics, REPORT_CACHE_TTL_SECONDS);
     res.json(metrics);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -547,6 +595,9 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
     }
 
     console.log(`Generating comprehensive TEAM report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
+    const cacheKey = getReportCacheKey('comprehensive-team', companyCode, teamId || 'all');
+    const cached = cacheService.get(cacheKey);
+    if (cached) return res.json(cached);
 
     // 1. Find Employees (same privacy rules as weekly report)
     const whereClause = { companyCode: companyCode.toUpperCase() };
@@ -559,66 +610,68 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
       whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
     }
 
-    const employees = await db.User.findAll({ where: whereClause });
+    const employees = await db.User.findAll({
+      where: whereClause,
+      attributes: ['id'],
+      raw: true
+    });
     const employeeIds = employees.map(e => e.id);
 
     if (employeeIds.length < 5) {
-      return res.json({
+      const lockedPayload = {
         employeeCount: employeeIds.length,
         totalCheckins: 0,
         privacyLocked: true
-      });
+      };
+      cacheService.set(cacheKey, lockedPayload, REPORT_CACHE_TTL_SECONDS);
+      return res.json(lockedPayload);
     }
 
-    // 2. Fetch Checkins
-    const checkins = await db.Checkin.findAll({
-      where: { userId: { [Op.in]: employeeIds } },
-      order: [['createdAt', 'ASC']]
-    });
-
-    // 3. Fetch Calendar Events
-    let calendarEvents = [];
+    // 2. Fetch data in parallel
     const CalendarEvent = db.sequelize.models.CalendarEvent || require('../models/CalendarEvent');
-    if (CalendarEvent) {
-      calendarEvents = await CalendarEvent.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
-        attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
-        order: [['startTime', 'ASC']]
-      });
-    }
-
-    // 4. Fetch Jira Issues (via integrations)
-    let jiraIssues = [];
     const JiraIssue = db.sequelize.models.JiraIssue || require('../models/JiraIssue');
     const JiraIntegration = db.sequelize.models.JiraIntegration || require('../models/JiraIntegration');
-    if (JiraIssue && JiraIntegration) {
-      const integrations = await JiraIntegration.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
-        attributes: ['id']
-      });
-      const integrationIds = integrations.map(i => i.id);
-      if (integrationIds.length) {
-        jiraIssues = await JiraIssue.findAll({
-          where: { integrationId: { [Op.in]: integrationIds } },
-          attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
-          order: [['createdDate', 'ASC']]
-        });
-      }
-    }
-
-    // 5. Fetch Slack Activity
-    let slackActivity = [];
     const SlackActivity = db.sequelize.models.SlackActivity || require('../models/SlackActivity');
-    if (SlackActivity) {
-      slackActivity = await SlackActivity.findAll({
-        where: { userId: { [Op.in]: employeeIds } }
+    const [checkins, calendarEvents, integrations, slackActivity] = await Promise.all([
+      db.Checkin.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['createdAt', 'stress', 'energy', 'sleepQuality'],
+        order: [['createdAt', 'ASC']],
+        raw: true
+      }),
+      CalendarEvent ? CalendarEvent.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
+        order: [['startTime', 'ASC']],
+        raw: true
+      }) : Promise.resolve([]),
+      JiraIssue && JiraIntegration ? JiraIntegration.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['id'],
+        raw: true
+      }) : Promise.resolve([]),
+      SlackActivity ? SlackActivity.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['date', 'messageCount'],
+        raw: true
+      }) : Promise.resolve([])
+    ]);
+
+    let jiraIssues = [];
+    if (JiraIssue && integrations.length) {
+      const integrationIds = integrations.map(i => i.id);
+      jiraIssues = await JiraIssue.findAll({
+        where: { integrationId: { [Op.in]: integrationIds } },
+        attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
+        order: [['createdDate', 'ASC']],
+        raw: true
       });
     }
 
     // 6. Prepare Payload
     const payload = {
-      calendar: calendarEvents.map(e => e.toJSON()),
-      checkins: checkins.map(c => c.toJSON()),
+      calendar: calendarEvents,
+      checkins,
       jira: jiraIssues.map(j => ({
         key: j.issueKey,
         summary: j.summary,
@@ -630,7 +683,7 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
         updated: j.createdDate,
         resolutionDate: j.resolutionDate
       })),
-      slack: slackActivity.map(s => s.toJSON())
+      slack: slackActivity
     };
 
     // 7. Analyze (aggregate across employees)
@@ -641,6 +694,7 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
     result.totalCheckins = checkins.length;
     result.privacyLocked = false;
 
+    cacheService.set(cacheKey, result, REPORT_CACHE_TTL_SECONDS);
     return res.json(result);
   } catch (err) {
     console.error('Team comprehensive report error:', err);
