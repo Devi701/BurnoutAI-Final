@@ -13,6 +13,12 @@ if (databaseUrl && process.env.NODE_ENV === 'production') {
     dialect: 'postgres',
     protocol: 'postgres',
     logging: false,
+    pool: {
+      max: Number(process.env.DB_POOL_MAX || 25),
+      min: Number(process.env.DB_POOL_MIN || 3),
+      acquire: Number(process.env.DB_POOL_ACQUIRE_MS || 30000),
+      idle: Number(process.env.DB_POOL_IDLE_MS || 10000)
+    },
     dialectOptions: {
       ssl: {
         require: true,
@@ -38,7 +44,7 @@ const db = { sequelize, Sequelize };
 // --- Define Models ---
 
 // User Model
-db.User = sequelize.define('User', {
+  db.User = sequelize.define('User', {
   name: { type: DataTypes.STRING },
   email: { type: DataTypes.STRING, unique: true },
   password: { type: DataTypes.STRING },
@@ -48,10 +54,16 @@ db.User = sequelize.define('User', {
   resetPasswordToken: { type: DataTypes.STRING },
   resetPasswordExpires: { type: DataTypes.INTEGER },
   teamId: { type: DataTypes.INTEGER }
-});
+  }, {
+    indexes: [
+      { fields: ['email'], unique: true },
+      { fields: ['companyCode', 'role'] },
+      { fields: ['companyCode', 'teamId'] }
+    ]
+  });
 
 // Checkin Model
-db.Checkin = sequelize.define('Checkin', {
+  db.Checkin = sequelize.define('Checkin', {
   userId: { type: DataTypes.INTEGER },
   companyCode: { type: DataTypes.STRING },
   // 1. Recovery / Energy
@@ -73,21 +85,35 @@ db.Checkin = sequelize.define('Checkin', {
   managementSupport: { type: DataTypes.INTEGER }, // 1-5
   commuteStress: { type: DataTypes.INTEGER }, // 1-5
   note: { type: DataTypes.TEXT }
-}, { tableName: 'checkins' });
+  }, {
+    tableName: 'checkins',
+    indexes: [
+      { fields: ['userId', 'createdAt'] },
+      { fields: ['companyCode', 'createdAt'] },
+      { fields: ['createdAt'] }
+    ]
+  });
 
 // QuizResult Model
-db.QuizResult = sequelize.define('QuizResult', {
+  db.QuizResult = sequelize.define('QuizResult', {
   userId: { type: DataTypes.INTEGER },
   quizType: { type: DataTypes.STRING },
   score: { type: DataTypes.REAL },
   breakdown: { type: DataTypes.JSON }
-});
+  }, {
+    indexes: [
+      { fields: ['userId', 'quizType', 'createdAt'] }
+    ]
+  });
 
 // Team Model (Explicit table name to match raw SQL usage in other routes)
-db.Team = sequelize.define('Team', {
+  db.Team = sequelize.define('Team', {
   name: { type: DataTypes.STRING },
   companyCode: { type: DataTypes.STRING }
-}, { tableName: 'Teams' });
+  }, {
+    tableName: 'Teams',
+    indexes: [{ fields: ['companyCode'] }]
+  });
 
 // Survey Model
 db.Survey = sequelize.define('Survey', {

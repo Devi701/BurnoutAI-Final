@@ -4,6 +4,7 @@ class CacheService {
   constructor() {
     // Default TTL: 5 minutes, Check period: 1 minute
     this.cache = new NodeCache({ stdTTL: 300, checkperiod: 60, useClones: false });
+    this.pending = new Map();
 
     this.cache.on('expired', (key, value) => {
       console.log(`[Cache] 🗑️ Key expired: ${key}`);
@@ -25,6 +26,27 @@ class CacheService {
       console.error(`[Cache] Error setting key ${key}:`, err.message);
       return false;
     }
+  }
+
+  async getOrSetAsync(key, ttl, factory) {
+    const cached = this.get(key);
+    if (cached !== null) return cached;
+
+    const pendingValue = this.pending.get(key);
+    if (pendingValue) return pendingValue;
+
+    const promise = (async () => {
+      try {
+        const value = await factory();
+        this.set(key, value, ttl);
+        return value;
+      } finally {
+        this.pending.delete(key);
+      }
+    })();
+
+    this.pending.set(key, promise);
+    return promise;
   }
 
   del(key) {

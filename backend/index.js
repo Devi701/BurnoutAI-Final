@@ -210,7 +210,7 @@ async function main() {
 
   // --- Server Start ---
   const PORT = process.env.PORT || 4000;
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on http://0.0.0.0:${PORT}`);
     
     // Print Magic Link to logs for easy access
@@ -224,6 +224,12 @@ async function main() {
       console.log(`ℹ️  Slack Redirect URI: ${process.env.SLACK_REDIRECT_URI}`);
     }
   });
+
+  // Bound max latency tails and avoid hanging sockets under load.
+  server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS || 6000);
+  server.headersTimeout = Number(process.env.SERVER_HEADERS_TIMEOUT_MS || 6500);
+  server.keepAliveTimeout = Number(process.env.SERVER_KEEPALIVE_TIMEOUT_MS || 5000);
+  server.timeout = Number(process.env.SERVER_SOCKET_TIMEOUT_MS || 7000);
 }
 
 main().catch(error => {

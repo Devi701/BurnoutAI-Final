@@ -30,11 +30,40 @@ const calcEMA = (arr) => {
 };
 
 const REPORT_CACHE_TTL_SECONDS = Number(process.env.REPORT_CACHE_TTL_SECONDS || 45);
+const REPORT_COMPUTE_TIMEOUT_MS = Number(process.env.REPORT_COMPUTE_TIMEOUT_MS || 1200);
 
 const getReportCacheKey = (prefix, companyCode, teamId) => {
   const normalizedCompany = (companyCode || '').toString().toUpperCase().trim();
   const normalizedTeam = teamId == null || teamId === '' ? 'all' : String(teamId);
   return `reports:${prefix}:${normalizedCompany}:${normalizedTeam}`;
+};
+
+const toDateKey = (value) => {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
+};
+
+const timeoutError = (ms) => {
+  const err = new Error(`Report computation timeout after ${ms}ms`);
+  err.code = 'REPORT_TIMEOUT';
+  return err;
+};
+
+const withTimeout = (promise, ms) => Promise.race([
+  promise,
+  new Promise((_, reject) => setTimeout(() => reject(timeoutError(ms)), ms))
+]);
+
+const safeParseTrackingData = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  if (typeof value !== 'string') return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
 };
 
 // GET /api/reports/personal/me
@@ -474,104 +503,98 @@ router.get('/teams', async (req, res) => {
     if (!companyCode) return res.status(400).json({ error: 'Company code required' });
     const normalizedCode = companyCode.toUpperCase().trim();
     const cacheKey = getReportCacheKey('teams', normalizedCode, 'all');
-    const cached = cacheService.get(cacheKey);
-    if (cached) return res.json(cached);
+    const metrics = await withTimeout(cacheService.getOrSetAsync(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+      // Use Sequelize Model to avoid table casing issues
+      const teams = await db.Team.findAll({
+        where: { companyCode: normalizedCode },
+        attributes: ['id', 'name'],
+        raw: true
+      });
 
-    // Use Sequelize Model to avoid table casing issues
-    const teams = await db.Team.findAll({
-      where: { companyCode: normalizedCode },
-      attributes: ['id', 'name'],
-      raw: true
-    });
+      // Fetch all employees for the company to avoid N+1 queries and ensure consistency
+      const allEmployees = await db.User.findAll({
+        where: {
+          companyCode: normalizedCode,
+          [Op.or]: [{ role: 'employee' }, { role: null }]
+        },
+        attributes: ['id', 'teamId'],
+        raw: true
+      });
 
-    // Fetch all employees for the company to avoid N+1 queries and ensure consistency
-    const allEmployees = await db.User.findAll({
-      where: {
-        companyCode: normalizedCode,
-        [Op.or]: [{ role: 'employee' }, { role: null }]
-      },
-      attributes: ['id', 'teamId'],
-      raw: true
-    });
-
-    const employeeIds = allEmployees.map(e => e.id);
-    if (employeeIds.length === 0) {
-      const emptyMetrics = teams.map(team => ({
-        teamId: team.id,
-        name: team.name,
-        memberCount: 0,
-        avgStress: 0,
-        avgEnergy: 0,
-        predictedImprovement: 0
-      }));
-      cacheService.set(cacheKey, emptyMetrics, REPORT_CACHE_TTL_SECONDS);
-      return res.json(emptyMetrics);
-    }
-
-    // Find latest checkin timestamp per user, then fetch only those rows.
-    const latestPerUser = await db.Checkin.findAll({
-      where: { userId: { [Op.in]: employeeIds } },
-      attributes: [
-        'userId',
-        [db.sequelize.fn('MAX', db.sequelize.col('createdAt')), 'latestCreatedAt']
-      ],
-      group: ['userId'],
-      raw: true
-    });
-
-    const latestCheckins = latestPerUser.length
-      ? await db.Checkin.findAll({
-          where: {
-            [Op.or]: latestPerUser.map(row => ({
-              userId: row.userId,
-              createdAt: row.latestCreatedAt
-            }))
-          },
-          attributes: ['userId', 'stress', 'energy', 'createdAt'],
-          raw: true
-        })
-      : [];
-
-    // Map latest checkin by userId
-    const checkinMap = new Map();
-    latestCheckins.forEach(c => {
-      if (!checkinMap.has(c.userId)) {
-        checkinMap.set(c.userId, c);
+      const employeeIds = allEmployees.map(e => e.id);
+      if (employeeIds.length === 0) {
+        return teams.map(team => ({
+          teamId: team.id,
+          name: team.name,
+          memberCount: 0,
+          avgStress: 0,
+          avgEnergy: 0,
+          predictedImprovement: 0
+        }));
       }
-    });
 
-    const metrics = [];
+      // Find latest checkin timestamp per user, then fetch only those rows.
+      const latestPerUser = await db.Checkin.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: [
+          'userId',
+          [db.sequelize.fn('MAX', db.sequelize.col('createdAt')), 'latestCreatedAt']
+        ],
+        group: ['userId'],
+        raw: true
+      });
 
-    for (const team of teams) {
-      // Filter in memory (loose equality handles string/int mismatches)
-      const employees = allEmployees.filter(e => e.teamId == team.id);
+      const latestCheckins = latestPerUser.length
+        ? await db.Checkin.findAll({
+            where: {
+              [Op.or]: latestPerUser.map(row => ({
+                userId: row.userId,
+                createdAt: row.latestCreatedAt
+              }))
+            },
+            attributes: ['userId', 'stress', 'energy', 'createdAt'],
+            raw: true
+          })
+        : [];
 
-      let totalStress = 0;
-      let totalEnergy = 0;
-      let count = 0;
+      const checkinMap = new Map();
+      latestCheckins.forEach(c => {
+        if (!checkinMap.has(c.userId)) checkinMap.set(c.userId, c);
+      });
 
-      for (const emp of employees) {
-        const checkin = checkinMap.get(emp.id);
-        if (checkin) {
+      return teams.map(team => {
+        const employees = allEmployees.filter(e => e.teamId == team.id);
+        let totalStress = 0;
+        let totalEnergy = 0;
+        let count = 0;
+
+        for (const emp of employees) {
+          const checkin = checkinMap.get(emp.id);
+          if (!checkin) continue;
           totalStress += Number(checkin.stress || 0);
           totalEnergy += Number(checkin.energy || 0);
           count++;
         }
-      }
 
-      metrics.push({
-        teamId: team.id,
-        name: team.name,
-        memberCount: employees.length,
-        avgStress: count > 0 ? (totalStress / count).toFixed(1) : 0,
-        avgEnergy: count > 0 ? (totalEnergy / count).toFixed(1) : 0,
-        predictedImprovement: count > 0 ? 15 : 0 // Placeholder heuristic
+        return {
+          teamId: team.id,
+          name: team.name,
+          memberCount: employees.length,
+          avgStress: count > 0 ? (totalStress / count).toFixed(1) : 0,
+          avgEnergy: count > 0 ? (totalEnergy / count).toFixed(1) : 0,
+          predictedImprovement: count > 0 ? 15 : 0
+        };
       });
-    }
+    }), REPORT_COMPUTE_TIMEOUT_MS);
 
-    cacheService.set(cacheKey, metrics, REPORT_CACHE_TTL_SECONDS);
     res.json(metrics);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    if (err.code === 'REPORT_TIMEOUT') {
+      const stale = cacheService.get(getReportCacheKey('teams', req.query.companyCode, 'all'));
+      return res.json(stale || []);
+    }
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/reports/comprehensive/team/:companyCode
@@ -596,107 +619,105 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
 
     console.log(`Generating comprehensive TEAM report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
     const cacheKey = getReportCacheKey('comprehensive-team', companyCode, teamId || 'all');
-    const cached = cacheService.get(cacheKey);
-    if (cached) return res.json(cached);
-
-    // 1. Find Employees (same privacy rules as weekly report)
-    const whereClause = { companyCode: companyCode.toUpperCase() };
-    if (teamId && teamId !== 'undefined' && teamId !== 'null') {
-      const parsedTeamId = Number.parseInt(teamId, 10);
-      if (!Number.isNaN(parsedTeamId)) {
-        whereClause.teamId = parsedTeamId;
+    const result = await withTimeout(cacheService.getOrSetAsync(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+      // 1. Find Employees (same privacy rules as weekly report)
+      const whereClause = { companyCode: companyCode.toUpperCase() };
+      if (teamId && teamId !== 'undefined' && teamId !== 'null') {
+        const parsedTeamId = Number.parseInt(teamId, 10);
+        if (!Number.isNaN(parsedTeamId)) {
+          whereClause.teamId = parsedTeamId;
+        }
+      } else {
+        whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
       }
-    } else {
-      whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
-    }
 
-    const employees = await db.User.findAll({
-      where: whereClause,
-      attributes: ['id'],
-      raw: true
-    });
-    const employeeIds = employees.map(e => e.id);
-
-    if (employeeIds.length < 5) {
-      const lockedPayload = {
-        employeeCount: employeeIds.length,
-        totalCheckins: 0,
-        privacyLocked: true
-      };
-      cacheService.set(cacheKey, lockedPayload, REPORT_CACHE_TTL_SECONDS);
-      return res.json(lockedPayload);
-    }
-
-    // 2. Fetch data in parallel
-    const CalendarEvent = db.sequelize.models.CalendarEvent || require('../models/CalendarEvent');
-    const JiraIssue = db.sequelize.models.JiraIssue || require('../models/JiraIssue');
-    const JiraIntegration = db.sequelize.models.JiraIntegration || require('../models/JiraIntegration');
-    const SlackActivity = db.sequelize.models.SlackActivity || require('../models/SlackActivity');
-    const [checkins, calendarEvents, integrations, slackActivity] = await Promise.all([
-      db.Checkin.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
-        attributes: ['createdAt', 'stress', 'energy', 'sleepQuality'],
-        order: [['createdAt', 'ASC']],
-        raw: true
-      }),
-      CalendarEvent ? CalendarEvent.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
-        attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
-        order: [['startTime', 'ASC']],
-        raw: true
-      }) : Promise.resolve([]),
-      JiraIssue && JiraIntegration ? JiraIntegration.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
+      const employees = await db.User.findAll({
+        where: whereClause,
         attributes: ['id'],
         raw: true
-      }) : Promise.resolve([]),
-      SlackActivity ? SlackActivity.findAll({
-        where: { userId: { [Op.in]: employeeIds } },
-        attributes: ['date', 'messageCount'],
-        raw: true
-      }) : Promise.resolve([])
-    ]);
-
-    let jiraIssues = [];
-    if (JiraIssue && integrations.length) {
-      const integrationIds = integrations.map(i => i.id);
-      jiraIssues = await JiraIssue.findAll({
-        where: { integrationId: { [Op.in]: integrationIds } },
-        attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
-        order: [['createdDate', 'ASC']],
-        raw: true
       });
-    }
+      const employeeIds = employees.map(e => e.id);
 
-    // 6. Prepare Payload
-    const payload = {
-      calendar: calendarEvents,
-      checkins,
-      jira: jiraIssues.map(j => ({
-        key: j.issueKey,
-        summary: j.summary,
-        status: j.status,
-        priority: j.priority,
-        storyPoints: j.storyPoints,
-        assignee: j.assignee,
-        created: j.createdDate,
-        updated: j.createdDate,
-        resolutionDate: j.resolutionDate
-      })),
-      slack: slackActivity
-    };
+      if (employeeIds.length < 5) {
+        return {
+          employeeCount: employeeIds.length,
+          totalCheckins: 0,
+          privacyLocked: true
+        };
+      }
 
-    // 7. Analyze (aggregate across employees)
-    const result = analyze(payload);
+      // 2. Fetch data in parallel
+      const CalendarEvent = db.sequelize.models.CalendarEvent || require('../models/CalendarEvent');
+      const JiraIssue = db.sequelize.models.JiraIssue || require('../models/JiraIssue');
+      const JiraIntegration = db.sequelize.models.JiraIntegration || require('../models/JiraIntegration');
+      const SlackActivity = db.sequelize.models.SlackActivity || require('../models/SlackActivity');
+      const [checkins, calendarEvents, integrations, slackActivity] = await Promise.all([
+        db.Checkin.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['createdAt', 'stress', 'energy', 'sleepQuality'],
+          order: [['createdAt', 'ASC']],
+          raw: true
+        }),
+        CalendarEvent ? CalendarEvent.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
+          order: [['startTime', 'ASC']],
+          raw: true
+        }) : Promise.resolve([]),
+        JiraIssue && JiraIntegration ? JiraIntegration.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['id'],
+          raw: true
+        }) : Promise.resolve([]),
+        SlackActivity ? SlackActivity.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['date', 'messageCount'],
+          raw: true
+        }) : Promise.resolve([])
+      ]);
 
-    // 8. Attach top-level metadata
-    result.employeeCount = employeeIds.length;
-    result.totalCheckins = checkins.length;
-    result.privacyLocked = false;
+      let jiraIssues = [];
+      if (JiraIssue && integrations.length) {
+        const integrationIds = integrations.map(i => i.id);
+        jiraIssues = await JiraIssue.findAll({
+          where: { integrationId: { [Op.in]: integrationIds } },
+          attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
+          order: [['createdDate', 'ASC']],
+          raw: true
+        });
+      }
 
-    cacheService.set(cacheKey, result, REPORT_CACHE_TTL_SECONDS);
+      const payload = {
+        calendar: calendarEvents,
+        checkins,
+        jira: jiraIssues.map(j => ({
+          key: j.issueKey,
+          summary: j.summary,
+          status: j.status,
+          priority: j.priority,
+          storyPoints: j.storyPoints,
+          assignee: j.assignee,
+          created: j.createdDate,
+          updated: j.createdDate,
+          resolutionDate: j.resolutionDate
+        })),
+        slack: slackActivity
+      };
+
+      const analyzed = analyze(payload);
+      analyzed.employeeCount = employeeIds.length;
+      analyzed.totalCheckins = checkins.length;
+      analyzed.privacyLocked = false;
+      return analyzed;
+    }), REPORT_COMPUTE_TIMEOUT_MS);
+
     return res.json(result);
   } catch (err) {
+    if (err.code === 'REPORT_TIMEOUT') {
+      const stale = cacheService.get(getReportCacheKey('comprehensive-team', req.params.companyCode, req.query.teamId || 'all'));
+      if (stale) return res.json(stale);
+      return res.json({ employeeCount: 0, totalCheckins: 0, privacyLocked: true, degraded: true });
+    }
     console.error('Team comprehensive report error:', err);
     return res.status(500).json({ error: err.message });
   }
@@ -722,163 +743,162 @@ router.get('/:companyCode', async (req, res) => {
       }
     }
 
-    console.log(`Generating report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
-    
-    // 1. Find Employees
-    const whereClause = { companyCode: companyCode.toUpperCase() };
-
-    if (teamId && teamId !== 'undefined' && teamId !== 'null') {
-      // If filtering by team, trust the team assignment (include anyone in the team)
-      const parsedTeamId = Number.parseInt(teamId, 10);
-      if (!Number.isNaN(parsedTeamId)) {
-        whereClause.teamId = parsedTeamId;
+    const cacheKey = getReportCacheKey('weekly-team', companyCode, teamId || 'all');
+    const payload = await withTimeout(cacheService.getOrSetAsync(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+      // 1. Find Employees
+      const whereClause = { companyCode: companyCode.toUpperCase() };
+      if (teamId && teamId !== 'undefined' && teamId !== 'null') {
+        const parsedTeamId = Number.parseInt(teamId, 10);
+        if (!Number.isNaN(parsedTeamId)) whereClause.teamId = parsedTeamId;
+      } else {
+        whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
       }
-    } else {
-      // For company overview, include employees and those with no role (exclude explicit 'employer' if needed)
-      whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
-    }
 
-    const employees = await db.User.findAll({ 
-      where: whereClause
-    });
-    console.log(`Found ${employees.length} employees.`);
-
-    const employeeIds = employees.map(e => e.id);
-    
-    // Privacy Guard: Require at least 5 employees to show aggregated data
-    if (employeeIds.length < 5) {
-      return res.json({ 
-        employeeCount: employeeIds.length, 
-        totalCheckins: 0,
-        privacyLocked: true 
+      const employees = await db.User.findAll({
+        where: whereClause,
+        attributes: ['id'],
+        raw: true
       });
-    }
+      const employeeIds = employees.map(e => e.id);
 
-    // 2. Fetch Checkins for Team
-    const checkins = await db.Checkin.findAll({
-      where: { userId: { [Op.in]: employeeIds } },
-      order: [['createdAt', 'ASC']]
-    });
+      if (employeeIds.length < 5) {
+        return {
+          employeeCount: employeeIds.length,
+          totalCheckins: 0,
+          privacyLocked: true
+        };
+      }
 
-    // 3. Aggregate Data & Advanced Attribution
-    const riskDistribution = { low: 0, moderate: 0, high: 0, critical: 0 };
-    const teamImpacts = { stress: 0, energy: 0 };
-    
-    // Calculate Team Adherence
-    let totalTrackedItems = 0;
-    let totalCompletedItems = 0;
-    
-    // We need to fetch tracking data. Assuming ActionPlanTracking model is available via sequelize models
-    if (db.sequelize.models.ActionPlanTracking) {
-      const allTracking = await db.sequelize.models.ActionPlanTracking.findAll({
-        where: { userId: { [Op.in]: employeeIds } }
-      });
-      
+      const trackingModel = db.sequelize.models.ActionPlanTracking;
+      const [checkins, allTracking] = await Promise.all([
+        db.Checkin.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['userId', 'createdAt', 'stress', 'energy'],
+          order: [['createdAt', 'ASC']],
+          raw: true
+        }),
+        trackingModel ? trackingModel.findAll({
+          where: { userId: { [Op.in]: employeeIds } },
+          attributes: ['data'],
+          raw: true
+        }) : Promise.resolve([])
+      ]);
+
+      const riskDistribution = { low: 0, moderate: 0, high: 0, critical: 0 };
+      const teamImpacts = { stress: 0, energy: 0 };
+      const byUser = new Map();
+      const dailyAgg = new Map();
+
+      for (const c of checkins) {
+        if (!byUser.has(c.userId)) byUser.set(c.userId, []);
+        byUser.get(c.userId).push(c);
+
+        const dateKey = toDateKey(c.createdAt);
+        if (!dateKey) continue;
+        const bucket = dailyAgg.get(dateKey) || { stressSum: 0, energySum: 0, count: 0 };
+        bucket.stressSum += Number(c.stress || 0);
+        bucket.energySum += Number(c.energy || 0);
+        bucket.count += 1;
+        dailyAgg.set(dateKey, bucket);
+      }
+
+      let totalTrackedItems = 0;
+      let totalCompletedItems = 0;
       for (const t of allTracking) {
-        const data = typeof t.data === 'string' ? JSON.parse(t.data) : t.data;
+        const data = safeParseTrackingData(t.data);
+        if (!data || typeof data !== 'object') continue;
         const values = Object.values(data);
         totalTrackedItems += values.length;
         totalCompletedItems += values.filter(v => v === true).length;
       }
-    }
-    
-    const teamAdherence = totalTrackedItems > 0 ? Math.round((totalCompletedItems / totalTrackedItems) * 100) : 0;
+      const teamAdherence = totalTrackedItems > 0 ? Math.round((totalCompletedItems / totalTrackedItems) * 100) : 0;
 
-    // Calculate current risk for each employee to populate distribution
+      for (const empId of employeeIds) {
+        const employeeCheckins = byUser.get(empId) || [];
+        if (employeeCheckins.length === 0) continue;
 
-    for (const empId of employeeIds) {
-      const employeeCheckins = checkins.filter(c => c.userId === empId);
-      
-      if (employeeCheckins.length > 0) {
-          // A. Risk Distribution
-          const last = employeeCheckins[employeeCheckins.length - 1];
-          const score = (last.stress + (100 - last.energy)) / 2;
-          
-          if (score < 30) riskDistribution.low++;
-          else if (score < 60) riskDistribution.moderate++;
-          else if (score < 80) riskDistribution.high++;
-          else riskDistribution.critical++;
+        const last = employeeCheckins[employeeCheckins.length - 1];
+        const score = (Number(last.stress || 0) + (100 - Number(last.energy || 0))) / 2;
+        if (score < 30) riskDistribution.low++;
+        else if (score < 60) riskDistribution.moderate++;
+        else if (score < 80) riskDistribution.high++;
+        else riskDistribution.critical++;
 
-          // B. Advanced Attribution (Primary Signal)
-          if (employeeCheckins.length >= 2) {
-            const relevantPoints = employeeCheckins.slice(-30);
-            const vecRisk = [];
-            for (const c of relevantPoints) {
-              vecRisk.push((c.stress + (100 - c.energy)) / 2);
-            }
-            const vecStress = relevantPoints.map(p => p.stress);
-            const vecEnergy = relevantPoints.map(p => p.energy);
+        if (employeeCheckins.length >= 2) {
+          const relevantPoints = employeeCheckins.slice(-30);
+          const vecRisk = relevantPoints.map(c => (Number(c.stress || 0) + (100 - Number(c.energy || 0))) / 2);
+          const vecStress = relevantPoints.map(p => Number(p.stress || 0));
+          const vecEnergy = relevantPoints.map(p => Number(p.energy || 0));
 
-            const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
-            const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
+          const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
+          const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
 
-            const baseWeights = { stress: 0.6, energy: 0.4 };
+          const recentStress = calcEMA(vecStress.slice(-7));
+          const recentEnergy = calcEMA(vecEnergy.slice(-7));
 
-            const recentStress = calcEMA(vecStress.slice(-7));
-            const recentEnergy = calcEMA(vecEnergy.slice(-7));
+          const devStress = Math.max(0, recentStress / 100);
+          const devEnergy = Math.max(0, (100 - recentEnergy) / 100);
 
-            const devStress = Math.max(0, recentStress / 100);
-            const devEnergy = Math.max(0, (100 - recentEnergy) / 100);
-
-            teamImpacts.stress += devStress * baseWeights.stress * (1 + corrStress);
-            teamImpacts.energy += devEnergy * baseWeights.energy * (1 + corrEnergy);
-          }
+          teamImpacts.stress += devStress * 0.6 * (1 + corrStress);
+          teamImpacts.energy += devEnergy * 0.4 * (1 + corrEnergy);
+        }
       }
-    }
 
-    // Determine Top Team Factor
-    const totalTeamImpact = teamImpacts.stress + teamImpacts.energy;
-    let teamTopFactor = 'Balanced';
-    let contributionPercent = 0;
-
-    if (totalTeamImpact > 0.05) {
-      const factors = [
-        { name: 'High Stress', score: teamImpacts.stress },
-        { name: 'Low Energy', score: teamImpacts.energy },
-      ];
-      factors.sort((a, b) => b.score - a.score);
-      teamTopFactor = factors[0].name;
-      contributionPercent = Math.round((factors[0].score / totalTeamImpact) * 100);
-    }
-
-    // Aggregate Daily Trends (Last 7 Days)
-    const aggregatedData = { stress: [], energy: [] };
-    const labels = [];
-    const today = new Date();
-    
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      labels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
-
-      const dailyCheckins = checkins.filter(c => new Date(c.createdAt).toISOString().split('T')[0] === dateStr);
-      
-      if (dailyCheckins.length > 0) {
-        const avg = (key) => dailyCheckins.reduce((s, c) => s + c[key], 0) / dailyCheckins.length;
-        aggregatedData.stress.push(Number.parseFloat(avg('stress').toFixed(1)));
-        aggregatedData.energy.push(Number.parseFloat(avg('energy').toFixed(1)));
-      } else {
-        aggregatedData.stress.push(null);
-        aggregatedData.energy.push(null);
+      const totalTeamImpact = teamImpacts.stress + teamImpacts.energy;
+      let teamTopFactor = 'Balanced';
+      let contributionPercent = 0;
+      if (totalTeamImpact > 0.05) {
+        const factors = [
+          { name: 'High Stress', score: teamImpacts.stress },
+          { name: 'Low Energy', score: teamImpacts.energy }
+        ];
+        factors.sort((a, b) => b.score - a.score);
+        teamTopFactor = factors[0].name;
+        contributionPercent = Math.round((factors[0].score / totalTeamImpact) * 100);
       }
-    }
-    
-    res.json({
-      employeeCount: employees.length,
-      totalCheckins: checkins.length,
-      riskDistribution,
-      datasets: aggregatedData,
-      projections: { stress: [50, 50, 50], energy: [50, 50, 50] },
-      labels,
-      projectionLabels: ['Mon', 'Tue', 'Wed'],
-      teamStatus: { label: 'Stable', color: '#10b981' },
-      insight: { title: 'Good Recovery', suggestion: 'Team sleep levels are improving over the weekend.' },
-      drivers: { teamTopFactor: { factor: teamTopFactor, contributionPercent }, distribution: teamImpacts },
-      teamAdherence
-    });
+
+      const aggregatedData = { stress: [], energy: [] };
+      const labels = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        labels.push(d.toLocaleDateString(undefined, { weekday: 'short' }));
+
+        const bucket = dailyAgg.get(dateStr);
+        if (bucket && bucket.count > 0) {
+          aggregatedData.stress.push(Number.parseFloat((bucket.stressSum / bucket.count).toFixed(1)));
+          aggregatedData.energy.push(Number.parseFloat((bucket.energySum / bucket.count).toFixed(1)));
+        } else {
+          aggregatedData.stress.push(null);
+          aggregatedData.energy.push(null);
+        }
+      }
+
+      return {
+        employeeCount: employees.length,
+        totalCheckins: checkins.length,
+        riskDistribution,
+        datasets: aggregatedData,
+        projections: { stress: [50, 50, 50], energy: [50, 50, 50] },
+        labels,
+        projectionLabels: ['Mon', 'Tue', 'Wed'],
+        teamStatus: { label: 'Stable', color: '#10b981' },
+        insight: { title: 'Good Recovery', suggestion: 'Team sleep levels are improving over the weekend.' },
+        drivers: { teamTopFactor: { factor: teamTopFactor, contributionPercent }, distribution: teamImpacts },
+        teamAdherence
+      };
+    }), REPORT_COMPUTE_TIMEOUT_MS);
+
+    res.json(payload);
 
   } catch (error) {
+    if (error.code === 'REPORT_TIMEOUT') {
+      const stale = cacheService.get(getReportCacheKey('weekly-team', req.params.companyCode, req.query.teamId || 'all'));
+      if (stale) return res.json(stale);
+      return res.json({ employeeCount: 0, totalCheckins: 0, privacyLocked: true, degraded: true });
+    }
     console.error('Team report error:', error);
     res.status(500).json({ error: error.message });
   }
