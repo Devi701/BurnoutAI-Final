@@ -31,7 +31,7 @@ class JiraService {
     });
 
     // Fix: Atlassian OAuth requires %20 for spaces in scope, URLSearchParams uses +
-    const queryString = params.toString().replace(/\+/g, '%20');
+    const queryString = params.toString().replaceAll('+', '%20');
     return `${authorizationUrl}?${queryString}`;
   }
 
@@ -67,7 +67,7 @@ class JiraService {
       // Save or Update in DB
       const expiresAt = new Date(Date.now() + expires_in * 1000);
       
-      const [integration, created] = await JiraIntegration.upsert({
+      const [integration] = await JiraIntegration.upsert({
         userId,
         accessToken: encrypt(access_token),
         refreshToken: encrypt(refresh_token),

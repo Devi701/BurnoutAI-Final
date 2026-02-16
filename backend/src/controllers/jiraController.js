@@ -102,9 +102,6 @@ const jiraController = {
       
       console.log(`\n[Jira Verify] 🔗 Connection successful for User ${userId}.`);
 
-      // Redirect back to the frontend app
-      return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
-
       // Trigger sync in background AFTER response
       setImmediate(() => {
         console.log(`[Jira Verify] 🚀 Triggering background sync...`);
@@ -114,6 +111,9 @@ const jiraController = {
           })
           .catch(err => console.error(`[Jira Verify] ❌ Sync verification failed:`, err.message));
       });
+
+      // Redirect back to the frontend app
+      return res.redirect(`${frontendUrl}/employee?integration_success=jira`);
     } catch (error) {
       // Handle duplicate callback requests (Browser retries)
       if (error.response && error.response.data && error.response.data.error === 'invalid_grant') {

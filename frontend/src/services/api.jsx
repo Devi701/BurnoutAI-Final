@@ -73,6 +73,12 @@ export function fetchWeeklyReport(companyCode) {
   return request(`/api/reports/${encodeURIComponent(companyCode)}`, { method: 'GET' });
 }
 
+export function fetchComprehensiveTeamReport(companyCode, teamId) {
+  let path = `/api/reports/comprehensive/team/${encodeURIComponent(companyCode)}`;
+  if (teamId) path += `?teamId=${encodeURIComponent(teamId)}`;
+  return request(path, { method: 'GET' });
+}
+
 export function fetchPersonalHistory(userId, startDate, endDate) {
   let url = `/api/reports/personal/me?userId=${userId}`;
   if (startDate) url += `&startDate=${startDate}`;

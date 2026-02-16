@@ -1,3 +1,5 @@
+/* @vitest-environment jsdom */
+
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
@@ -12,10 +14,12 @@ describe('SettingsPage Integrations', () => {
   const originalLocation = window.location;
 
   beforeEach(() => {
+    localStorage.clear();
     delete window.location;
     window.location = {
       href: '',
       origin: 'http://localhost:3000',
+      hostname: 'localhost',
       assign: vi.fn(),
     };
   });
@@ -25,7 +29,7 @@ describe('SettingsPage Integrations', () => {
     cleanup();
   });
 
-  it('renders all 4 required integration options', () => {
+  it('renders all integration options', () => {
     render(
       <MemoryRouter>
         <SettingsPage />
@@ -36,6 +40,7 @@ describe('SettingsPage Integrations', () => {
     expect(screen.getByText(/trello/i)).toBeInTheDocument();
     expect(screen.getByText(/jira/i)).toBeInTheDocument();
     expect(screen.getByText(/asana/i)).toBeInTheDocument();
+    expect(screen.getByText(/google calendar/i)).toBeInTheDocument();
   });
 
   it('toggles Jira switch to Connected when URL has success param', () => {
@@ -47,17 +52,17 @@ describe('SettingsPage Integrations', () => {
       </MemoryRouter>
     );
 
-    // Verify Jira is connected
-    // We check that we have 3 "Connect" buttons (Slack, Trello, Asana) and 1 "Connected" badge (Jira)
-    
+    // 5 integrations total; with Jira connected we should have 4 Connect buttons.
     const connectButtons = screen.getAllByRole('button', { name: 'Connect' });
-    expect(connectButtons).toHaveLength(3); 
+    expect(connectButtons).toHaveLength(4);
 
     const connectedBadges = screen.getAllByText('Connected');
     expect(connectedBadges).toHaveLength(1);
   });
 
-  it('initiates OAuth redirect when Connect button is clicked', () => {
+  it('initiates Slack OAuth redirect when Connect is clicked', () => {
+    localStorage.setItem('token', 'mock-token');
+
     render(
       <MemoryRouter>
         <SettingsPage />
@@ -69,7 +74,7 @@ describe('SettingsPage Integrations', () => {
     const buttons = screen.getAllByRole('button', { name: 'Connect' });
     fireEvent.click(buttons[0]); 
 
-    expect(window.location.href).toContain('slack.com/oauth');
-    expect(window.location.href).toContain('client_id=MOCK_SLACK_CLIENT_ID');
+    expect(window.location.href).toContain('/api/integrations/slack/auth');
+    expect(window.location.href).toContain('token=mock-token');
   });
 });

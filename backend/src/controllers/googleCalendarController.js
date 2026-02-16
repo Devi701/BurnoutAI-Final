@@ -122,9 +122,6 @@ const googleCalendarController = {
       
       console.log(`\n[Google Verify] 🔗 Connection successful for User ${userId}.`);
 
-      console.log(`[Google Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=google`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=google`);
-
       // Trigger sync in background AFTER response
       setImmediate(() => {
         console.log(`[Google Verify] 🚀 Triggering background sync...`);
@@ -132,6 +129,9 @@ const googleCalendarController = {
           .then((count) => console.log(`[Google Verify] ✨ Initial sync complete. Processed ${count} events.`))
           .catch(err => console.error(`[Google Verify] ❌ Initial sync failed:`, err.message));
       });
+
+      console.log(`[Google Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=google`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=google`);
     } catch (error) {
       console.error('[Google Callback] ❌ Error during token exchange:', error.response ? error.response.data : error.message);
       

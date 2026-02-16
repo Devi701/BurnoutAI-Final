@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,10 +14,10 @@ import {
   ArcElement,
   RadialLinearScale
 } from 'chart.js';
-import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
+import { Bar, Line, Pie, Radar } from 'react-chartjs-2';
 import Navbar from '../components/layout/Navbar';
 import { useUser } from '../context/UserContext';
-import { fetchWeeklyReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, fetchSurveys, createSurvey, activateSurvey, fetchSurveyResults } from '../services/api';
+import { fetchWeeklyReport, fetchComprehensiveTeamReport, fetchEmployees, fetchTeams, createTeam, assignEmployeeToTeam, deleteTeam, fetchTeamMetrics, fetchSurveys, createSurvey, activateSurvey, fetchSurveyResults, simulateEmployerAction } from '../services/api';
 import { analytics } from '../services/analytics';
 import PilotEnrollmentPopup from '../components/PilotEnrollmentPopup';
 
@@ -34,6 +34,16 @@ ChartJS.register(
   ArcElement,
   RadialLinearScale
 );
+
+const SIM_ACTION_TYPES = [
+  { id: 'workload', label: 'Reduce Workload', desc: 'Rebalance tasks and reduce ticket load.' },
+  { id: 'recovery', label: 'Recovery Support', desc: 'Time off, wellness budget, and recovery practices.' },
+  { id: 'meeting_reduction', label: 'Cut Meetings', desc: 'Reduce meeting hours and meeting frequency.' },
+  { id: 'focus_blocks', label: 'Focus Blocks', desc: 'Protected blocks to reduce fragmentation.' },
+  { id: 'async_hours', label: 'Async Hours', desc: 'Cut after-hours communication load.' },
+  { id: 'staffing', label: 'Add Staffing', desc: 'Backfill or hire to reduce pressure.' },
+  { id: 'process_automation', label: 'Process Automation', desc: 'Automate low-value workflows.' }
+];
 
 const generateLandscapeData = (report) => {
   const gridResolution = 20;
@@ -271,8 +281,11 @@ DensityLandscape.propTypes = {
 
 export default function EmployerHome() {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'teams', 'insights', 'surveys', 'simulator'
+  const [searchParams] = useSearchParams();
+  const [activeSection, setActiveSection] = useState('overview'); // 'overview', 'detailed', 'teams', 'surveys', 'simulator', 'integrations', 'settings'
+  const [detailedView, setDetailedView] = useState('integrations'); // 'integrations', 'daily'
   const [report, setReport] = useState(null);
+  const [comprehensiveReport, setComprehensiveReport] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [teams, setTeams] = useState([]);
   const [teamMetrics, setTeamMetrics] = useState([]);
@@ -282,18 +295,11 @@ export default function EmployerHome() {
   const [teamReport, setTeamReport] = useState(null);
   const [teamLoading, setTeamLoading] = useState(false);
   
-  const [insightMode, setInsightMode] = useState('overview'); // 'overview', 'team', 'compare'
-  const [insightTeamId, setInsightTeamId] = useState('');
-  const [insightTeamReport, setInsightTeamReport] = useState(null);
-  const [compareTeamIds, setCompareTeamIds] = useState([]);
-  const [comparisonReports, setComparisonReports] = useState({});
-  const [comparingLoading, setComparingLoading] = useState(false);
-  const [insightLoading, setInsightLoading] = useState(false);
 
   // Simulator State
   const [simPlan, setSimPlan] = useState({
     name: 'New Action Plan',
-    actions: [{ type: 'workload', intensity: 50, adherence: 80 }],
+    actions: [{ type: 'workload', intensity: 40, adherence: 80 }],
     durationWeeks: 12,
     avgHourlyRate: 50,
     projectDeadline: ''
@@ -301,6 +307,8 @@ export default function EmployerHome() {
   const [simResults, setSimResults] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [simWeek, setSimWeek] = useState(0);
+  const [simSelectedTeams, setSimSelectedTeams] = useState([]);
+  const [simError, setSimError] = useState('');
 
   // Survey State
   const [surveys, setSurveys] = useState([]);
@@ -311,6 +319,15 @@ export default function EmployerHome() {
 
   const [savedSimulations, setSavedSimulations] = useState([]);
 
+  // Integrations Manager (lightweight, shared with Settings)
+  const [integrations, setIntegrations] = useState({
+    slack: false,
+    trello: false,
+    jira: false,
+    asana: false,
+    google: false
+  });
+
   useEffect(() => {
     const saved = localStorage.getItem('employer_saved_simulations');
     if (saved) {
@@ -320,6 +337,13 @@ export default function EmployerHome() {
     }
   }, []);
 
+  useEffect(() => {
+    const successService = searchParams.get('integration_success');
+    if (successService && Object.keys(integrations).includes(successService) && !integrations[successService]) {
+      setIntegrations(prev => ({ ...prev, [successService]: true }));
+    }
+  }, [searchParams, integrations]);
+
   const handleSaveSimulation = () => {
     if (!simResults) return;
     const newSave = { id: Date.now(), date: new Date().toISOString(), plan: simPlan, results: simResults };
@@ -327,6 +351,37 @@ export default function EmployerHome() {
     setSavedSimulations(updated);
     localStorage.setItem('employer_saved_simulations', JSON.stringify(updated));
     alert('Simulation saved to Action Impact insights!');
+  };
+
+  const handleConnectIntegration = (service) => {
+    let API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+    if (typeof globalThis.window !== 'undefined' && globalThis.window.location.hostname.includes('razoncomfort.com')) {
+      API_BASE_URL = 'https://burnoutai-final.onrender.com';
+    }
+    if (!API_BASE_URL.startsWith('http')) {
+      API_BASE_URL = `https://${API_BASE_URL}`;
+    }
+    const token = localStorage.getItem('token');
+
+    if (service === 'google') {
+      window.location.href = `${API_BASE_URL}/api/integrations/google/auth?token=${token}`;
+      return;
+    }
+    if (service === 'slack') {
+      window.location.href = `${API_BASE_URL}/api/integrations/slack/auth?token=${token}`;
+      return;
+    }
+    if (service === 'trello') {
+      window.location.href = `${API_BASE_URL}/api/integrations/trello/auth?token=${token}`;
+      return;
+    }
+    window.location.href = `${API_BASE_URL}/api/integrations/connect/${service}?token=${token}&redirect=/settings?integration_success=${service}`;
+  };
+
+  const handleDisconnectIntegration = (service) => {
+    if (window.confirm(`Disconnect ${service}?`)) {
+      setIntegrations(prev => ({ ...prev, [service]: false }));
+    }
   };
 
   const toggleSimAction = (typeId) => {
@@ -347,6 +402,34 @@ export default function EmployerHome() {
     }));
   };
 
+  const runEmployerSimulation = async () => {
+    if (!user?.companyCode) return;
+    if (!simPlan.actions.length) {
+      setSimError('Select at least one action to run a simulation.');
+      return;
+    }
+    setSimLoading(true);
+    setSimError('');
+    setSimResults(null);
+    try {
+      const payload = {
+        companyCode: user.companyCode,
+        teamIds: simSelectedTeams.length ? simSelectedTeams.map(t => Number(t)) : [],
+        plan: simPlan
+      };
+      const data = await simulateEmployerAction(payload);
+      if (data.privacyLocked) {
+        setSimError('At least 5 employees are required to run simulations.');
+      } else {
+        setSimResults(data);
+      }
+    } catch (err) {
+      setSimError(err.message || 'Simulation failed.');
+    } finally {
+      setSimLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       analytics.identify(user);
@@ -360,11 +443,12 @@ export default function EmployerHome() {
       // Fetch Report and Employees in parallel
       Promise.allSettled([
         fetchWeeklyReport(user.companyCode),
+        fetchComprehensiveTeamReport(user.companyCode),
         fetchEmployees(user.companyCode),
         fetchTeams(user.companyCode),
         fetchTeamMetrics(user.companyCode).catch(() => []), // Fail gracefully if endpoint not ready
         fetchSurveys(user.companyCode).catch(() => [])
-      ]).then(([reportResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
+      ]).then(([reportResult, comprehensiveResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
         if (!isMounted) return;
 
         // Handle Report
@@ -380,6 +464,11 @@ export default function EmployerHome() {
           if (reportResult.value.privacyLocked) {
             analytics.capture('individual_data_attempt_blocked', { attempted_action: 'view_aggregated_report' });
           }
+        }
+
+        // Handle Comprehensive Report
+        if (comprehensiveResult.status === 'fulfilled' && comprehensiveResult.value) {
+          setComprehensiveReport(comprehensiveResult.value);
         }
 
         // Handle Employees
@@ -419,12 +508,14 @@ export default function EmployerHome() {
     setLoading(true);
     Promise.allSettled([
       fetchWeeklyReport(user.companyCode),
+      fetchComprehensiveTeamReport(user.companyCode),
       fetchEmployees(user.companyCode),
       fetchTeams(user.companyCode),
       fetchTeamMetrics(user.companyCode).catch(() => []),
       fetchSurveys(user.companyCode).catch(() => [])
-    ]).then(([reportResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
+    ]).then(([reportResult, comprehensiveResult, employeesResult, teamsResult, metricsResult, surveysResult]) => {
       if (reportResult.status === 'fulfilled') setReport(reportResult.value);
+      if (comprehensiveResult.status === 'fulfilled') setComprehensiveReport(comprehensiveResult.value);
       if (employeesResult.status === 'fulfilled') setEmployees(employeesResult.value);
       if (teamsResult.status === 'fulfilled') setTeams(teamsResult.value || []);
       if (metricsResult.status === 'fulfilled') setTeamMetrics(metricsResult.value || []);
@@ -432,32 +523,6 @@ export default function EmployerHome() {
       setLoading(false);
     });
   };
-
-  // Fetch detailed reports for teams being compared
-  useEffect(() => {
-    if (insightMode === 'compare' && compareTeamIds.length > 0) {
-      const fetchMissing = async () => {
-        const missingIds = compareTeamIds.filter(id => !comparisonReports[id]);
-        if (missingIds.length === 0) return;
-
-        setComparingLoading(true);
-        const fetchedData = {};
-        
-        await Promise.all(missingIds.map(async (id) => {
-          try {
-            const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${id}`);
-            fetchedData[id] = data;
-          } catch (e) {
-            console.error(`Failed to fetch report for team ${id}`, e);
-          }
-        }));
-        
-        setComparisonReports(prev => ({ ...prev, ...fetchedData }));
-        setComparingLoading(false);
-      };
-      fetchMissing();
-    }
-  }, [insightMode, compareTeamIds, user.companyCode]);
 
   const refreshMetrics = () => {
     if (user?.companyCode) {
@@ -531,21 +596,6 @@ export default function EmployerHome() {
     alert('Company code copied to clipboard!');
   };
 
-  const handleInsightTeamChange = async (e) => {
-    const tId = e.target.value;
-    setInsightTeamId(tId);
-    if (tId) {
-      setInsightLoading(true); // Start loading
-      try {
-        const data = await fetchWeeklyReport(`${user.companyCode}?teamId=${tId}`);
-        setInsightTeamReport(data);
-      } catch(err) { console.error(err); }
-      setInsightLoading(false); // End loading
-    } else {
-      setInsightTeamReport(null);
-    }
-  };
-
   const handleViewSurveyResults = async (survey) => {
     setViewingSurvey(survey);
     setSurveyLoading(true);
@@ -601,6 +651,7 @@ export default function EmployerHome() {
     if (!source?.datasets) return null;
 
     const calcAvg = (arr) => {
+      if (!Array.isArray(arr)) return 0;
       const valid = arr.filter(v => v !== null);
       if (valid.length === 0) return 0;
       return (valid.reduce((a, b) => a + b, 0) / valid.length).toFixed(1);
@@ -722,98 +773,6 @@ export default function EmployerHome() {
     };
   };
 
-  const getMultiTeamComparisonData = () => {
-    const selectedMetrics = teamMetrics.filter(t => compareTeamIds.includes(String(t.teamId)));
-    if (selectedMetrics.length === 0) return null;
-
-    return {
-      labels: selectedMetrics.map(t => t.name),
-      datasets: [
-        {
-          label: 'Avg Stress',
-          data: selectedMetrics.map(t => t.avgStress),
-          backgroundColor: '#ef4444',
-          borderRadius: 4
-        },
-        {
-          label: 'Avg Workload',
-          data: selectedMetrics.map(t => t.avgWorkload),
-          backgroundColor: '#8b5cf6',
-          borderRadius: 4
-        }
-      ]
-    };
-  };
-
-  const getComparisonRiskData = () => {
-    if (!compareTeamIds?.length) return { labels: [], datasets: [] };
-    
-    const labels = [];
-    const low = [], moderate = [], high = [], critical = [];
-
-    compareTeamIds.forEach(id => {
-      const team = teams.find(t => String(t.id) === String(id));
-      const report = comparisonReports[id];
-      if (team) {
-        labels.push(team.name);
-        let l = 0, m = 0, h = 0, c = 0;
-        if (report && report.riskDistribution && !report.privacyLocked && report.employeeCount > 0) {
-           const total = Number(report.employeeCount) || 1;
-           const dist = report.riskDistribution;
-           l = ((Number(dist.low) || 0) / total) * 100;
-           m = ((Number(dist.moderate) || 0) / total) * 100;
-           h = ((Number(dist.high) || 0) / total) * 100;
-           c = ((Number(dist.critical) || 0) / total) * 100;
-        }
-        low.push(l); moderate.push(m); high.push(h); critical.push(c);
-      }
-    });
-
-    return {
-      labels,
-      datasets: [
-        { label: 'Low Risk', data: low, backgroundColor: '#10b981' },
-        { label: 'Moderate', data: moderate, backgroundColor: '#f59e0b' },
-        { label: 'High Risk', data: high, backgroundColor: '#f97316' },
-        { label: 'Critical', data: critical, backgroundColor: '#ef4444' }
-      ]
-    };
-  };
-
-  const getComparisonDriverData = () => {
-    if (!compareTeamIds || compareTeamIds.length === 0) return { labels: [], datasets: [] };
-    const labels = [];
-    const stress = [], sleep = [], workload = [], coffee = [];
-
-    compareTeamIds.forEach(id => {
-      const team = teams.find(t => String(t.id) === String(id));
-      const report = comparisonReports[id];
-      
-      if (team) {
-        labels.push(team.name);
-        let s = 0, sl = 0, w = 0, c = 0;
-        if (report && report.drivers && report.drivers.distribution && !report.privacyLocked && report.employeeCount > 0) {
-          const dist = report.drivers.distribution;
-          s = Number(dist.stress) || 0;
-          sl = Number(dist.sleep) || 0;
-          w = Number(dist.workload) || 0;
-          c = Number(dist.coffee) || 0;
-        }
-        stress.push(s); sleep.push(sl); workload.push(w); coffee.push(c);
-      }
-    });
-
-    return {
-      labels,
-      datasets: [
-        { label: 'Stress', data: stress, backgroundColor: '#ef4444' },
-        { label: 'Sleep', data: sleep, backgroundColor: '#3b82f6' },
-        { label: 'Workload', data: workload, backgroundColor: '#8b5cf6' },
-        { label: 'Caffeine', data: coffee, backgroundColor: '#78350f' }
-      ]
-    };
-  };
-
   const cleanChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -877,32 +836,71 @@ export default function EmployerHome() {
           </div>
         )}
 
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid #e2e8f0' }}>
-          {['overview', 'teams', 'insights', 'surveys', 'simulator'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '1rem',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === tab ? '3px solid #2563eb' : '3px solid transparent',
-                fontWeight: activeTab === tab ? 'bold' : 'normal',
-                color: activeTab === tab ? '#2563eb' : '#64748b',
-                cursor: 'pointer',
-                textTransform: 'capitalize'
-              }}
-            >
-              {tab === 'teams' ? 'Team Management' : tab === 'insights' ? 'Team Insights' : tab === 'surveys' ? 'Pulse Surveys' : tab === 'simulator' ? 'Action Simulator' : 'Overview'}
-            </button>
-          ))}
-        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+          <aside className="card" style={{ position: 'sticky', top: '96px' }}>
+            <h4 style={{ marginTop: 0, color: '#0f172a' }}>Employer Console</h4>
+            {[
+              { id: 'overview', label: 'Company Overview' },
+              { id: 'detailed', label: 'Detailed Insights' },
+              { id: 'teams', label: 'Team Management' },
+              { id: 'surveys', label: 'Pulse Surveys' },
+              { id: 'simulator', label: 'Action Simulator' },
+              { id: 'integrations', label: 'Integrations Manager' },
+              { id: 'settings', label: 'Settings' }
+            ].map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.75rem 0.9rem',
+                  marginBottom: '0.5rem',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  background: activeSection === item.id ? '#e0e7ff' : '#fff',
+                  color: activeSection === item.id ? '#1d4ed8' : '#475569',
+                  fontWeight: activeSection === item.id ? '600' : '500'
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </aside>
+
+          <div>
+            {loading && <div className="card"><p>Loading insights...</p></div>}
+
+            {activeSection === 'detailed' && (
+              <div className="card" style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ marginTop: 0 }}>Detailed Insights</h3>
+                <p className="small">Switch between integration insights and daily check-in analytics.</p>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'integrations', label: 'Integration Insights' },
+                    { id: 'daily', label: 'Daily Check-ins' }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setDetailedView(tab.id)}
+                      style={{
+                        padding: '0.6rem 1rem',
+                        borderRadius: '999px',
+                        border: detailedView === tab.id ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                        background: detailedView === tab.id ? '#eff6ff' : '#fff',
+                        color: detailedView === tab.id ? '#1d4ed8' : '#64748b',
+                        fontWeight: detailedView === tab.id ? '600' : '500'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
         
-        {loading && <div className="card"><p>Loading insights...</p></div>}
-        
-        {/* TAB 1: OVERVIEW (Existing Dashboard) */}
-        {!loading && activeTab === 'overview' && report && (
+        {/* Company Overview (Key Metrics Grid) */}
+        {!loading && activeSection === 'overview' && report && (
           <div className="fade-in">
             {report.privacyLocked ? (
               <div className="card" style={{marginBottom: '2rem', borderLeft: '5px solid #0ea5e9', backgroundColor: '#f0f9ff'}}>
@@ -912,18 +910,111 @@ export default function EmployerHome() {
               </div>
             ) : (
               <>
-                <div className="grid" style={{gridTemplateColumns: '1fr 1fr', marginBottom: '1rem'}}>
+                <div className="grid" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', marginBottom: '1rem'}}>
                   <div className="card">
-                    <h4 style={{color: '#64748b'}}>Active Employees</h4>
-                    <div className="result-score" style={{fontSize: '2.5rem'}}>{report.employeeCount || 0}</div>
+                    <h4 style={{color: '#64748b'}}>Team Burnout</h4>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
+                      {(() => {
+                        const daily = comprehensiveReport?.daily_data || [];
+                        const last7 = daily.slice(-7);
+                        const prev7 = daily.slice(-14, -7);
+                        const avg = (arr) => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+                        const lastAvg = avg(last7.map(d => d.burnout_risk || 0));
+                        const prevAvg = prev7.length ? avg(prev7.map(d => d.burnout_risk || 0)) : lastAvg;
+                        const delta = lastAvg - prevAvg;
+                        const arrow = delta > 1 ? '▲' : delta < -1 ? '▼' : '→';
+                        return `${lastAvg.toFixed(1)} ${arrow}`;
+                      })()}
+                    </div>
+                    <div className="small">Distribution: {report.riskDistribution ? `${report.riskDistribution.low}/${report.riskDistribution.moderate}/${report.riskDistribution.high}/${report.riskDistribution.critical}` : 'N/A'}</div>
                   </div>
                   <div className="card">
-                    <h4 style={{color: '#64748b'}}>Total Check-ins</h4>
-                    <div className="result-score" style={{fontSize: '2.5rem'}}>{report.totalCheckins || 0}</div>
+                    <h4 style={{color: '#64748b'}}>Deadline Risk</h4>
+                    {comprehensiveReport?.stats?.deadline_risk ? (
+                      <>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>
+                          {Math.min(100, Math.round((comprehensiveReport.stats.deadline_risk.weeksToComplete / 12) * 100))}%
+                        </div>
+                        <div className="small">Backlog: {comprehensiveReport.stats.deadline_risk.backlogPoints || 0} pts</div>
+                      </>
+                    ) : (
+                      <div className="small">Connect Jira for delivery risk</div>
+                    )}
                   </div>
                   <div className="card">
-                    <h4 style={{color: '#64748b'}}>Plan Adherence</h4>
-                    <div className="result-score" style={{fontSize: '2.5rem', color: '#8b5cf6'}}>{report.teamAdherence || 0}%</div>
+                    <h4 style={{color: '#64748b'}}>Meeting Overload</h4>
+                    {comprehensiveReport?.daily_data ? (
+                      <>
+                        {(() => {
+                          const avgMeeting = comprehensiveReport.daily_data.reduce((a,b)=>a+(b.meeting_hours||0),0) / (comprehensiveReport.daily_data.length || 1);
+                          const pct = Math.min(100, Math.round((avgMeeting / 6) * 100));
+                          return (
+                            <>
+                              <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{pct}%</div>
+                              <div className="small">Avg {avgMeeting.toFixed(1)} hrs/day</div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <div className="small">Connect Calendar for meeting load</div>
+                    )}
+                  </div>
+                  <div className="card">
+                    <h4 style={{color: '#64748b'}}>After Hours</h4>
+                    {comprehensiveReport?.daily_data ? (
+                      <>
+                        {(() => {
+                          const days = comprehensiveReport.daily_data.length || 1;
+                          const heavyDays = comprehensiveReport.daily_data.filter(d => d.is_after_hours_heavy).length;
+                          const pct = Math.round((heavyDays / days) * 100);
+                          const avgSlack = comprehensiveReport.daily_data.reduce((a,b)=>a+(b.slack_messages||0),0) / days;
+                          return (
+                            <>
+                              <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{pct}%</div>
+                              <div className="small">Avg {avgSlack.toFixed(0)} msgs/day</div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <div className="small">Connect Slack for after-hours</div>
+                    )}
+                  </div>
+                  <div className="card">
+                    <h4 style={{color: '#64748b'}}>Velocity Gap</h4>
+                    {comprehensiveReport?.stats?.deadline_risk ? (
+                      <>
+                        {(() => {
+                          const targetWeeks = 8;
+                          const required = comprehensiveReport.stats.deadline_risk.backlogPoints / targetWeeks;
+                          const actual = comprehensiveReport.stats.deadline_risk.velocity || 0;
+                          const gap = required > 0 ? Math.max(0, Math.round(((required - actual) / required) * 100)) : 0;
+                          return (
+                            <>
+                              <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{gap}%</div>
+                              <div className="small">Req {required.toFixed(1)} vs Act {actual.toFixed(1)} pts/wk</div>
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <div className="small">Connect Jira for velocity</div>
+                    )}
+                  </div>
+                  <div className="card">
+                    <h4 style={{color: '#64748b'}}>Adoption Rate</h4>
+                    {(() => {
+                      const total = employees.length || report.employeeCount || 0;
+                      const active = report.employeeCount || 0;
+                      const pct = total ? Math.round((active / total) * 100) : 0;
+                      return (
+                        <>
+                          <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{pct}%</div>
+                          <div className="small">{active} of {total} employees</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -970,8 +1061,103 @@ export default function EmployerHome() {
           </div>
         )}
 
+        {/* Daily Check-in Insights */}
+        {!loading && activeSection === 'detailed' && detailedView === 'daily' && report && (
+          <div className="fade-in">
+            {report.privacyLocked ? (
+              <div className="card" style={{marginBottom: '2rem', borderLeft: '5px solid #0ea5e9', backgroundColor: '#f0f9ff'}}>
+                <h4 style={{color: '#0284c7', marginTop: 0}}>Insights Locked for Privacy</h4>
+                <p>Aggregated team insights are only generated when <strong>5 or more employees</strong> have joined your organization. This ensures individual data remains anonymous.</p>
+                <p className="small" style={{marginBottom: 0}}>Current active employees: <strong>{report.employeeCount}</strong> / 5 required</p>
+              </div>
+            ) : (
+              <>
+                {/* 1. Landscape (Huge) */}
+                <DensityLandscape report={report} />
+
+                {/* 2. Metric Trends (4 Small Cards) */}
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                  {[
+                    { key: 'stress', label: 'Stress', color: '#ef4444' },
+                    { key: 'energy', label: 'Energy', color: '#10b981' },
+                    { key: 'engagement', label: 'Engagement', color: '#3b82f6' },
+                    { key: 'sleepQuality', label: 'Sleep Quality', color: '#8b5cf6' }
+                  ].map(m => {
+                    const lastVal = report?.datasets?.[m.key]?.slice(-1)[0] || 0;
+                    return (
+                      <div key={m.key} className="card">
+                        <div style={{ color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 'bold' }}>{m.label}</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 'bold', color: m.color, margin: '0.5rem 0' }}>{lastVal}</div>
+                        <div style={{ height: '60px' }}>
+                          {renderMetricTrend(report, m.key, m.color, m.label)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 2.5 Energy vs Stress Trend */}
+                <div className="card" style={{ marginBottom: '2rem' }}>
+                  <h3>Team Vitality Trends</h3>
+                  <p className="small">Comparing Energy levels against Stress over time.</p>
+                  <div style={{ height: '300px' }}>
+                    {getEnergyTrendData(report) ? (
+                      <Line 
+                        data={getEnergyTrendData(report)} 
+                        options={cleanChartOptions} 
+                      />
+                    ) : (
+                      <p style={{ textAlign: 'center', paddingTop: '2rem', color: '#94a3b8' }}>No trend data available</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Detailed Graphs Row */}
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                  <div className="card">
+                    <h3>Burnout Drivers</h3>
+                    <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                      {getDriverChartData(report) ? (
+                        <Pie data={getDriverChartData(report)} options={{ plugins: { legend: { position: 'right' } } }} />
+                      ) : (
+                        <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No driver data available</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <h3>Risk Distribution</h3>
+                    <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                      {getRiskDistChartData(report) ? (
+                        <Bar 
+                          data={getStackedRiskData(report)} 
+                          options={{ ...cleanChartOptions, indexAxis: 'y', scales: { x: { stacked: true, max: 100 }, y: { stacked: true, display: false } } }} 
+                        />
+                      ) : (
+                        <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="card">
+                    <h3>Health Radar</h3>
+                    <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
+                      {getRadarChartData(report) ? (
+                        <Radar 
+                          data={getRadarChartData(report)} 
+                          options={{ scales: { r: { suggestedMin: 0, suggestedMax: 10 } }, plugins: { legend: { position: 'bottom' } } }} 
+                        />
+                      ) : (
+                        <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No radar data available</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* TAB 2: TEAM MANAGEMENT (Drag & Drop) */}
-        {!loading && activeTab === 'teams' && (
+        {!loading && activeSection === 'teams' && (
           <div className="fade-in">
             <div className="card" style={{ marginBottom: '2rem' }}>
               <h3>Create New Team</h3>
@@ -1072,268 +1258,191 @@ export default function EmployerHome() {
           </div>
         )}
 
-        {/* TAB 3: INSIGHTS (Comparison) */}
-        {!loading && activeTab === 'insights' && (
+        {/* Integration Insights */}
+        {!loading && activeSection === 'detailed' && detailedView === 'integrations' && (
           <div className="fade-in">
-            {/* Insight Mode Selector */}
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-              <div style={{ background: '#f1f5f9', padding: '4px', borderRadius: '8px', display: 'inline-flex' }}>
-                {['overview', 'team', 'compare', 'saved'].map(mode => (
-                  <button
-                    key={mode}
-                    onClick={() => { setInsightMode(mode); if(mode==='overview') setInsightTeamId(''); }}
-                    style={{
-                      padding: '8px 24px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      background: insightMode === mode ? 'white' : 'transparent',
-                      color: insightMode === mode ? '#2563eb' : '#64748b',
-                      fontWeight: insightMode === mode ? 'bold' : 'normal',
-                      boxShadow: insightMode === mode ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                      cursor: 'pointer',
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {mode === 'overview' ? 'Company Overview' : mode === 'team' ? 'Individual Team' : mode === 'compare' ? 'Compare Teams' : 'Action Impact'}
-                  </button>
-                ))}
+            {!comprehensiveReport || comprehensiveReport?.error ? (
+              <div className="card" style={{ color: '#94a3b8' }}>
+                Connect integrations to unlock calendar, Jira, and Slack insights.
               </div>
-            </div>
-
-            {/* VIEW: OVERVIEW or TEAM (Shared Layout) */}
-            {(insightMode === 'overview' || insightMode === 'team') && (
+            ) : comprehensiveReport.privacyLocked ? (
+              <div className="card" style={{marginBottom: '2rem', borderLeft: '5px solid #0ea5e9', backgroundColor: '#f0f9ff'}}>
+                <h4 style={{color: '#0284c7', marginTop: 0}}>Insights Locked for Privacy</h4>
+                <p>Aggregated team insights are only generated when <strong>5 or more employees</strong> have joined your organization.</p>
+                <p className="small" style={{marginBottom: 0}}>Current active employees: <strong>{comprehensiveReport.employeeCount || report?.employeeCount || 0}</strong> / 5 required</p>
+              </div>
+            ) : (
               <>
-                {insightMode === 'team' && (
-                  <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                    <select 
-                      value={insightTeamId} 
-                      onChange={handleInsightTeamChange}
-                      style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', minWidth: '300px' }}
-                    >
-                      <option value="">-- Select a Team --</option>
-                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    </select>
-                  </div>
-                )}
-
-                {insightLoading ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>Loading team data...</div>
-                ) : ((insightMode === 'overview' && report) || (insightMode === 'team' && insightTeamReport)) ? (
-                  <>
-                    {/* 1. Landscape (Huge) */}
-                    <DensityLandscape report={insightMode === 'team' ? insightTeamReport : report} />
-
-                    {/* 2. Metric Trends (4 Small Cards) */}
-                    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                      {[
-                        { key: 'stress', label: 'Stress', color: '#ef4444' },
-                        { key: 'energy', label: 'Energy', color: '#10b981' },
-                        { key: 'engagement', label: 'Engagement', color: '#3b82f6' },
-                        { key: 'sleepQuality', label: 'Sleep Quality', color: '#8b5cf6' }
-                      ].map(m => {
-                        const data = insightMode === 'team' ? insightTeamReport : report;
-                        const lastVal = data?.datasets?.[m.key]?.slice(-1)[0] || 0;
-                        return (
-                          <div key={m.key} className="card">
-                            <div style={{ color: '#64748b', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 'bold' }}>{m.label}</div>
-                            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: m.color, margin: '0.5rem 0' }}>{lastVal}</div>
-                            <div style={{ height: '60px' }}>
-                              {renderMetricTrend(data, m.key, m.color, m.label)}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* 2.5 Energy vs Stress Trend (New) */}
-                    <div className="card" style={{ marginBottom: '2rem' }}>
-                      <h3>Team Vitality Trends</h3>
-                      <p className="small">Comparing Energy levels against Stress over time.</p>
-                      <div style={{ height: '300px' }}>
-                        {getEnergyTrendData(insightMode === 'team' ? insightTeamReport : report) ? (
-                          <Line 
-                            data={getEnergyTrendData(insightMode === 'team' ? insightTeamReport : report)} 
-                            options={cleanChartOptions} 
-                          />
-                        ) : (
-                          <p style={{ textAlign: 'center', paddingTop: '2rem', color: '#94a3b8' }}>No trend data available</p>
-                        )}
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                  {comprehensiveReport.graphs?.energy_by_hour && (
+                    <div className="card">
+                      <h3>Energy by Hour</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line
+                          data={{
+                            labels: comprehensiveReport.graphs.energy_by_hour.labels,
+                            datasets: [{
+                              label: 'Median Energy',
+                              data: comprehensiveReport.graphs.energy_by_hour.datasets[0].data.map(d => d.median || 0),
+                              borderColor: '#10b981',
+                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                              tension: 0.3,
+                              fill: true
+                            }]
+                          }}
+                          options={cleanChartOptions}
+                        />
                       </div>
                     </div>
-
-                    {/* 3. Detailed Graphs Row */}
-                    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                      <div className="card">
-                        <h3>Burnout Drivers</h3>
-                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
-                          {getDriverChartData(insightMode === 'team' ? insightTeamReport : report) ? (
-                            <Pie data={getDriverChartData(insightMode === 'team' ? insightTeamReport : report)} options={{ plugins: { legend: { position: 'right' } } }} />
-                          ) : (
-                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No driver data available</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="card">
-                        <h3>Risk Distribution</h3>
-                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
-                          {getRiskDistChartData(insightMode === 'team' ? insightTeamReport : report) ? (
-                            <Bar 
-                              data={getStackedRiskData(insightMode === 'team' ? insightTeamReport : report)} 
-                              options={{ ...cleanChartOptions, indexAxis: 'y', scales: { x: { stacked: true, max: 100 }, y: { stacked: true, display: false } } }} 
-                            />
-                          ) : (
-                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No risk data available</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="card">
-                        <h3>Health Radar</h3>
-                        <div style={{ height: '250px', display: 'flex', justifyContent: 'center' }}>
-                          {getRadarChartData(insightMode === 'team' ? insightTeamReport : report) ? (
-                            <Radar 
-                              data={getRadarChartData(insightMode === 'team' ? insightTeamReport : report)} 
-                              options={{ scales: { r: { suggestedMin: 0, suggestedMax: 10 } }, plugins: { legend: { position: 'bottom' } } }} 
-                            />
-                          ) : (
-                            <p style={{ color: '#94a3b8', alignSelf: 'center' }}>No radar data available</p>
-                          )}
-                        </div>
+                  )}
+                  {comprehensiveReport.graphs?.burnout_risk_trend && (
+                    <div className="card">
+                      <h3>Burnout Risk Trend</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line data={comprehensiveReport.graphs.burnout_risk_trend} options={cleanChartOptions} />
                       </div>
                     </div>
-                  </>
-                ) : (
-                  insightMode === 'team' && <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>Please select a team to view insights.</div>
-                )}
-              </>
-            )}
-
-            {/* VIEW: COMPARE */}
-            {insightMode === 'compare' && (
-              <div className="fade-in">
-                <div className="card" style={{ marginBottom: '2rem' }}>
-                  <h3>Select Teams to Compare</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1rem' }}>
-                    {teams.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setCompareTeamIds(prev => prev.includes(String(t.id)) ? prev.filter(id => id !== String(t.id)) : [...prev, String(t.id)])}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '20px',
-                          border: compareTeamIds.includes(String(t.id)) ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                          background: compareTeamIds.includes(String(t.id)) ? '#eff6ff' : 'white',
-                          color: compareTeamIds.includes(String(t.id)) ? '#2563eb' : '#64748b',
-                          cursor: 'pointer',
-                          fontWeight: compareTeamIds.includes(String(t.id)) ? 'bold' : 'normal'
-                        }}
-                      >
-                        {t.name}
-                      </button>
-                    ))}
-                  </div>
-                  {compareTeamIds.length < 2 && <p className="small" style={{ marginTop: '1rem', color: '#f59e0b' }}>Select at least 2 teams to compare.</p>}
+                  )}
+                  {comprehensiveReport.graphs?.stress_trend && (
+                    <div className="card">
+                      <h3>Stress Trend</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line data={comprehensiveReport.graphs.stress_trend} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.stress_vs_meetings && (
+                    <div className="card">
+                      <h3>Stress vs Meetings</h3>
+                      <div style={{ height: '250px' }}>
+                        <Bar data={comprehensiveReport.graphs.stress_vs_meetings} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.focus_time_breakdown && (
+                    <div className="card">
+                      <h3>Focus Time Breakdown</h3>
+                      <div style={{ height: '250px' }}>
+                        <Bar data={comprehensiveReport.graphs.focus_time_breakdown} options={{ ...cleanChartOptions, scales: { x: { stacked: true }, y: { stacked: true } } }} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.calendar_chaos && (
+                    <div className="card">
+                      <h3>Calendar Chaos</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line data={comprehensiveReport.graphs.calendar_chaos} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.context_switching && (
+                    <div className="card">
+                      <h3>Context Switching</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line data={comprehensiveReport.graphs.context_switching} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {compareTeamIds.length >= 2 && (
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                  {comprehensiveReport.graphs?.meeting_density && (
+                    <div className="card">
+                      <h3>Meeting Density Heatmap</h3>
+                      <div style={{ display: 'grid', gap: '6px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
+                          {comprehensiveReport.graphs.meeting_density.labels.map((d) => (
+                            <div key={d}>{d}</div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gridAutoRows: '10px', gap: '4px' }}>
+                          {Array.from({ length: 24 }).flatMap((_, hour) => (
+                            comprehensiveReport.graphs.meeting_density.data.map((dayRow) => dayRow?.[hour] || 0)
+                          )).map((value, idx) => (
+                            <div key={idx} style={{ background: `rgba(14, 116, 144, ${0.1 + Math.min(1, value / 5) * 0.8})`, borderRadius: '4px' }} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.after_hours_activity && (
+                    <div className="card">
+                      <h3>After Hours Activity</h3>
+                      <div style={{ height: '250px' }}>
+                        <Bar data={comprehensiveReport.graphs.after_hours_activity} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.wip_growth && (
+                    <div className="card">
+                      <h3>Work In Progress</h3>
+                      <div style={{ height: '250px' }}>
+                        <Line data={comprehensiveReport.graphs.wip_growth} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                  {comprehensiveReport.graphs?.workload_by_assignee && (
+                    <div className="card">
+                      <h3>Workload by Assignee</h3>
+                      <div style={{ height: '250px' }}>
+                        <Bar data={comprehensiveReport.graphs.workload_by_assignee} options={cleanChartOptions} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {comprehensiveReport.stats?.deadline_risk && (
                   <div className="card">
-                    <h3>Metric Comparison</h3>
-                    <div style={{ height: '300px' }}>
-                      {getMultiTeamComparisonData() ? (
-                        <Bar 
-                          data={getMultiTeamComparisonData()} 
-                          options={cleanChartOptions} 
-                        />
-                      ) : (
-                        <p style={{ textAlign: 'center', paddingTop: '2rem', color: '#94a3b8' }}>Insufficient data for comparison</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {compareTeamIds.length >= 2 && !comparingLoading && (
-                  <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2rem' }}>
-                    <div className="card">
-                      <h3>Risk Distribution</h3>
-                      <div style={{ height: '300px' }}>
-                        <Bar 
-                          key={`risk-${compareTeamIds.join('-')}`}
-                          data={getComparisonRiskData()} 
-                          options={{...cleanChartOptions, scales: { x: { stacked: true }, y: { stacked: true, ticks: { display: true } } }}} 
-                        />
+                    <h3>Deadline Risk</h3>
+                    <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                      <div>
+                        <div className="small">Velocity</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{comprehensiveReport.stats.deadline_risk.velocity.toFixed(1)} pts/wk</div>
                       </div>
-                    </div>
-                    <div className="card">
-                      <h3>Driver Impact</h3>
-                      <div style={{ height: '300px' }}>
-                        <Bar 
-                          key={`driver-${compareTeamIds.join('-')}`}
-                          data={getComparisonDriverData()} 
-                          options={{...cleanChartOptions, scales: { y: { beginAtZero: true, ticks: { display: true } } }}} 
-                        />
+                      <div>
+                        <div className="small">Backlog</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{comprehensiveReport.stats.deadline_risk.backlogPoints.toFixed(0)} pts</div>
+                      </div>
+                      <div>
+                        <div className="small">Weeks to Complete</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{comprehensiveReport.stats.deadline_risk.weeksToComplete.toFixed(1)}</div>
+                      </div>
+                      <div>
+                        <div className="small">Projected Date</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{comprehensiveReport.stats.deadline_risk.projectedDate}</div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {comparingLoading && (
-                  <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-                    Loading detailed team data...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* VIEW: ACTION IMPACT (Saved Simulations) */}
-            {insightMode === 'saved' && (
-              <div className="fade-in">
-                {savedSimulations.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                    <p>No saved simulations yet. Run a simulation to save it here.</p>
-                    <button onClick={() => setActiveTab('simulator')} className="quiz-button" style={{ width: 'auto', marginTop: '1rem' }}>
-                      Go to Simulator
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-                    {savedSimulations.map(sim => (
-                      <div key={sim.id} className="card" style={{ position: 'relative', borderTop: '4px solid #8b5cf6' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                          <div>
-                            <h4 style={{ margin: 0 }}>{sim.plan.name}</h4>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{new Date(sim.date || Date.now()).toLocaleDateString()}</div>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{sim.results.metrics.deltaPercent}%</div>
-                            <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Risk Reduction</div>
-                          </div>
-                        </div>
-                        
-                        <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
-                          <strong>Interventions:</strong>
-                          <ul style={{ paddingLeft: '1.2rem', margin: '0.5rem 0', color: '#334155' }}>
-                            {sim.plan.actions.map((a, i) => (
-                              <li key={i}>{SIM_ACTION_TYPES.find(t => t.id === a.type)?.label || a.type} ({a.intensity}%)</li>
-                            ))}
-                          </ul>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem' }}>
-                           <span>Est. Cost: <strong>${sim.results.metrics.estimatedCost.toLocaleString()}</strong></span>
-                           <span>Time: <strong>{sim.results.metrics.timeToImpact || '12+'} wks</strong></span>
-                        </div>
-                        
-                        <button onClick={() => { const updated = savedSimulations.filter(s => s.id !== sim.id); setSavedSimulations(updated); localStorage.setItem('employer_saved_simulations', JSON.stringify(updated)); }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem' }} aria-label="Delete simulation">&times;</button>
+                {comprehensiveReport.correlations?.matrix?.length > 0 && (
+                  <div className="card">
+                    <h3>Signal Correlations</h3>
+                    <div style={{ display: 'grid', gap: '6px', overflowX: 'auto' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${comprehensiveReport.correlations.labels.length}, minmax(70px, 1fr))`, gap: '6px', fontSize: '0.75rem', color: '#64748b' }}>
+                        <div />
+                        {comprehensiveReport.correlations.labels.map(label => <div key={label}>{label}</div>)}
                       </div>
-                    ))}
+                      {comprehensiveReport.correlations.matrix.map(row => (
+                        <div key={row.metric} style={{ display: 'grid', gridTemplateColumns: `140px repeat(${comprehensiveReport.correlations.labels.length}, minmax(70px, 1fr))`, gap: '6px' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{row.metric}</div>
+                          {row.values.map((val, idx) => (
+                            <div key={`${row.metric}-${idx}`} style={{ textAlign: 'center', padding: '6px 0', borderRadius: '6px', background: `rgba(239, 68, 68, ${Math.min(Math.abs(val), 1) * 0.5})` }}>
+                              {val}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         )}
 
         {/* TAB 5: PULSE SURVEYS */}
-        {!loading && activeTab === 'surveys' && (
+        {!loading && activeSection === 'surveys' && (
           <div className="fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0 }}>Pulse Surveys</h2>
@@ -1394,10 +1503,225 @@ export default function EmployerHome() {
         )}
 
         {/* TAB 4: ACTION SIMULATOR */}
-        {!loading && activeTab === 'simulator' && (
-          <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-            <h3>Simulator Module</h3>
-            <p>This feature is currently under development.</p>
+        {!loading && activeSection === 'simulator' && (
+          <div className="fade-in">
+            <div className="card" style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ marginTop: 0 }}>Action Simulator</h2>
+              <p className="small">Model how policy changes affect burnout risk, meeting waste, and overall focus time.</p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+                <div>
+                  <label className="small">Plan Name</label>
+                  <input value={simPlan.name} onChange={(e) => setSimPlan(prev => ({ ...prev, name: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="small">Duration (weeks)</label>
+                  <input type="number" min="4" max="52" value={simPlan.durationWeeks} onChange={(e) => setSimPlan(prev => ({ ...prev, durationWeeks: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label className="small">Avg Hourly Rate ($)</label>
+                  <input type="number" min="10" max="500" value={simPlan.avgHourlyRate} onChange={(e) => setSimPlan(prev => ({ ...prev, avgHourlyRate: Number(e.target.value) }))} />
+                </div>
+                <div>
+                  <label className="small">Project Deadline</label>
+                  <input type="date" value={simPlan.projectDeadline} onChange={(e) => setSimPlan(prev => ({ ...prev, projectDeadline: e.target.value }))} />
+                </div>
+              </div>
+
+              {teams.length > 0 && (
+                <div style={{ marginTop: '1.5rem' }}>
+                  <label className="small">Scope (Optional: select teams)</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {teams.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setSimSelectedTeams(prev => prev.includes(String(t.id)) ? prev.filter(id => id !== String(t.id)) : [...prev, String(t.id)])}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '16px',
+                          border: simSelectedTeams.includes(String(t.id)) ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                          background: simSelectedTeams.includes(String(t.id)) ? '#eff6ff' : 'white',
+                          color: simSelectedTeams.includes(String(t.id)) ? '#2563eb' : '#64748b',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              {SIM_ACTION_TYPES.map(action => {
+                const selected = simPlan.actions.find(a => a.type === action.id);
+                return (
+                  <div key={action.id} className="card" style={{ borderLeft: selected ? '4px solid #2563eb' : '4px solid transparent' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                      <div>
+                        <h4 style={{ marginTop: 0 }}>{action.label}</h4>
+                        <p className="small">{action.desc}</p>
+                      </div>
+                      <input type="checkbox" checked={!!selected} onChange={() => toggleSimAction(action.id)} />
+                    </div>
+                    {selected && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <label className="small">Intensity: <strong>{selected.intensity}%</strong></label>
+                        <input type="range" min="10" max="100" step="5" value={selected.intensity} onChange={(e) => updateSimAction(action.id, 'intensity', e.target.value)} />
+                        <label className="small" style={{ marginTop: '0.5rem', display: 'block' }}>Adherence: <strong>{selected.adherence}%</strong></label>
+                        <input type="range" min="40" max="100" step="5" value={selected.adherence} onChange={(e) => updateSimAction(action.id, 'adherence', e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div className="small">Selected actions: {simPlan.actions.length}</div>
+                {simError && <div style={{ color: '#ef4444', marginTop: '0.5rem' }}>{simError}</div>}
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button onClick={runEmployerSimulation} className="quiz-button" style={{ width: 'auto' }} disabled={simLoading}>
+                  {simLoading ? 'Simulating...' : 'Run Simulation'}
+                </button>
+                {simResults && (
+                  <button onClick={handleSaveSimulation} className="quiz-button-secondary" style={{ width: 'auto' }}>
+                    Save Results
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {simResults && (
+              <div className="card" style={{ marginTop: '1.5rem' }}>
+                <h3 style={{ marginTop: 0 }}>Projected Impact</h3>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                  <div className="card">
+                    <div className="small">Burnout Risk Reduction</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#10b981' }}>{simResults.metrics.deltaPercent}%</div>
+                  </div>
+                  <div className="card">
+                    <div className="small">Weekly Hours Saved</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{simResults.metrics.weeklyHoursSaved} hrs</div>
+                  </div>
+                  <div className="card">
+                    <div className="small">Estimated Savings</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>${Number(simResults.metrics.estimatedSavings || 0).toLocaleString()}</div>
+                  </div>
+                  <div className="card">
+                    <div className="small">Time to Impact</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{simResults.metrics.timeToImpact ?? '—'} days</div>
+                  </div>
+                  <div className="card">
+                    <div className="small">Trend</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{simResults.metrics.trend}</div>
+                  </div>
+                </div>
+
+                <div style={{ height: '320px' }}>
+                  <Line
+                    data={{
+                      labels: simResults.timeline.map((t) => `Day ${t.day}`),
+                      datasets: [
+                        {
+                          label: 'Projected Burnout Risk',
+                          data: simResults.timeline.map((t) => t.risk),
+                          borderColor: '#ef4444',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          fill: true,
+                          tension: 0.3,
+                          pointRadius: 0
+                        }
+                      ]
+                    }}
+                    options={cleanChartOptions}
+                  />
+                </div>
+
+                {simResults.baseline && simResults.projected && (
+                  <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginTop: '1.5rem' }}>
+                    <div className="card">
+                      <div className="small">Meeting Hours</div>
+                      <div><strong>{simResults.baseline.meetingHours?.toFixed?.(1)}h</strong> → <strong>{simResults.projected.meetingHours?.toFixed?.(1)}h</strong></div>
+                    </div>
+                    <div className="card">
+                      <div className="small">Fragmented Time</div>
+                      <div><strong>{simResults.baseline.fragmentedHours?.toFixed?.(1)}h</strong> → <strong>{simResults.projected.fragmentedHours?.toFixed?.(1)}h</strong></div>
+                    </div>
+                    <div className="card">
+                      <div className="small">Focus Hours</div>
+                      <div><strong>{simResults.baseline.focusHours?.toFixed?.(1)}h</strong> → <strong>{simResults.projected.focusHours?.toFixed?.(1)}h</strong></div>
+                    </div>
+                    <div className="card">
+                      <div className="small">Slack Load</div>
+                      <div><strong>{simResults.baseline.slackMessages?.toFixed?.(0)}</strong> → <strong>{simResults.projected.slackMessages?.toFixed?.(0)}</strong></div>
+                    </div>
+                    <div className="card">
+                      <div className="small">Active Tickets</div>
+                      <div><strong>{simResults.baseline.activeTickets?.toFixed?.(0)}</strong> → <strong>{simResults.projected.activeTickets?.toFixed?.(0)}</strong></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!loading && activeSection === 'integrations' && (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Integrations Manager</h2>
+            <p className="small">Connect your tools to enrich team-level insights.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+              {Object.keys(integrations).map((service) => (
+                <div key={service} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      background: service === 'slack' ? '#4A154B' :
+                        service === 'trello' ? '#0079BF' :
+                        service === 'jira' ? '#0052CC' :
+                        service === 'google' ? '#4285F4' : '#F06A6A'
+                    }}>
+                      {service.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{service}</div>
+                      <div className="small">{integrations[service] ? 'Syncing active' : 'Not connected'}</div>
+                    </div>
+                  </div>
+                  {integrations[service] ? (
+                    <button onClick={() => handleDisconnectIntegration(service)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button onClick={() => handleConnectIntegration(service)} className="quiz-button" style={{ width: 'auto', padding: '6px 14px' }}>
+                      Connect
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && activeSection === 'settings' && (
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Settings</h2>
+            <p className="small">Manage account preferences, security, and profile details.</p>
+            <Link to="/settings" className="quiz-button-secondary" style={{ display: 'inline-block', width: 'auto', marginTop: '0.75rem' }}>
+              Open Settings
+            </Link>
           </div>
         )}
 
@@ -1409,6 +1733,8 @@ export default function EmployerHome() {
           <p className="small" style={{marginBottom: 0, color: '#475569'}}>
             This dashboard displays aggregated data only. Individual employee check-ins and burnout scores are never revealed to you to protect their privacy and psychological safety.
           </p>
+        </div>
+          </div>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const { Op, DataTypes } = require('sequelize');
 const db = require('../config/database');
 const { predictAndAdvise } = require('../services/predictionService');
+const { analyze } = require('../services/comprehensiveReport');
 
 // Helper: Pearson Correlation Coefficient
 const calculateCorrelation = (x, y) => {
@@ -383,29 +384,6 @@ router.get('/personal/me', async (req, res) => {
     let contributionPercent = 0;
 
     if (checkins.length > 0) {
-      // Helper: Pearson Correlation Coefficient
-      const calculateCorrelationLocal = (x, y) => {
-        const n = x.length;
-        if (n < 2) return 0;
-        const sumX = x.reduce((a, b) => a + b, 0);
-        const sumY = y.reduce((a, b) => a + b, 0);
-        const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
-        const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
-        const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
-
-        const numerator = (n * sumXY) - (sumX * sumY);
-        const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-        
-        return denominator === 0 ? 0 : numerator / denominator;
-      };
-
-      // Helper: Exponential Moving Average
-      const calcEMALocal = (arr) => {
-        if (arr.length === 0) return 0;
-        const k = 2 / (arr.length + 1);
-        return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
-      };
-
       // Data vectors (last 30 points max for statistical relevance)
       const relevantPoints = historyPoints.slice(-30);
       const vecRisk = relevantPoints.map(p => p.score);
@@ -413,15 +391,15 @@ router.get('/personal/me', async (req, res) => {
       const vecEnergy = relevantPoints.map(p => p.energy);
 
       // A. Calculate Correlations (User-specific sensitivity)
-      const corrStress = Math.abs(calculateCorrelationLocal(vecStress, vecRisk));
-      const corrEnergy = Math.abs(calculateCorrelationLocal(vecEnergy, vecRisk));
+      const corrStress = Math.abs(calculateCorrelation(vecStress, vecRisk));
+      const corrEnergy = Math.abs(calculateCorrelation(vecEnergy, vecRisk));
 
       // B. Define Base Weights (Domain Knowledge / Biological Importance)
       const baseWeights = { stress: 0.6, energy: 0.4 };
 
       // C. Calculate Current Severity (EMA of last 7 days)
-      const recentStress = calcEMALocal(vecStress.slice(-7));
-      const recentEnergy = calcEMALocal(vecEnergy.slice(-7));
+      const recentStress = calcEMA(vecStress.slice(-7));
+      const recentEnergy = calcEMA(vecEnergy.slice(-7));
 
       // D. Calculate Deviation from Optimal (Normalized 0-1)
       const devStress = Math.max(0, recentStress / 100); 
@@ -546,6 +524,128 @@ router.get('/teams', async (req, res) => {
 
     res.json(metrics);
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/reports/comprehensive/team/:companyCode
+// Aggregated Comprehensive Report for Employers (team/company level)
+router.get('/comprehensive/team/:companyCode', async (req, res) => {
+  try {
+    let { companyCode } = req.params;
+    let { teamId } = req.query;
+
+    // Ensure companyCode is decoded to handle %3F from frontend encoding
+    try { companyCode = decodeURIComponent(companyCode); } catch (e) {}
+
+    // Handle case where query params are encoded into the path parameter
+    if (companyCode?.includes('?')) {
+      const parts = companyCode.split('?');
+      companyCode = parts[0];
+      if (!teamId && parts[1]) {
+        const params = new URLSearchParams(parts[1]);
+        teamId = params.get('teamId') || params.get('TEAMID');
+      }
+    }
+
+    console.log(`Generating comprehensive TEAM report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
+
+    // 1. Find Employees (same privacy rules as weekly report)
+    const whereClause = { companyCode: companyCode.toUpperCase() };
+    if (teamId && teamId !== 'undefined' && teamId !== 'null') {
+      const parsedTeamId = Number.parseInt(teamId, 10);
+      if (!Number.isNaN(parsedTeamId)) {
+        whereClause.teamId = parsedTeamId;
+      }
+    } else {
+      whereClause[Op.or] = [{ role: 'employee' }, { role: null }];
+    }
+
+    const employees = await db.User.findAll({ where: whereClause });
+    const employeeIds = employees.map(e => e.id);
+
+    if (employeeIds.length < 5) {
+      return res.json({
+        employeeCount: employeeIds.length,
+        totalCheckins: 0,
+        privacyLocked: true
+      });
+    }
+
+    // 2. Fetch Checkins
+    const checkins = await db.Checkin.findAll({
+      where: { userId: { [Op.in]: employeeIds } },
+      order: [['createdAt', 'ASC']]
+    });
+
+    // 3. Fetch Calendar Events
+    let calendarEvents = [];
+    const CalendarEvent = db.sequelize.models.CalendarEvent || require('../models/CalendarEvent');
+    if (CalendarEvent) {
+      calendarEvents = await CalendarEvent.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
+        order: [['startTime', 'ASC']]
+      });
+    }
+
+    // 4. Fetch Jira Issues (via integrations)
+    let jiraIssues = [];
+    const JiraIssue = db.sequelize.models.JiraIssue || require('../models/JiraIssue');
+    const JiraIntegration = db.sequelize.models.JiraIntegration || require('../models/JiraIntegration');
+    if (JiraIssue && JiraIntegration) {
+      const integrations = await JiraIntegration.findAll({
+        where: { userId: { [Op.in]: employeeIds } },
+        attributes: ['id']
+      });
+      const integrationIds = integrations.map(i => i.id);
+      if (integrationIds.length) {
+        jiraIssues = await JiraIssue.findAll({
+          where: { integrationId: { [Op.in]: integrationIds } },
+          attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
+          order: [['createdDate', 'ASC']]
+        });
+      }
+    }
+
+    // 5. Fetch Slack Activity
+    let slackActivity = [];
+    const SlackActivity = db.sequelize.models.SlackActivity || require('../models/SlackActivity');
+    if (SlackActivity) {
+      slackActivity = await SlackActivity.findAll({
+        where: { userId: { [Op.in]: employeeIds } }
+      });
+    }
+
+    // 6. Prepare Payload
+    const payload = {
+      calendar: calendarEvents.map(e => e.toJSON()),
+      checkins: checkins.map(c => c.toJSON()),
+      jira: jiraIssues.map(j => ({
+        key: j.issueKey,
+        summary: j.summary,
+        status: j.status,
+        priority: j.priority,
+        storyPoints: j.storyPoints,
+        assignee: j.assignee,
+        created: j.createdDate,
+        updated: j.createdDate,
+        resolutionDate: j.resolutionDate
+      })),
+      slack: slackActivity.map(s => s.toJSON())
+    };
+
+    // 7. Analyze (aggregate across employees)
+    const result = analyze(payload);
+
+    // 8. Attach top-level metadata
+    result.employeeCount = employeeIds.length;
+    result.totalCheckins = checkins.length;
+    result.privacyLocked = false;
+
+    return res.json(result);
+  } catch (err) {
+    console.error('Team comprehensive report error:', err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/reports/:companyCode

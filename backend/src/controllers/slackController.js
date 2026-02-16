@@ -106,9 +106,6 @@ const slackController = {
       
       console.log(`[Slack Verify] 🔗 Connection successful for User ${userId}.`);
 
-      // Redirect FIRST to prevent timeout/duplicate requests
-      return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
-
       // Trigger sync in background AFTER response is sent
       setImmediate(() => {
         console.log(`[Slack Verify] 🚀 Triggering background sync...`);
@@ -116,6 +113,9 @@ const slackController = {
           .then((count) => console.log(`[Slack Verify] ✨ Initial sync complete. Processed ${count} messages.`))
           .catch(err => console.error(`[Slack Verify] ❌ Initial sync failed:`, err.message));
       });
+
+      // Redirect FIRST to prevent timeout/duplicate requests
+      return res.redirect(`${frontendUrl}/employee?integration_success=slack`);
     } catch (error) {
       console.error('[Slack Callback] ❌ Error during token exchange:', error.message);
 

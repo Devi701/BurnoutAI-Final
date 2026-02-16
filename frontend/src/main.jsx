@@ -6,8 +6,8 @@ import './styles/variables.css';
 import './App.css';
 import './styles/theme.css';
 
-// Use VITE_POSTHOG_PROJECT_API_KEY if set, otherwise fallback to the provided key
-const posthogKey = import.meta.env.VITE_POSTHOG_PROJECT_API_KEY || 'phc_8UA6aYI3EpYxYjkOIzHCOjQFl8dWEMi4HP5xuobpFvv';
+// Enable PostHog only when explicitly configured via env.
+const posthogKey = import.meta.env.VITE_POSTHOG_PROJECT_API_KEY;
 const posthogHost = import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://eu.posthog.com';
 
 const MainApp = () => (

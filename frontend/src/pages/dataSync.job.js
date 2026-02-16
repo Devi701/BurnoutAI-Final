@@ -60,7 +60,7 @@ const syncGoogleCalendarData = async () => {
  * Starts all scheduled background jobs.
  */
 export const startDataSyncJobs = () => {
-  // Schedule to run at the beginning of every hour.
-  cron.schedule('0 * * * *', syncGoogleCalendarData);
-  console.log('Hourly data sync jobs have been scheduled.');
+  // Schedule to run every minute for near-real-time updates
+  cron.schedule('* * * * *', syncGoogleCalendarData);
+  console.log('Data sync jobs have been scheduled (Every minute).');
 };

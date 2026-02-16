@@ -1,11 +1,17 @@
 const argon2 = require('argon2');
 
-// Configuration for Argon2id (OWASP recommendations)
+const toInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+// Configuration for Argon2id. Defaults target balanced auth latency;
+// tune per environment with ARGON2_* env vars.
 const HASH_CONFIG = {
   type: argon2.argon2id,
-  memoryCost: 65536, // 64 MB
-  timeCost: 3,       // 3 iterations
-  parallelism: 2,    // 2 threads
+  memoryCost: toInt(process.env.ARGON2_MEMORY_COST, 19456), // 19 MB
+  timeCost: toInt(process.env.ARGON2_TIME_COST, 2),
+  parallelism: toInt(process.env.ARGON2_PARALLELISM, 1),
 };
 
 const hashPassword = async (password) => {
@@ -19,8 +25,7 @@ const verifyPassword = async (hash, password) => {
   try {
     return await argon2.verify(hash, password);
   } catch (err) {
-    console.error('Password verification error:', err.message);
-    // Handle internal errors or malformed hashes securely
+    // Handle internal errors or malformed hashes securely.
     return false;
   }
 };

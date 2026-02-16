@@ -23,6 +23,12 @@ async function verifyProduction() {
     console.log('   ✅ All required variables present.');
   }
 
+  // Check for whitespace in FRONTEND_URL (Common cause of ERR_INVALID_REDIRECT)
+  if (process.env.FRONTEND_URL && process.env.FRONTEND_URL !== process.env.FRONTEND_URL.trim()) {
+    console.warn(`\n   ⚠️  WARNING: FRONTEND_URL contains whitespace! ("${process.env.FRONTEND_URL}")`);
+    console.warn(`      This triggers ERR_INVALID_REDIRECT. Your code fixes this via .trim(), but the env var should be cleaned.`);
+  }
+
   // 2. Check Database Connection
   console.log('\n2️⃣  Checking Database Connection...');
   try {

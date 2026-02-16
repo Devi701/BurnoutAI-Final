@@ -1,9 +1,8 @@
 const db = require('../config/database');
 const { Op } = require('sequelize');
 const { startOfWeek, endOfWeek, format, addDays } = require('date-fns');
-const { spawn } = require('child_process');
-const path = require('path');
 const cacheService = require('./cacheService');
+const { analyze } = require('./comprehensiveReport');
 
 // Ensure models are loaded
 require('./jiraService');
@@ -456,36 +455,11 @@ async function getComprehensiveReport(userId) {
       trello: trelloCards.map(t => t.toJSON())
     };
 
-    // 4. Spawn Python Process
-    return new Promise((resolve, reject) => {
-      const scriptPath = path.join(__dirname, 'comprehensive_report.py');
-      const pythonProcess = spawn('python3', [scriptPath]);
-      
-      let dataString = '';
-      let errorString = '';
-
-      pythonProcess.stdout.on('data', (data) => {
-        dataString += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        errorString += data.toString();
-      });
-
-      pythonProcess.on('close', (code) => {
-        if (code !== 0) return reject(new Error(`Python analysis failed: ${errorString}`));
-        try { 
-          const result = JSON.parse(dataString);
-          // Cache for 1 hour (3600 seconds) as this is computationally expensive
-          cacheService.set(cacheKey, result, 3600);
-          resolve(result); 
-        } 
-        catch (e) { reject(new Error(`Invalid JSON from Python: ${dataString}`)); }
-      });
-
-      pythonProcess.stdin.write(JSON.stringify(payload));
-      pythonProcess.stdin.end();
-    });
+    // 4. Run Analysis (Native JS)
+    const result = analyze(payload);
+    // Cache for 1 hour (3600 seconds)
+    cacheService.set(cacheKey, result, 3600);
+    return result;
   } catch (error) {
     console.error('Comprehensive Report Error:', error);
     throw error;

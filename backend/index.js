@@ -41,7 +41,10 @@ async function initializeDatabase() {
     const db = require('./src/config/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
       await db.sequelize.authenticate();
-      await db.sequelize.sync({ alter: true }); // Syncs DB schema with Models
+      // SQLite ALTER is fragile with composite unique indexes (can incorrectly add UNIQUE per-column).
+      // Avoid ALTER on SQLite to prevent startup failures; use migrations/scripts if needed.
+      const dialect = db.sequelize.getDialect();
+      await db.sequelize.sync({ alter: dialect !== 'sqlite' }); // Syncs DB schema with Models
       console.log('✅ Database schema synced successfully.');
       const host = db.sequelize.config?.host ?? db.sequelize.options?.host ?? 'unknown';
       console.log(`Database connection has been established successfully to: ${host}`);

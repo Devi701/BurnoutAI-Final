@@ -13,10 +13,8 @@ class CacheService {
   get(key) {
     const value = this.cache.get(key);
     if (value !== undefined) {
-      // console.log(`[Cache] ✅ HIT: ${key}`); // Uncomment for verbose debugging
       return value;
     }
-    // console.log(`[Cache] ❌ MISS: ${key}`);
     return null;
   }
 

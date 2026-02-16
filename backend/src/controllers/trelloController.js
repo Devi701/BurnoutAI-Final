@@ -29,10 +29,10 @@ const trelloController = {
 
       // Fallback logic if not explicitly set in .env
       if (!callbackUrl) {
-        let baseUrl = process.env.SLACK_REDIRECT_URI 
-          ? new URL(process.env.SLACK_REDIRECT_URI).origin 
-          : (process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : 'http://localhost:4000');
+        const slackOrigin = process.env.SLACK_REDIRECT_URI ? new URL(process.env.SLACK_REDIRECT_URI).origin : null;
+        const frontendOrigin = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : 'http://localhost:4000';
         
+        let baseUrl = slackOrigin || frontendOrigin;
         // If running on Render, ensure we use the backend URL
         if (process.env.RENDER_EXTERNAL_URL) {
           baseUrl = process.env.RENDER_EXTERNAL_URL;
@@ -145,9 +145,6 @@ const trelloController = {
 
       console.log(`[Trello Verify] 🔗 Connection successful for User ${userId}.`);
 
-      console.log(`[Trello Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=trello`);
-      return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
-
       // Trigger Sync in background AFTER response
       setImmediate(() => {
         console.log(`[Trello Verify] 🚀 Triggering background sync...`);
@@ -155,6 +152,9 @@ const trelloController = {
           .then(c => console.log(`[Trello Verify] ✨ Initial sync complete. ${c} cards.`))
           .catch(e => console.error(`[Trello Verify] ❌ Sync failed:`, e.message));
       });
+
+      console.log(`[Trello Callback] ✅ Redirecting to frontend: ${frontendUrl}/employee?integration_success=trello`);
+      return res.redirect(`${frontendUrl}/employee?integration_success=trello`);
 
     } catch (error) {
       console.error('[Trello Callback] ❌ Error:', error.message);

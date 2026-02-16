@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 
 const ALGORITHM = 'aes-256-cbc';
 // The encryption key must be 32 bytes (64 hex characters)

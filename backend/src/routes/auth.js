@@ -134,8 +134,6 @@ const handleSignup = async (req, res) => {
     }
     if (error.name === 'SequelizeValidationError') {
       return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
-      return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
-      return res.status(400).json({ error: error.errors?.map(e => e.message)?.join(', ') });
     }
 
     res.status(400).json({ error: 'Registration failed: ' + error.message });
@@ -165,13 +163,11 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
 
-    // Debug: Check if User model is loaded
-    if (!db || !db.User) {
-      throw new Error('Database User model is missing. Check db/database.js exports.');
-    }
-
     // 1. Find user
-    const user = await db.User.findOne({ where: { email } });
+    const user = await db.User.findOne({
+      where: { email },
+      attributes: ['id', 'name', 'email', 'role', 'companyCode', 'password']
+    });
 
     // 2. Verify password (or dummy verify to prevent timing leaks)
 

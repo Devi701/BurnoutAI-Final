@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "perf:browser": "k6 run performance/browser-login.k6.js"
+  },
   "dependencies": {
     "node-cache": "^5.1.2"
   }

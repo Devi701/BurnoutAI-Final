@@ -1,5 +1,5 @@
 const axios = require('axios');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const db = require('../config/database');
 const TrelloCard = require('../models/TrelloCard');
 const { decrypt, encrypt } = require('../utils/encryption');
@@ -16,15 +16,15 @@ class OAuth1Helper {
 
   percentEncode(str) {
     return encodeURIComponent(str)
-      .replace(/!/g, '%21')
-      .replace(/\*/g, '%2A')
-      .replace(/'/g, '%27')
-      .replace(/\(/g, '%28')
-      .replace(/\)/g, '%29');
+      .replaceAll('!', '%21')
+      .replaceAll('*', '%2A')
+      .replaceAll("'", '%27')
+      .replaceAll('(', '%28')
+      .replaceAll(')', '%29');
   }
 
   generateSignature(method, url, params, tokenSecret = '') {
-    const sortedParams = Object.keys(params).sort().map(key => {
+    const sortedParams = Object.keys(params).sort((a, b) => a.localeCompare(b)).map(key => {
       return `${this.percentEncode(key)}=${this.percentEncode(params[key])}`;
     }).join('&');
 
@@ -48,7 +48,7 @@ class OAuth1Helper {
 
     params.oauth_signature = this.generateSignature(method, url, params, tokenSecret);
 
-    return 'OAuth ' + Object.keys(params).sort().map(key => {
+    return 'OAuth ' + Object.keys(params).sort((a, b) => a.localeCompare(b)).map(key => {
       return `${this.percentEncode(key)}="${this.percentEncode(params[key])}"`;
     }).join(', ');
   }

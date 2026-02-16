@@ -21,7 +21,7 @@ const connectGoogle = (req, res) => {
 
 const googleCallback = async (req, res) => {
   const { code, state } = req.query;
-  let frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  let frontendUrl = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.trim() : 'http://localhost:5173';
   if (process.env.NODE_ENV === 'production' && !process.env.FRONTEND_URL) {
      frontendUrl = 'https://www.razoncomfort.com';
   }
