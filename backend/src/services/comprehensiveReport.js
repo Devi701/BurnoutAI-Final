@@ -259,13 +259,24 @@ function calculateContextSwitchingScore(calendar, jira, checkins) {
         if (isValid(createdAt)) activities.push({ time: createdAt, type: 'checkin', date: format(createdAt, 'yyyy-MM-dd') });
     });
 
-    // Process by date
-    const allDates = new Set([...meetings.map(m => m.date), ...activities.map(a => a.date)]);
-    
+    // Group by date once to avoid repeated filter scans.
+    const meetingsByDate = new Map();
+    for (const m of meetings) {
+        if (!meetingsByDate.has(m.date)) meetingsByDate.set(m.date, []);
+        meetingsByDate.get(m.date).push(m);
+    }
+    const activitiesByDate = new Map();
+    for (const a of activities) {
+        if (!activitiesByDate.has(a.date)) activitiesByDate.set(a.date, []);
+        activitiesByDate.get(a.date).push(a);
+    }
+
+    const allDates = new Set([...meetingsByDate.keys(), ...activitiesByDate.keys()]);
+
     allDates.forEach(date => {
         let score = 0;
-        const dayMeetings = meetings.filter(m => m.date === date);
-        const dayActivities = activities.filter(a => a.date === date);
+        const dayMeetings = meetingsByDate.get(date) || [];
+        const dayActivities = activitiesByDate.get(date) || [];
 
         dayActivities.forEach(act => {
             // 1. Multitasking Penalty (Activity during meeting)
@@ -363,22 +374,24 @@ function analyze(data) {
     slackData.forEach(s => allDates.add(s.date));
     
     const sortedDates = Array.from(allDates).sort();
+    const focusByDate = new Map(dailyFocus.map(item => [item.date, item]));
+    const slackByDate = new Map(slackData.map(item => [item.date, item]));
     
     // Calculate WIP now that we have the date range
     let wipData = [];
+    let wipByDate = new Map();
     if (hasJira) {
         wipData = calculateWIP(data.jira, sortedDates);
+        wipByDate = new Map(wipData.map(item => [item.date, item]));
     }
 
-    const dailyData = sortedDates.map(date => {
+    const dailyData = sortedDates.map((date) => {
         // Safe access with fallbacks
         const wellness = dailyWellness[date] || {};
-        const focus = hasCalendar ? (dailyFocus.find(d => d.date === date) || { meeting_hours: 0, fragmented_hours: 0, medium_hours: 0, focus_hours: 0, chaos_score: 0 }) : { meeting_hours: 0, fragmented_hours: 0, medium_hours: 0, focus_hours: 0, chaos_score: 0 };
-        const slack = hasSlack ? (slackData.find(s => s.date === date) || { messageCount: 0 }) : { messageCount: 0 };
+        const focus = hasCalendar ? (focusByDate.get(date) || { meeting_hours: 0, fragmented_hours: 0, medium_hours: 0, focus_hours: 0, chaos_score: 0 }) : { meeting_hours: 0, fragmented_hours: 0, medium_hours: 0, focus_hours: 0, chaos_score: 0 };
+        const slack = hasSlack ? (slackByDate.get(date) || { messageCount: 0 }) : { messageCount: 0 };
         
-        // Find WIP for this date index (wipData aligns with sortedDates)
-        const wipIndex = sortedDates.indexOf(date);
-        const wip = (hasJira && wipData[wipIndex]) ? wipData[wipIndex] : { activeTickets: 0, pointsInProgress: 0 };
+        const wip = hasJira ? (wipByDate.get(date) || { activeTickets: 0, pointsInProgress: 0 }) : { activeTickets: 0, pointsInProgress: 0 };
         
         const contextScore = hasCalendar ? (contextScores[date] || 0) : 0;
         

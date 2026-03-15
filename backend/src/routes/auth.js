@@ -66,6 +66,26 @@ async function resolveCompanyCode(role, companyCode) {
   return companyCode ? companyCode.toUpperCase() : null;
 }
 
+function prewarmReportsInBackground(token, companyCode) {
+  if (process.env.ENABLE_LOGIN_PREWARM !== 'true') return;
+  if (!token || !companyCode || typeof fetch !== 'function') return;
+  const port = process.env.PORT || 4000;
+  const baseUrl = process.env.INTERNAL_API_BASE_URL || `http://127.0.0.1:${port}`;
+  const url = `${baseUrl}/api/reports/prewarm?companyCode=${encodeURIComponent(companyCode)}`;
+
+  setImmediate(() => {
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }).catch((err) => {
+      console.warn('[Prewarm] Failed:', err.message);
+    });
+  });
+}
+
 const handleSignup = async (req, res) => {
   try {
     let { email, password, name, role, companyCode, referralCode } = req.body;
@@ -206,6 +226,7 @@ router.post('/login', loginLimiter, async (req, res) => {
         companyCode: user.companyCode
       }
     });
+    prewarmReportsInBackground(token, user.companyCode);
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });

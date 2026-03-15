@@ -29,14 +29,17 @@ const calcEMA = (arr) => {
   return arr.reduce((acc, val) => val * k + acc * (1 - k), arr[0]);
 };
 
-const REPORT_CACHE_TTL_SECONDS = Number(process.env.REPORT_CACHE_TTL_SECONDS || 45);
-const REPORT_COMPUTE_TIMEOUT_MS = Number(process.env.REPORT_COMPUTE_TIMEOUT_MS || 1200);
+const REPORT_CACHE_TTL_SECONDS = Number(process.env.REPORT_CACHE_TTL_SECONDS || 120);
+const REPORT_COMPUTE_TIMEOUT_MS = Number(process.env.REPORT_COMPUTE_TIMEOUT_MS || 900);
+const REPORT_LOOKBACK_DAYS = Number(process.env.REPORT_LOOKBACK_DAYS || 60);
 
 const getReportCacheKey = (prefix, companyCode, teamId) => {
   const normalizedCompany = (companyCode || '').toString().toUpperCase().trim();
   const normalizedTeam = teamId == null || teamId === '' ? 'all' : String(teamId);
   return `reports:${prefix}:${normalizedCompany}:${normalizedTeam}`;
 };
+
+const normalizeCompanyCode = (value) => (value || '').toString().toUpperCase().trim();
 
 const toDateKey = (value) => {
   const d = value instanceof Date ? value : new Date(value);
@@ -65,6 +68,57 @@ const safeParseTrackingData = (value) => {
     return null;
   }
 };
+
+const getReportSinceDate = () => {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const since = new Date(now);
+  since.setDate(since.getDate() - REPORT_LOOKBACK_DAYS);
+  return since;
+};
+
+// POST /api/reports/prewarm?companyCode=XYZ&teamId=1
+// Warms report caches to reduce first-hit latency.
+router.post('/prewarm', async (req, res) => {
+  try {
+    const companyCode = normalizeCompanyCode(req.query.companyCode || req.body?.companyCode || req.user?.companyCode);
+    const teamId = req.query.teamId || req.body?.teamId || 'all';
+    if (!companyCode) return res.status(400).json({ error: 'companyCode required' });
+
+    const port = process.env.PORT || 4000;
+    const baseUrl = process.env.INTERNAL_API_BASE_URL || `http://127.0.0.1:${port}`;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header required' });
+
+    const urls = [
+      `${baseUrl}/api/reports/teams?companyCode=${encodeURIComponent(companyCode)}`,
+      `${baseUrl}/api/reports/comprehensive/team/${encodeURIComponent(companyCode)}?teamId=${encodeURIComponent(teamId)}`,
+      `${baseUrl}/api/reports/${encodeURIComponent(companyCode)}?teamId=${encodeURIComponent(teamId)}`
+    ];
+
+    const startedAt = Date.now();
+    const results = await Promise.allSettled(
+      urls.map((url) => fetch(url, { method: 'GET', headers: { Authorization: authHeader } }))
+    );
+
+    const summary = results.map((item, index) => {
+      if (item.status === 'fulfilled') {
+        return { url: urls[index], ok: item.value.ok, status: item.value.status };
+      }
+      return { url: urls[index], ok: false, error: item.reason?.message || 'request_failed' };
+    });
+
+    return res.json({
+      warmed: true,
+      companyCode,
+      teamId,
+      durationMs: Date.now() - startedAt,
+      results: summary
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 // GET /api/reports/personal/me
 // Returns personal history with NUANCED projections (Seasonality + Trend)
@@ -562,8 +616,15 @@ router.get('/teams', async (req, res) => {
         if (!checkinMap.has(c.userId)) checkinMap.set(c.userId, c);
       });
 
+      const teamMembersMap = new Map();
+      for (const e of allEmployees) {
+        const key = e.teamId == null ? '__null__' : String(e.teamId);
+        if (!teamMembersMap.has(key)) teamMembersMap.set(key, []);
+        teamMembersMap.get(key).push(e);
+      }
+
       return teams.map(team => {
-        const employees = allEmployees.filter(e => e.teamId == team.id);
+        const employees = teamMembersMap.get(String(team.id)) || [];
         let totalStress = 0;
         let totalEnergy = 0;
         let count = 0;
@@ -620,6 +681,7 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
     console.log(`Generating comprehensive TEAM report for Company: ${companyCode}, Team: ${teamId || 'All'}`);
     const cacheKey = getReportCacheKey('comprehensive-team', companyCode, teamId || 'all');
     const result = await withTimeout(cacheService.getOrSetAsync(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+      const sinceDate = getReportSinceDate();
       // 1. Find Employees (same privacy rules as weekly report)
       const whereClause = { companyCode: companyCode.toUpperCase() };
       if (teamId && teamId !== 'undefined' && teamId !== 'null') {
@@ -653,13 +715,19 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
       const SlackActivity = db.sequelize.models.SlackActivity || require('../models/SlackActivity');
       const [checkins, calendarEvents, integrations, slackActivity] = await Promise.all([
         db.Checkin.findAll({
-          where: { userId: { [Op.in]: employeeIds } },
+          where: {
+            userId: { [Op.in]: employeeIds },
+            createdAt: { [Op.gte]: sinceDate }
+          },
           attributes: ['createdAt', 'stress', 'energy', 'sleepQuality'],
           order: [['createdAt', 'ASC']],
           raw: true
         }),
         CalendarEvent ? CalendarEvent.findAll({
-          where: { userId: { [Op.in]: employeeIds } },
+          where: {
+            userId: { [Op.in]: employeeIds },
+            startTime: { [Op.gte]: sinceDate }
+          },
           attributes: ['startTime', 'endTime', 'summary', 'eventType', 'attendees'],
           order: [['startTime', 'ASC']],
           raw: true
@@ -670,7 +738,10 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
           raw: true
         }) : Promise.resolve([]),
         SlackActivity ? SlackActivity.findAll({
-          where: { userId: { [Op.in]: employeeIds } },
+          where: {
+            userId: { [Op.in]: employeeIds },
+            date: { [Op.gte]: sinceDate.toISOString().split('T')[0] }
+          },
           attributes: ['date', 'messageCount'],
           raw: true
         }) : Promise.resolve([])
@@ -680,7 +751,14 @@ router.get('/comprehensive/team/:companyCode', async (req, res) => {
       if (JiraIssue && integrations.length) {
         const integrationIds = integrations.map(i => i.id);
         jiraIssues = await JiraIssue.findAll({
-          where: { integrationId: { [Op.in]: integrationIds } },
+          where: {
+            integrationId: { [Op.in]: integrationIds },
+            [Op.or]: [
+              { createdDate: { [Op.gte]: sinceDate } },
+              { resolutionDate: { [Op.gte]: sinceDate } },
+              { resolutionDate: null }
+            ]
+          },
           attributes: ['issueKey', 'summary', 'status', 'priority', 'storyPoints', 'assignee', 'createdDate', 'resolutionDate'],
           order: [['createdDate', 'ASC']],
           raw: true
@@ -745,6 +823,7 @@ router.get('/:companyCode', async (req, res) => {
 
     const cacheKey = getReportCacheKey('weekly-team', companyCode, teamId || 'all');
     const payload = await withTimeout(cacheService.getOrSetAsync(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+      const sinceDate = getReportSinceDate();
       // 1. Find Employees
       const whereClause = { companyCode: companyCode.toUpperCase() };
       if (teamId && teamId !== 'undefined' && teamId !== 'null') {
@@ -772,13 +851,19 @@ router.get('/:companyCode', async (req, res) => {
       const trackingModel = db.sequelize.models.ActionPlanTracking;
       const [checkins, allTracking] = await Promise.all([
         db.Checkin.findAll({
-          where: { userId: { [Op.in]: employeeIds } },
+          where: {
+            userId: { [Op.in]: employeeIds },
+            createdAt: { [Op.gte]: sinceDate }
+          },
           attributes: ['userId', 'createdAt', 'stress', 'energy'],
           order: [['createdAt', 'ASC']],
           raw: true
         }),
         trackingModel ? trackingModel.findAll({
-          where: { userId: { [Op.in]: employeeIds } },
+          where: {
+            userId: { [Op.in]: employeeIds },
+            updatedAt: { [Op.gte]: sinceDate }
+          },
           attributes: ['data'],
           raw: true
         }) : Promise.resolve([])
