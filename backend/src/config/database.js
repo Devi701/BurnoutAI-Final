@@ -7,6 +7,8 @@ const databaseUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.trim();
 
 let sequelize;
 
+const BUNDLED_CA_PATH = path.join(__dirname, '../../certs/prod-ca-2021.crt');
+
 function withSslmodeRequire(rawUrl) {
   // Supabase commonly expects TLS.
   // pg/pg-connection-string currently treats sslmode=require/prefer/verify-ca as verify-full unless:
@@ -21,7 +23,8 @@ function withSslmodeRequire(rawUrl) {
 
   const hasCa =
     Boolean(process.env.DATABASE_CA_CERT && process.env.DATABASE_CA_CERT.trim()) ||
-    Boolean(process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim());
+    Boolean(process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim()) ||
+    fs.existsSync(BUNDLED_CA_PATH);
 
   const sslmode = url.searchParams.get('sslmode');
   const uselibpqcompat = url.searchParams.get('uselibpqcompat');
@@ -63,6 +66,10 @@ function readCaFromEnv() {
     } catch (e) {
       throw new Error(`Failed to read DATABASE_CA_CERT_PATH (${p}): ${e.message}`);
     }
+  }
+  // Bundled Supabase CA (checked into the repo) as a safe default for Render deployments.
+  if (fs.existsSync(BUNDLED_CA_PATH)) {
+    return fs.readFileSync(BUNDLED_CA_PATH, 'utf8');
   }
   return null;
 }
