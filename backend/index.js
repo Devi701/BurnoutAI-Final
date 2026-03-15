@@ -16,12 +16,16 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-// Aggressive Fix: Monkey-patch dns.lookup to ensure IPv4 is used.
-const originalLookup = dns.lookup;
-dns.lookup = (hostname, options, callback) => {
-  if (typeof options === 'function') return originalLookup(hostname, { family: 4 }, options);
-  return originalLookup(hostname, { ...options, family: 4 }, callback);
-};
+// Optional: Force IPv4 resolution only when explicitly enabled.
+// Some hosts (including some Supabase DB endpoints) may be IPv6-only; forcing IPv4 would break DNS (ENOTFOUND).
+if (process.env.FORCE_IPV4 === 'true') {
+  console.log('[dns] FORCE_IPV4 enabled (will resolve A records only).');
+  const originalLookup = dns.lookup;
+  dns.lookup = (hostname, options, callback) => {
+    if (typeof options === 'function') return originalLookup(hostname, { family: 4 }, options);
+    return originalLookup(hostname, { ...options, family: 4 }, callback);
+  };
+}
 
 const express = require('express');
 const cors = require('cors');
