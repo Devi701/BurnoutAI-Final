@@ -9,47 +9,24 @@ let sequelize;
 
 const BUNDLED_CA_PATH = path.join(__dirname, '../../certs/prod-ca-2021.crt');
 
-function withSslmodeRequire(rawUrl) {
-  // Supabase commonly expects TLS.
-  // pg/pg-connection-string currently treats sslmode=require/prefer/verify-ca as verify-full unless:
-  // - you explicitly set sslmode=verify-full, or
-  // - you opt into libpq semantics with uselibpqcompat=true&sslmode=require.
+function parseDatabaseUrl(rawUrl) {
   let url;
   try {
     url = new URL(rawUrl);
   } catch (e) {
     throw new Error(`Invalid DATABASE_URL (must be a valid URL): ${e.message}`);
   }
-
-  const hasCa =
-    Boolean(process.env.DATABASE_CA_CERT && process.env.DATABASE_CA_CERT.trim()) ||
-    Boolean(process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim()) ||
-    fs.existsSync(BUNDLED_CA_PATH);
-
-  const sslmode = url.searchParams.get('sslmode');
-  const uselibpqcompat = url.searchParams.get('uselibpqcompat');
-
-  if (!sslmode) {
-    if (hasCa) {
-      // Strongest option, matches current (verify-full) behavior and avoids the warning.
-      url.searchParams.set('sslmode', 'verify-full');
-    } else {
-      // Libpq-compatible require (does not imply verify-full). Also avoids the warning.
-      url.searchParams.set('uselibpqcompat', 'true');
-      url.searchParams.set('sslmode', 'require');
-    }
-  } else {
-    // If user provided a legacy sslmode that triggers the warning, normalize it.
-    if (!uselibpqcompat && (sslmode === 'prefer' || sslmode === 'require' || sslmode === 'verify-ca')) {
-      if (hasCa) {
-        url.searchParams.set('sslmode', 'verify-full');
-      } else {
-        url.searchParams.set('uselibpqcompat', 'true');
-      }
-    }
+  if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+    throw new Error(`Invalid DATABASE_URL protocol (${url.protocol}). Expected postgres:// or postgresql://`);
   }
-
-  return url.toString();
+  const dbName = url.pathname && url.pathname !== '/' ? url.pathname.slice(1) : 'postgres';
+  return {
+    host: url.hostname,
+    port: Number(url.port || 5432),
+    database: dbName,
+    username: decodeURIComponent(url.username || ''),
+    password: decodeURIComponent(url.password || ''),
+  };
 }
 
 function readCaFromEnv() {
@@ -76,20 +53,22 @@ function readCaFromEnv() {
 
 // Use Postgres when DATABASE_URL is present; otherwise fall back to local SQLite.
 if (databaseUrl) {
-  const urlWithSslmode = withSslmodeRequire(databaseUrl);
+  const { host, port, database, username, password } = parseDatabaseUrl(databaseUrl);
   const ca = readCaFromEnv();
 
-  // Fix for: "self-signed certificate in certificate chain"
-  // If a CA is provided, validate against it. Otherwise, fall back to rejectUnauthorized=false.
-  const ssl = ca
-    ? { require: true, rejectUnauthorized: true, ca }
-    : { require: true, rejectUnauthorized: false };
+  // TLS settings:
+  // - If a CA is provided, validate against it (recommended).
+  // - Otherwise, fall back to rejectUnauthorized=false for compatibility with self-signed chains.
+  // Note: pg expects `ssl` to be an object with Node TLS options (not `{ require: true }`).
+  const ssl = ca ? { rejectUnauthorized: true, ca } : { rejectUnauthorized: false };
 
   // Postgres (Supabase/Railway/Production)
-  sequelize = new Sequelize(urlWithSslmode, {
+  sequelize = new Sequelize(database, username, password, {
     dialect: 'postgres',
     protocol: 'postgres',
     logging: false,
+    host,
+    port,
     pool: {
       max: Number(process.env.DB_POOL_MAX || 25),
       min: Number(process.env.DB_POOL_MIN || 3),
@@ -97,7 +76,7 @@ if (databaseUrl) {
       idle: Number(process.env.DB_POOL_IDLE_MS || 10000)
     },
     dialectOptions: {
-      // Passing an object (not boolean) avoids newer pg SSL deprecation/warnings.
+      // Passing an object (not boolean) avoids pg SSL ambiguity/warnings and lets us inject the CA.
       ssl
     }
   });
