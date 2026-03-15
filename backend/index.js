@@ -6,6 +6,16 @@ if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
 
+// Ensure we always see the real reason for "Exited with status 1" in Render logs.
+process.on('unhandledRejection', (reason) => {
+  const msg = reason && reason.stack ? reason.stack : String(reason);
+  console.error('[unhandledRejection]', msg);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err && err.stack ? err.stack : err);
+  process.exit(1);
+});
+
 // Aggressive Fix: Monkey-patch dns.lookup to ensure IPv4 is used.
 const originalLookup = dns.lookup;
 dns.lookup = (hostname, options, callback) => {
@@ -37,16 +47,72 @@ const { getSystemHealth } = require('./src/utils/cacheMonitor');
 
 // --- Database Initialization ---
 async function initializeDatabase() {
+  function logSequelizeError(prefix, err) {
+    console.error(prefix, err && err.stack ? err.stack : err);
+    const wrapped = err?.original || err?.parent;
+    if (wrapped && wrapped !== err) {
+      console.error('[db] wrapped error:', wrapped && wrapped.stack ? wrapped.stack : wrapped);
+    }
+    const meta = {
+      name: err?.name,
+      code: wrapped?.code || err?.code,
+      errno: wrapped?.errno || err?.errno,
+      syscall: wrapped?.syscall || err?.syscall,
+      address: wrapped?.address || err?.address,
+      port: wrapped?.port || err?.port,
+    };
+    const hasMeta = Object.values(meta).some((v) => v != null);
+    if (hasMeta) console.error('[db] error meta:', meta);
+  }
+
   try {
     const db = require('./src/config/database');
     if (db && db.sequelize && typeof db.sequelize.authenticate === 'function') {
-      await db.sequelize.authenticate();
-      // SQLite ALTER is fragile with composite unique indexes (can incorrectly add UNIQUE per-column).
-      // Avoid ALTER on SQLite to prevent startup failures; use migrations/scripts if needed.
       const dialect = db.sequelize.getDialect();
-      await db.sequelize.sync({ alter: dialect !== 'sqlite' }); // Syncs DB schema with Models
-      console.log('✅ Database schema synced successfully.');
       const host = db.sequelize.config?.host ?? db.sequelize.options?.host ?? 'unknown';
+
+      // Log SSL posture without leaking secrets.
+      const sslOpt = db.sequelize.options?.dialectOptions?.ssl;
+      if (dialect === 'postgres') {
+        if (sslOpt && typeof sslOpt === 'object') {
+          console.log(
+            `[db] postgres ssl enabled: rejectUnauthorized=${Boolean(sslOpt.rejectUnauthorized)} ca=${sslOpt.ca ? 'provided' : 'none'}`
+          );
+        } else {
+          console.warn('[db] postgres ssl not configured via dialectOptions.ssl (unexpected)');
+        }
+      }
+
+      try {
+        await db.sequelize.authenticate();
+      } catch (err) {
+        logSequelizeError('Unable to connect/authenticate to the database:', err);
+        process.exit(1);
+      }
+
+      // Auto-sync can crash on managed Postgres due to permissions; keep it opt-in in production.
+      const isProd = process.env.NODE_ENV === 'production';
+      const enableAlter = process.env.DB_SYNC_ALTER === 'true' || (!isProd && process.env.DB_SYNC_ALTER !== 'false');
+      const enableForce = process.env.DB_SYNC_FORCE === 'true';
+
+      // SQLite ALTER is fragile with composite unique indexes (can incorrectly add UNIQUE per-column).
+      // Avoid ALTER on SQLite by default; use migrations/scripts if needed.
+      const syncOptions = {};
+      if (dialect !== 'sqlite') {
+        if (enableAlter) syncOptions.alter = true;
+        if (enableForce) syncOptions.force = true;
+      }
+
+      try {
+        await db.sequelize.sync(syncOptions); // Syncs DB schema with Models
+        console.log(
+          `✅ Database schema synced successfully. (dialect=${dialect}, alter=${Boolean(syncOptions.alter)}, force=${Boolean(syncOptions.force)})`
+        );
+      } catch (err) {
+        logSequelizeError('Database schema sync failed (sequelize.sync):', err);
+        process.exit(1);
+      }
+
       console.log(`Database connection has been established successfully to: ${host}`);
     } else if (typeof db === 'function') {
       db(); // Support for simple init function pattern
@@ -54,10 +120,7 @@ async function initializeDatabase() {
     }
     return db;
   } catch (error) {
-    console.error('Unable to connect to the database:', error.message);
-    if (error.errors) {
-      console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
-    }
+    logSequelizeError('Database initialization failed:', error);
     process.exit(1); // Exit if the database is critical
   }
 }
@@ -233,5 +296,6 @@ async function main() {
 }
 
 main().catch(error => {
-  console.error("Failed to start the server:", error);
+  console.error('Failed to start the server:', error && error.stack ? error.stack : error);
+  process.exit(1);
 });

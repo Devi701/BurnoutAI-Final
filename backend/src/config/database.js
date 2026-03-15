@@ -3,13 +3,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 // Determine connection settings
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.trim();
 
 let sequelize;
 
 function withSslmodeRequire(rawUrl) {
   // Supabase commonly expects TLS; explicitly setting sslmode avoids ambiguous pg SSL behavior.
-  const url = new URL(rawUrl);
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch (e) {
+    throw new Error(`Invalid DATABASE_URL (must be a valid URL): ${e.message}`);
+  }
   if (!url.searchParams.get('sslmode')) url.searchParams.set('sslmode', 'require');
   return url.toString();
 }
@@ -17,11 +22,17 @@ function withSslmodeRequire(rawUrl) {
 function readCaFromEnv() {
   // Preferred: provide a CA PEM string directly.
   if (process.env.DATABASE_CA_CERT && process.env.DATABASE_CA_CERT.trim()) {
-    return process.env.DATABASE_CA_CERT.trim();
+    // Many platforms store PEM in env vars with literal "\n". Normalize it.
+    return process.env.DATABASE_CA_CERT.trim().replace(/\\n/g, '\n');
   }
   // Alternative: provide a filesystem path to a CA PEM file.
   if (process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim()) {
-    return fs.readFileSync(process.env.DATABASE_CA_CERT_PATH.trim(), 'utf8');
+    const p = process.env.DATABASE_CA_CERT_PATH.trim();
+    try {
+      return fs.readFileSync(p, 'utf8');
+    } catch (e) {
+      throw new Error(`Failed to read DATABASE_CA_CERT_PATH (${p}): ${e.message}`);
+    }
   }
   return null;
 }
