@@ -8,14 +8,44 @@ const databaseUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.trim();
 let sequelize;
 
 function withSslmodeRequire(rawUrl) {
-  // Supabase commonly expects TLS; explicitly setting sslmode avoids ambiguous pg SSL behavior.
+  // Supabase commonly expects TLS.
+  // pg/pg-connection-string currently treats sslmode=require/prefer/verify-ca as verify-full unless:
+  // - you explicitly set sslmode=verify-full, or
+  // - you opt into libpq semantics with uselibpqcompat=true&sslmode=require.
   let url;
   try {
     url = new URL(rawUrl);
   } catch (e) {
     throw new Error(`Invalid DATABASE_URL (must be a valid URL): ${e.message}`);
   }
-  if (!url.searchParams.get('sslmode')) url.searchParams.set('sslmode', 'require');
+
+  const hasCa =
+    Boolean(process.env.DATABASE_CA_CERT && process.env.DATABASE_CA_CERT.trim()) ||
+    Boolean(process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim());
+
+  const sslmode = url.searchParams.get('sslmode');
+  const uselibpqcompat = url.searchParams.get('uselibpqcompat');
+
+  if (!sslmode) {
+    if (hasCa) {
+      // Strongest option, matches current (verify-full) behavior and avoids the warning.
+      url.searchParams.set('sslmode', 'verify-full');
+    } else {
+      // Libpq-compatible require (does not imply verify-full). Also avoids the warning.
+      url.searchParams.set('uselibpqcompat', 'true');
+      url.searchParams.set('sslmode', 'require');
+    }
+  } else {
+    // If user provided a legacy sslmode that triggers the warning, normalize it.
+    if (!uselibpqcompat && (sslmode === 'prefer' || sslmode === 'require' || sslmode === 'verify-ca')) {
+      if (hasCa) {
+        url.searchParams.set('sslmode', 'verify-full');
+      } else {
+        url.searchParams.set('uselibpqcompat', 'true');
+      }
+    }
+  }
+
   return url.toString();
 }
 
