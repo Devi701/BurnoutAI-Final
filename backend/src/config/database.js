@@ -1,4 +1,5 @@
 const { Sequelize, DataTypes } = require('sequelize');
+const fs = require('node:fs');
 const path = require('node:path');
 
 // Determine connection settings
@@ -6,10 +7,38 @@ const databaseUrl = process.env.DATABASE_URL;
 
 let sequelize;
 
-// Only use remote DB if explicitly in production, otherwise use local SQLite to avoid connection errors during dev
-if (databaseUrl && process.env.NODE_ENV === 'production') {
+function withSslmodeRequire(rawUrl) {
+  // Supabase commonly expects TLS; explicitly setting sslmode avoids ambiguous pg SSL behavior.
+  const url = new URL(rawUrl);
+  if (!url.searchParams.get('sslmode')) url.searchParams.set('sslmode', 'require');
+  return url.toString();
+}
+
+function readCaFromEnv() {
+  // Preferred: provide a CA PEM string directly.
+  if (process.env.DATABASE_CA_CERT && process.env.DATABASE_CA_CERT.trim()) {
+    return process.env.DATABASE_CA_CERT.trim();
+  }
+  // Alternative: provide a filesystem path to a CA PEM file.
+  if (process.env.DATABASE_CA_CERT_PATH && process.env.DATABASE_CA_CERT_PATH.trim()) {
+    return fs.readFileSync(process.env.DATABASE_CA_CERT_PATH.trim(), 'utf8');
+  }
+  return null;
+}
+
+// Use Postgres when DATABASE_URL is present; otherwise fall back to local SQLite.
+if (databaseUrl) {
+  const urlWithSslmode = withSslmodeRequire(databaseUrl);
+  const ca = readCaFromEnv();
+
+  // Fix for: "self-signed certificate in certificate chain"
+  // If a CA is provided, validate against it. Otherwise, fall back to rejectUnauthorized=false.
+  const ssl = ca
+    ? { require: true, rejectUnauthorized: true, ca }
+    : { require: true, rejectUnauthorized: false };
+
   // Postgres (Supabase/Railway/Production)
-  sequelize = new Sequelize(databaseUrl, {
+  sequelize = new Sequelize(urlWithSslmode, {
     dialect: 'postgres',
     protocol: 'postgres',
     logging: false,
@@ -20,10 +49,8 @@ if (databaseUrl && process.env.NODE_ENV === 'production') {
       idle: Number(process.env.DB_POOL_IDLE_MS || 10000)
     },
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false // Required for Supabase/Heroku connections
-      }
+      // Passing an object (not boolean) avoids newer pg SSL deprecation/warnings.
+      ssl
     }
   });
 } else {
