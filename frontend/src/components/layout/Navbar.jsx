@@ -9,21 +9,21 @@ export default function Navbar({ streak }) {
   const companyCode = user?.companyCode;
 
   return (
-    <nav className="navbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>Burnout MVP</Link>
+    <nav className="navbar">
+      <div className="navbar-brand">
+        <Link to="/">BurnoutAI</Link>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      {streak > 0 && (
-        <div style={{ fontSize: '0.9rem', color: '#d97706', backgroundColor: '#fffbeb', padding: '4px 12px', borderRadius: '20px', border: '1px solid #fcd34d', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span>🔥</span> <span style={{ fontWeight: 'bold' }}>{streak}</span>
-        </div>
-      )}
-      {companyCode && (
-        <div style={{ fontSize: '0.9rem', color: '#64748b', backgroundColor: '#f1f5f9', padding: '4px 12px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-          Org: <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#334155' }}>{companyCode}</span>
-        </div>
-      )}
+      <div className="navbar-meta">
+        {streak > 0 && (
+          <div className="pill">
+            <strong>{streak}</strong> day streak
+          </div>
+        )}
+        {companyCode && (
+          <div className="pill">
+            Org <strong style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace' }}>{companyCode}</strong>
+          </div>
+        )}
       </div>
     </nav>
   );

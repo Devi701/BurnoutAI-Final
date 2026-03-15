@@ -2,220 +2,143 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 
-const LandingPage = () => {
+export default function LandingPage() {
   return (
-    <div style={{ fontFamily: 'Inter, system-ui, sans-serif', color: '#1e293b', lineHeight: 1.5 }}>
+    <div className="page">
       <Navbar />
-      
-      {/* Hero Section */}
-      <section style={{ 
-        padding: '6rem 2rem', 
-        textAlign: 'center', 
-        background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)',
-        borderBottom: '1px solid #e2e8f0'
-      }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h1 style={{ 
-            fontSize: 'clamp(2.5rem, 5vw, 4.5rem)', 
-            fontWeight: '800', 
-            marginBottom: '1.5rem', 
-            lineHeight: 1.1,
-            letterSpacing: '-0.02em'
-          }}>
-            Stop Burnout <br />
-            <span style={{ 
-              background: 'linear-gradient(to right, #2563eb, #9333ea)', 
-              WebkitBackgroundClip: 'text', 
-              WebkitTextFillColor: 'transparent' 
-            }}>Before It Starts.</span>
+
+      <header className="hero">
+        <div className="hero-inner">
+          <h1 className="hero-title">
+            Stop burnout
+            <br />
+            <span className="hero-title-accent">before it starts</span>.
           </h1>
-          <p style={{ 
-            fontSize: '1.25rem', 
-            color: '#64748b', 
-            marginBottom: '3rem', 
-            maxWidth: '700px', 
-            marginLeft: 'auto', 
-            marginRight: 'auto' 
-          }}>
-            The intelligent platform that uses AI to predict workplace fatigue, prevent exhaustion, and help teams thrive without compromising privacy.
+
+          <p className="hero-subtitle">
+            A privacy-first way to spot fatigue early, make smarter changes, and keep teams steady.
           </p>
-          
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/signup" style={{ 
-              backgroundColor: '#2563eb', 
-              color: 'white',
-              padding: '1rem 2.5rem', 
-              borderRadius: '8px', 
-              fontSize: '1.1rem', 
-              fontWeight: '600', 
-              textDecoration: 'none',
-              boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -1px rgba(37, 99, 235, 0.1)',
-              transition: 'transform 0.2s'
-            }}>
-              Get Started for Free
+
+          <div className="hero-actions">
+            <Link className="btn btn-primary" to="/signup">
+              Get started
             </Link>
-            <Link to="/login" style={{ 
-              backgroundColor: 'white', 
-              color: '#334155',
-              border: '1px solid #cbd5e1', 
-              padding: '1rem 2.5rem', 
-              borderRadius: '8px', 
-              fontSize: '1.1rem', 
-              fontWeight: '600', 
-              textDecoration: 'none' 
-            }}>
-              Log In
+            <Link className="btn btn-secondary" to="/login">
+              Log in
             </Link>
-            <a href="https://form.typeform.com/to/T3EsMpRg" 
-               target="_blank" 
-               rel="noopener noreferrer"
-               style={{ 
-              backgroundColor: 'white', 
-              color: '#334155', 
-              border: '1px solid #cbd5e1', 
-              padding: '1rem 2.5rem', 
-              borderRadius: '8px', 
-              fontSize: '1.1rem', 
-              fontWeight: '600', 
-              textDecoration: 'none' 
-            }}>
-              Pilot Enrolment
+            <a className="btn btn-secondary" href="https://form.typeform.com/to/T3EsMpRg" target="_blank" rel="noopener noreferrer">
+              Pilot enrolment
             </a>
-            <Link to="/feedback" style={{ 
-              backgroundColor: 'white', 
-              color: '#334155', 
-              border: '1px solid #cbd5e1', 
-              padding: '1rem 2.5rem', 
-              borderRadius: '8px', 
-              fontSize: '1.1rem', 
-              fontWeight: '600', 
-              textDecoration: 'none' 
-            }}>
-              Feedback Suggestion
+            <Link className="btn btn-secondary" to="/feedback">
+              Send feedback
             </Link>
           </div>
+
+          <div className="hero-footnote">No credit card required.</div>
+        </div>
+      </header>
+
+      <section className="section">
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 22 }}>
+            <h2 style={{ margin: 0, fontSize: '2.35rem' }}>Why BurnoutAI</h2>
+            <p style={{ margin: '10px auto 0', maxWidth: 720, color: 'var(--muted)', fontSize: '1.15rem' }}>
+              Behavioral science, aggregated signals, and practical next steps.
+            </p>
+          </div>
+
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-kicker">Signals</div>
+              <h3 className="feature-title">Early warning, not surveillance</h3>
+              <p className="feature-body">
+                We look for patterns that correlate with fatigue and overload. Employers see trends, not individuals.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-kicker">Privacy</div>
+              <h3 className="feature-title">Designed for psychological safety</h3>
+              <p className="feature-body">
+                Data stays aggregated. Teams get insights without creating another “tool people fear.”
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-kicker">Action</div>
+              <h3 className="feature-title">Recommendations you can actually ship</h3>
+              <p className="feature-body">
+                Simple levers: meeting pressure, workload spikes, recovery time, and follow-through. No theatrics.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section style={{ padding: '6rem 2rem', background: 'white' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#0f172a' }}>Why BurnoutAI?</h2>
-            <p style={{ fontSize: '1.2rem', color: '#64748b' }}>We combine behavioral science with privacy-first analytics.</p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-            {/* Feature 1 */}
-            <div style={{ padding: '2rem', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔮</div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b' }}>Predictive Analytics</h3>
-              <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-                Our algorithms analyze workload, sleep patterns, and stress indicators to forecast burnout risk weeks before it becomes a problem.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div style={{ padding: '2rem', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🛡️</div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b' }}>Privacy by Design</h3>
-              <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-                Employee data is aggregated and anonymized. Employers see team trends, but never individual scores. Psychological safety is our priority.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div style={{ padding: '2rem', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚡</div>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#1e293b' }}>Actionable Insights</h3>
-              <p style={{ color: '#64748b', lineHeight: 1.6 }}>
-                Don't just track problems—solve them. Get tailored recommendations for workload balancing, recovery days, and team habits.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Preview / Value Prop */}
-      <section style={{ padding: '6rem 2rem', background: '#1e293b', color: 'white' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+      <section className="section section-dark">
+        <div className="container split">
           <div>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
-              For Employees & Employers
-            </h2>
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{ fontSize: '1.25rem', color: '#60a5fa', marginBottom: '0.5rem' }}>👩‍💻 For Employees</h3>
-              <p style={{ color: '#cbd5e1', lineHeight: 1.6 }}>
-                A private safe space to track your energy, get personalized recovery tips, and visualize your work-life balance trends without fear of judgment.
+            <h2 style={{ marginTop: 0, fontSize: '2.35rem' }}>For employees and employers</h2>
+
+            <div style={{ marginBottom: 18 }}>
+              <div className="feature-kicker" style={{ color: 'rgba(231, 238, 252, 0.65)' }}>
+                Employees
+              </div>
+              <p style={{ margin: '8px 0 0', color: 'rgba(231, 238, 252, 0.80)', lineHeight: 1.65 }}>
+                Track your energy and get small, personal nudges that don’t feel like a lecture.
               </p>
             </div>
+
             <div>
-              <h3 style={{ fontSize: '1.25rem', color: '#a78bfa', marginBottom: '0.5rem' }}>🏢 For Employers</h3>
-              <p style={{ color: '#cbd5e1', lineHeight: 1.6 }}>
-                See the "weather report" of your organization. Identify teams at risk of attrition and simulate the impact of policy changes like "No-Meeting Fridays".
+              <div className="feature-kicker" style={{ color: 'rgba(231, 238, 252, 0.65)' }}>
+                Employers
+              </div>
+              <p style={{ margin: '8px 0 0', color: 'rgba(231, 238, 252, 0.80)', lineHeight: 1.65 }}>
+                See the “weather report” for teams and test policy changes before they backfire.
               </p>
             </div>
           </div>
-          <div style={{ 
-            background: 'rgba(255,255,255,0.1)', 
-            borderRadius: '16px', 
-            padding: '2rem', 
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-          }}>
-            {/* Mock UI */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-              <div style={{ fontWeight: 'bold' }}>Team Health Dashboard</div>
-              <div style={{ color: '#4ade80' }}>● Stable</div>
+
+          <div className="mock" aria-label="Dashboard preview">
+            <div className="mock-top">
+              <div style={{ fontWeight: 750 }}>Team health</div>
+              <div className="mock-status">Stable</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'end', height: '150px', gap: '10px', marginBottom: '1rem' }}>
-              <div style={{ flex: 1, background: '#ef4444', height: '40%', borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
-              <div style={{ flex: 1, background: '#f59e0b', height: '60%', borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
-              <div style={{ flex: 1, background: '#10b981', height: '80%', borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
-              <div style={{ flex: 1, background: '#10b981', height: '75%', borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
-              <div style={{ flex: 1, background: '#3b82f6', height: '90%', borderRadius: '4px 4px 0 0', opacity: 0.8 }}></div>
+            <div className="bars" aria-hidden="true">
+              <div className="bar b1" />
+              <div className="bar b2" />
+              <div className="bar b3" />
+              <div className="bar b4" />
+              <div className="bar b5" />
             </div>
-            <div style={{ fontSize: '0.9rem', color: '#94a3b8', textAlign: 'center' }}>
-              Real-time aggregated risk analysis
+            <div style={{ fontSize: '0.95rem', color: 'rgba(231, 238, 252, 0.62)', textAlign: 'center' }}>
+              Aggregated signals, weekly trends, and small interventions.
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Footer */}
-      <section style={{ padding: '6rem 2rem', textAlign: 'center', background: 'linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%)' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: '#0f172a' }}>
-            Ready to build a healthier workplace?
-          </h2>
-          <p style={{ fontSize: '1.25rem', color: '#64748b', marginBottom: '3rem' }}>
-            Join hundreds of teams using BurnoutAI to protect their most valuable asset: their people.
+      <section className="section section-muted">
+        <div className="container" style={{ textAlign: 'center', maxWidth: 920 }}>
+          <h2 style={{ margin: 0, fontSize: '2.35rem' }}>Ready to make work feel lighter?</h2>
+          <p style={{ margin: '12px auto 0', color: 'var(--muted)', fontSize: '1.15rem', maxWidth: 720 }}>
+            Start a pilot, invite a team, and iterate. You can keep it simple and still get value.
           </p>
-          <Link to="/signup" style={{ 
-            backgroundColor: '#2563eb', 
-            color: 'white', 
-            padding: '1rem 3rem', 
-            borderRadius: '8px', 
-            fontSize: '1.2rem', 
-            fontWeight: '600', 
-            textDecoration: 'none',
-            boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.3)'
-          }}>
-            Start Your Free Pilot
-          </Link>
-          <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', color: '#94a3b8' }}>
-            No credit card required. Cancel anytime.
-          </p>
+          <div style={{ marginTop: 22 }}>
+            <Link className="btn btn-primary" to="/signup">
+              Start a pilot
+            </Link>
+          </div>
+          <div className="hero-footnote">You can cancel anytime.</div>
         </div>
       </section>
 
-      {/* Simple Footer */}
-      <footer style={{ padding: '2rem', borderTop: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-        <p>&copy; {new Date().getFullYear()} BurnoutAI. All rights reserved.</p>
+      <footer className="section-tight" style={{ textAlign: 'center', color: 'rgba(15, 23, 42, 0.56)' }}>
+        <div className="container">
+          <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} BurnoutAI.</p>
+        </div>
       </footer>
     </div>
   );
-};
+}
 
-export default LandingPage;
